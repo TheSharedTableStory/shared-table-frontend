@@ -94,6 +94,50 @@ async function loadUsers() {
   return res.json();
 }
 
+async function loadCoupons() {
+  const res = await adminFetch("/api/admin/promo-codes", { method: "GET" });
+  if (!res.ok) throw new Error("coupons");
+  const data = await res.json().catch(() => ({}));
+  return Array.isArray(data.promos) ? data.promos : [];
+}
+
+async function createCoupon(payload) {
+  const res = await adminFetch("/api/admin/promo-codes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {})
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to create coupon");
+  }
+  return data.promo || null;
+}
+
+async function updateCoupon(code, payload) {
+  const res = await adminFetch("/api/admin/promo-codes/" + encodeURIComponent(code), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {})
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to update coupon");
+  }
+  return data.promo || null;
+}
+
+async function deactivateCoupon(code) {
+  const res = await adminFetch("/api/admin/promo-codes/" + encodeURIComponent(code) + "/deactivate", {
+    method: "POST"
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to deactivate coupon");
+  }
+  return data.promo || null;
+}
+
 async function toggleExperience(id) {
   const res = await adminFetch("/api/admin/experiences/" + encodeURIComponent(id) + "/toggle", {
     method: "PATCH"
@@ -192,6 +236,40 @@ function normalizeVerifiedStatus(v) {
   if (s === "pending") return "pending";
   if (s === "rejected") return "rejected";
   return "none";
+}
+
+function __csvToArray(v) {
+  return String(v || "")
+    .split(",")
+    .map(function (x) { return String(x || "").trim(); })
+    .filter(function (x) { return x.length > 0; });
+}
+
+function formatPromoDiscount(p) {
+  const pct = Number(p && p.percentOff);
+  const fixed = Number(p && p.fixedOffCents);
+  if (Number.isFinite(pct) && pct > 0) return String(pct) + "%";
+  if (Number.isFinite(fixed) && fixed > 0) return "$" + (fixed / 100).toFixed(2);
+  return "—";
+}
+
+function formatPromoWindow(p) {
+  const from = p && p.validFrom ? formatDateValue(p.validFrom) : "Now";
+  const to = p && p.validTo ? formatDateValue(p.validTo) : "No expiry";
+  return from + " → " + to;
+}
+
+function formatPromoScope(p) {
+  const scope = String((p && p.scopeType) || "global").toLowerCase();
+  if (scope === "category") {
+    const cats = Array.isArray(p && p.appliesToCategories) ? p.appliesToCategories : [];
+    return "Category (" + (cats.length > 0 ? cats.join(", ") : "none") + ")";
+  }
+  if (scope === "experience") {
+    const ids = Array.isArray(p && p.appliesToExperienceIds) ? p.appliesToExperienceIds : [];
+    return "Experience (" + ids.length + ")";
+  }
+  return "Global";
 }
 
 function renderStats(stats) {
@@ -361,6 +439,44 @@ function renderUsers(users) {
   });
 }
 
+function renderCoupons(promos) {
+  const El = window.tstsEl;
+  const tbody = $("coupons-table-body");
+  if (!tbody) return;
+  tbody.textContent = "";
+
+  var list = Array.isArray(promos) ? promos : [];
+  if (list.length === 0) {
+    tbody.appendChild(El("tr", {}, [
+      El("td", { className: "px-6 py-6 text-center text-sm text-slate-500", colSpan: "6", textContent: "No coupons." })
+    ]));
+    return;
+  }
+
+  list.forEach(function(promo) {
+    var code = String((promo && promo.code) || "");
+    var active = !!(promo && promo.active);
+    var statusClass = active ? "text-emerald-700" : "text-amber-700";
+    var statusText = active ? "Active" : "Inactive";
+
+    var editBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-slate-200 text-slate-700 hover:bg-slate-50", textContent: "Edit" });
+    editBtn.addEventListener("click", function() { handleEditCoupon(code, promo); });
+    var stopBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-red-200 text-red-600 hover:bg-red-50", textContent: "Deactivate" });
+    stopBtn.disabled = !active;
+    stopBtn.classList.toggle("opacity-50", !active);
+    stopBtn.addEventListener("click", function() { handleDeactivateCoupon(code); });
+
+    tbody.appendChild(El("tr", { className: "border-t border-slate-100" }, [
+      El("td", { className: "px-6 py-4 text-sm font-semibold text-slate-800", textContent: code || "—" }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: formatPromoScope(promo) }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700 font-semibold", textContent: formatPromoDiscount(promo) }),
+      El("td", { className: "px-6 py-4 text-sm " + statusClass, textContent: statusText }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-500", textContent: formatPromoWindow(promo) }),
+      El("td", { className: "px-6 py-4 text-sm text-right" }, [editBtn, El("span", { textContent: " " }), stopBtn])
+    ]));
+  });
+}
+
 // Local action handlers (no window.* exposure)
 async function handleToggleExperience(id) {
   try { await toggleExperience(id); await boot(); } catch (e) { window.tstsNotify(e.message || "Failed", "error"); }
@@ -390,10 +506,80 @@ async function handleCancelBooking(id) {
   if (!confirmed) return;
   try { await cancelBooking(id); await boot(); } catch (e) { window.tstsNotify(e.message || "Failed", "error"); }
 }
+async function handleCreateCoupon(e) {
+  e.preventDefault();
+  try {
+    var payload = {
+      code: String(($("coupon-code") && $("coupon-code").value) || "").trim().toUpperCase(),
+      scopeType: String(($("coupon-scope") && $("coupon-scope").value) || "global").trim().toLowerCase(),
+      percentOff: Number(($("coupon-percent") && $("coupon-percent").value) || 0),
+      fixedOffCents: Number(($("coupon-fixed") && $("coupon-fixed").value) || 0),
+      maxUsesTotal: Number(($("coupon-max-total") && $("coupon-max-total").value) || 0),
+      maxUsesPerUser: Number(($("coupon-max-user") && $("coupon-max-user").value) || 1),
+      minSubtotalCents: Number(($("coupon-min-subtotal") && $("coupon-min-subtotal").value) || 0),
+      minGuests: Number(($("coupon-min-guests") && $("coupon-min-guests").value) || 0),
+      appliesToCategories: __csvToArray(($("coupon-categories") && $("coupon-categories").value) || ""),
+      appliesToExperienceIds: __csvToArray(($("coupon-experience-ids") && $("coupon-experience-ids").value) || "")
+    };
+    var vf = String(($("coupon-valid-from") && $("coupon-valid-from").value) || "").trim();
+    var vt = String(($("coupon-valid-to") && $("coupon-valid-to").value) || "").trim();
+    if (vf) payload.validFrom = new Date(vf).toISOString();
+    if (vt) payload.validTo = new Date(vt).toISOString();
+    if (!payload.code) delete payload.code;
+    if (!(payload.percentOff > 0) && !(payload.fixedOffCents > 0)) {
+      throw new Error("Provide percent off or fixed off amount.");
+    }
+    await createCoupon(payload);
+    window.tstsNotify("Coupon created.", "success");
+    var form = $("coupon-create-form");
+    if (form && typeof form.reset === "function") form.reset();
+    if ($("coupon-max-user")) $("coupon-max-user").value = "1";
+    await loadCoupons().then(renderCoupons);
+  } catch (err) {
+    window.tstsNotify((err && err.message) ? err.message : "Coupon create failed", "error");
+  }
+}
+async function handleEditCoupon(code, promo) {
+  try {
+    var seed = {
+      percentOff: Number(promo && promo.percentOff) || 0,
+      fixedOffCents: Number(promo && promo.fixedOffCents) || 0,
+      maxUsesTotal: Number(promo && promo.maxUsesTotal) || 0,
+      maxUsesPerUser: Number(promo && promo.maxUsesPerUser) || 1,
+      minSubtotalCents: Number(promo && promo.minSubtotalCents) || 0,
+      minGuests: Number(promo && promo.minGuests) || 0,
+      validFrom: (promo && promo.validFrom) ? new Date(promo.validFrom).toISOString() : null,
+      validTo: (promo && promo.validTo) ? new Date(promo.validTo).toISOString() : null,
+      scopeType: String((promo && promo.scopeType) || "global"),
+      appliesToCategories: Array.isArray(promo && promo.appliesToCategories) ? promo.appliesToCategories : [],
+      appliesToExperienceIds: Array.isArray(promo && promo.appliesToExperienceIds) ? promo.appliesToExperienceIds : []
+    };
+    var raw = await window.tstsPrompt("Edit coupon JSON patch", JSON.stringify(seed, null, 2), { minLength: 2, placeholder: "{\"percentOff\":10}" });
+    raw = String(raw || "").trim();
+    if (!raw) return;
+    var patch = JSON.parse(raw);
+    await updateCoupon(code, patch);
+    window.tstsNotify("Coupon updated.", "success");
+    await loadCoupons().then(renderCoupons);
+  } catch (err) {
+    window.tstsNotify((err && err.message) ? err.message : "Coupon update failed", "error");
+  }
+}
+async function handleDeactivateCoupon(code) {
+  var confirmed = await window.tstsConfirm("Deactivate coupon " + code + "?", { destructive: true, confirmText: "Deactivate" });
+  if (!confirmed) return;
+  try {
+    await deactivateCoupon(code);
+    window.tstsNotify("Coupon deactivated.", "success");
+    await loadCoupons().then(renderCoupons);
+  } catch (err) {
+    window.tstsNotify((err && err.message) ? err.message : "Deactivate failed", "error");
+  }
+}
 
 // Tab switching functionality (local, no window.* exposure)
 function switchTab(tabName) {
-  const views = ['dashboard', 'listings', 'users'];
+  const views = ['dashboard', 'listings', 'users', 'coupons'];
   const activeClass = "border-tsts-clay text-tsts-clay border-b-2 py-4 px-1 font-bold text-sm";
   const inactiveClass = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm";
 
@@ -419,6 +605,9 @@ function switchTab(tabName) {
   if (tabName === 'listings') {
     loadExperiences().then(renderExperiences).catch(() => renderExperiences([]));
   }
+  if (tabName === 'coupons') {
+    loadCoupons().then(renderCoupons).catch(() => renderCoupons([]));
+  }
   if (tabName === 'dashboard') {
     Promise.all([
       loadStats().catch(() => ({})),
@@ -439,14 +628,20 @@ function wireAdminEvents() {
   const tabDashboard = $("tab-dashboard");
   const tabListings = $("tab-listings");
   const tabUsers = $("tab-users");
+  const tabCoupons = $("tab-coupons");
   const refreshListings = $("btn-refresh-listings");
   const refreshUsers = $("btn-refresh-users");
+  const refreshCoupons = $("btn-refresh-coupons");
+  const couponCreateForm = $("coupon-create-form");
 
   if (tabDashboard) tabDashboard.addEventListener("click", () => switchTab("dashboard"));
   if (tabListings) tabListings.addEventListener("click", () => switchTab("listings"));
   if (tabUsers) tabUsers.addEventListener("click", () => switchTab("users"));
+  if (tabCoupons) tabCoupons.addEventListener("click", () => switchTab("coupons"));
   if (refreshListings) refreshListings.addEventListener("click", () => loadExperiences().then(renderExperiences).catch(() => renderExperiences([])));
   if (refreshUsers) refreshUsers.addEventListener("click", () => loadUsers().then(renderUsers).catch(() => renderUsers([])));
+  if (refreshCoupons) refreshCoupons.addEventListener("click", () => loadCoupons().then(renderCoupons).catch(() => renderCoupons([])));
+  if (couponCreateForm) couponCreateForm.addEventListener("submit", handleCreateCoupon);
 }
 
 async function boot() {
@@ -458,17 +653,19 @@ async function boot() {
 
   // basic skeleton if containers exist
   try {
-    const [stats, bookings, exps, users] = await Promise.all([
+    const [stats, bookings, exps, users, promos] = await Promise.all([
       loadStats().catch(() => ({})),
       loadBookings().catch(() => ([])),
       loadExperiences().catch(() => ([])),
-      loadUsers().catch(() => ([]))
+      loadUsers().catch(() => ([])),
+      loadCoupons().catch(() => ([]))
     ]);
 
     renderStats(stats);
     renderBookings(bookings);
     renderExperiences(exps);
     renderUsers(users);
+    renderCoupons(promos);
   } catch (e) {
     window.tstsNotify("Admin load failed.", "error");
   }

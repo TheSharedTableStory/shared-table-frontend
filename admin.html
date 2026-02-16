@@ -42,6 +42,9 @@
             <button id="tab-users" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
                 Manage Users
             </button>
+            <button id="tab-coupons" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
+                Manage Coupons
+            </button>
         </nav>
       </div>
 
@@ -113,6 +116,87 @@
           </section>
       </div>
 
+      <div id="view-coupons" class="hidden space-y-8">
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+            <div class="flex items-center justify-between gap-4 mb-5">
+              <h2 class="font-bold text-lg text-tsts-ink">Create Coupon</h2>
+              <p class="text-xs text-slate-500">One coupon per booking. Applies by scope and validity rules.</p>
+            </div>
+            <form id="coupon-create-form" class="grid gap-4 md:grid-cols-2">
+              <div>
+                <label for="coupon-code" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Code (optional)</label>
+                <input id="coupon-code" type="text" maxlength="40" placeholder="AUTO if empty" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label for="coupon-scope" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Scope</label>
+                <select id="coupon-scope" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                  <option value="global">Global</option>
+                  <option value="category">Category</option>
+                  <option value="experience">Experience</option>
+                </select>
+              </div>
+              <div>
+                <label for="coupon-percent" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Percent Off</label>
+                <input id="coupon-percent" type="number" min="0" max="100" step="1" value="0" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label for="coupon-fixed" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Fixed Off (cents)</label>
+                <input id="coupon-fixed" type="number" min="0" step="1" value="0" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label for="coupon-max-total" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Max Uses Total</label>
+                <input id="coupon-max-total" type="number" min="0" step="1" value="0" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label for="coupon-max-user" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Max Uses Per User</label>
+                <input id="coupon-max-user" type="number" min="1" step="1" value="1" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label for="coupon-min-subtotal" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Min Subtotal (cents)</label>
+                <input id="coupon-min-subtotal" type="number" min="0" step="1" value="0" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label for="coupon-min-guests" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Min Guests</label>
+                <input id="coupon-min-guests" type="number" min="0" step="1" value="0" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label for="coupon-valid-from" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Valid From</label>
+                <input id="coupon-valid-from" type="datetime-local" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label for="coupon-valid-to" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Valid To</label>
+                <input id="coupon-valid-to" type="datetime-local" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div class="md:col-span-2">
+                <label for="coupon-categories" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Categories (comma-separated, for category scope)</label>
+                <input id="coupon-categories" type="text" placeholder="food-gatherings, explore-outdoors" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div class="md:col-span-2">
+                <label for="coupon-experience-ids" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Experience IDs (comma-separated, for experience scope)</label>
+                <input id="coupon-experience-ids" type="text" placeholder="6992...,6993..." class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div class="md:col-span-2">
+                <button id="btn-create-coupon" type="submit" class="inline-flex items-center justify-center rounded-xl bg-tsts-clay px-4 py-2 text-sm font-bold text-white hover:opacity-90">Create Coupon</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <div class="font-bold text-lg">Coupon Inventory</div>
+                <button id="btn-refresh-coupons" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-left text-sm">
+                <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                  <tr><th class="px-6 py-3">Code</th><th class="px-6 py-3">Scope</th><th class="px-6 py-3">Discount</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Window</th><th class="px-6 py-3">Actions</th></tr>
+                </thead>
+                <tbody id="coupons-table-body" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </section>
+      </div>
+
 
     </div>
   </main>
@@ -120,6 +204,6 @@
 
   <script src="js/runtime-config.js?v=20260216"></script>
   <script src="js/common.js?v=20260216"></script>
-  <script src="js/admin.js?v=20260217"></script>
+  <script src="js/admin.js?v=20260218"></script>
 </body>
 </html>
