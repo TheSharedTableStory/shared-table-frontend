@@ -31,6 +31,9 @@
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         .tsts-carousel { scroll-snap-type: x mandatory; scroll-padding-left: 1rem; }
         .tsts-carousel > * { scroll-snap-align: start; }
+        .tsts-home-hero { height: min(78vh, 46rem); }
+        .tsts-ways-section { padding-top: 5rem; padding-bottom: 5rem; }
+        .tsts-ways-heading { margin-bottom: 3rem; }
         /* Tailwind utility coverage differs across breakpoints in the compiled bundle;
            keep card width deterministic so pillars never collapse at non-fullscreen sizes. */
         .tsts-cat-card {
@@ -56,6 +59,31 @@
         .tsts-cat-more { opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity 220ms ease, transform 220ms ease; }
         .tsts-cat-card[open] .tsts-cat-more { opacity: 1; transform: translateY(0); pointer-events: auto; }
         .tsts-cat-card[open] .tsts-cat-overlay { background: rgba(0,0,0,0.55); }
+
+        @media (max-height: 900px) {
+            .tsts-home-hero { height: min(62vh, 34rem); }
+            .tsts-ways-section { padding-top: 3.25rem; padding-bottom: 3.25rem; }
+            .tsts-ways-heading { margin-bottom: 1.75rem; }
+        }
+        @media (max-height: 800px) {
+            .tsts-home-hero { height: min(56vh, 30rem); }
+            .tsts-ways-section { padding-top: 2.5rem; padding-bottom: 2.75rem; }
+            .tsts-ways-heading { margin-bottom: 1.25rem; }
+        }
+        @media (max-height: 700px) {
+            .tsts-home-hero { height: min(50vh, 25rem); }
+            .tsts-ways-section { padding-top: 2rem; padding-bottom: 2.25rem; }
+            .tsts-ways-heading { margin-bottom: 1rem; }
+            .tsts-home-hero h1 {
+                font-size: clamp(1.85rem, 5vw, 2.6rem);
+                line-height: 1.12;
+                margin-bottom: 0.9rem;
+            }
+            .tsts-home-hero p {
+                font-size: clamp(0.98rem, 2.2vw, 1.2rem);
+                margin-bottom: 1rem;
+            }
+        }
     </style>
   <link rel="icon" type="image/png" href="/assets/icon-192.png">
   <link rel="apple-touch-icon" href="/assets/icon-192.png">
@@ -66,7 +94,7 @@
 
     <nav id="navbar-placeholder"></nav>
 
-    <section class="relative h-[85vh] flex items-center justify-center overflow-hidden">
+    <section class="relative tsts-home-hero flex items-center justify-center overflow-hidden">
         <div class="absolute inset-0 bg-black/40 z-10"></div>
         <img src="/assets/hero-banner.jpg" 
              alt="Friends sharing a moment around a table" class="absolute inset-0 w-full h-full object-cover">
@@ -89,9 +117,9 @@
         </div>
     </section>
 
-    <section class="py-20 px-4 bg-gray-50">
+    <section class="tsts-ways-section px-4 bg-gray-50">
         <div class="max-w-7xl mx-auto">
-	            <div class="text-center mb-16">
+	            <div class="text-center tsts-ways-heading">
 	                <h2 class="text-3xl md:text-4xl font-bold mb-4 serif text-gray-900">Ways to Connect</h2>
 	                <p class="text-gray-600 max-w-2xl mx-auto">Choose the kind of experience you're in the mood for.</p>
 	            </div>

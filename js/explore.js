@@ -15,6 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const elClearFiltersEmpty = document.getElementById("clear-filters-empty-btn");
     const elApplyFilters = document.getElementById("apply-filters");
     const elSort = document.getElementById("sort-select");
+    const elPrivateBookingOnly = document.getElementById("private-booking-only");
 
     const elPriceSlider = document.getElementById("price-slider");
     const elPriceMinLabel = document.getElementById("price-min-label");
@@ -41,6 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
         guests: "",
         categories: [],
         sort: "",
+        privateBookingOnly: false,
         minPrice: 0,
         maxPrice: 300
     };
@@ -59,6 +61,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     .forEach((c) => p.append("category", c));
             }
             if (filterState.sort) p.set("sort", String(filterState.sort));
+            if (filterState.privateBookingOnly) p.set("privateBookingAllowed", "true");
             if (filterState.minPrice > 0) p.set("minPrice", String(filterState.minPrice));
             if (filterState.maxPrice < 300) p.set("maxPrice", String(filterState.maxPrice));
             if (window.TSTS_DEALS_UI_MODE) p.set("filter", "deals");
@@ -78,6 +81,15 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } catch (_) {}
         return String(raw || "").trim();
+    }
+
+    function isPrivateBookingAvailable(exp) {
+        const e = exp || {};
+        if (typeof e.privateBookingAllowed === "boolean") return e.privateBookingAllowed;
+        const privateCap = Number(e.privateCapacity || 0);
+        if (Number.isFinite(privateCap) && privateCap > 0) return true;
+        const fallbackCap = Number(e.maxGuests || e.capacity || 0);
+        return Number.isFinite(fallbackCap) && fallbackCap > 0;
     }
 
     function syncCategoryChips() {
@@ -103,6 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (filterState.date) count += 1;
         if (filterState.guests) count += 1;
         if (filterState.sort) count += 1;
+        if (filterState.privateBookingOnly) count += 1;
         if (Array.isArray(filterState.categories) && filterState.categories.some((c) => c && c !== "all")) count += 1;
         if (filterState.minPrice > 0 || filterState.maxPrice < 300) count += 1;
         return count;
@@ -258,6 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const urlCategoryRaw = urlParams.getAll("category");
     const urlQuery = urlParams.get("q");
     const urlFilter = urlParams.get("filter");
+    const urlPrivateBookingAllowed = String(urlParams.get("privateBookingAllowed") || "").trim().toLowerCase();
 
     if (urlQuery && elSearch) {
         filterState.search = String(urlQuery).trim();
@@ -274,6 +288,10 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
         filterState.categories = picked;
+    }
+    if (urlPrivateBookingAllowed === "true" || urlPrivateBookingAllowed === "1") {
+        filterState.privateBookingOnly = true;
+        if (elPrivateBookingOnly) elPrivateBookingOnly.checked = true;
     }
     syncCategoryChips();
 
@@ -327,6 +345,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (filterState.minPrice > 0) params.set("minPrice", filterState.minPrice);
         if (filterState.maxPrice < 300) params.set("maxPrice", filterState.maxPrice);
         if (filterState.guests) params.set("guests", filterState.guests);
+        if (filterState.privateBookingOnly) params.set("privateBookingAllowed", "true");
 
         try {
             const res = await window.authFetch(`/api/experiences?${params.toString()}`, { method: "GET" });
@@ -334,7 +353,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await res.json().catch(() => null);
 
             const list = Array.isArray(data) ? data : (data && Array.isArray(data.experiences) ? data.experiences : []);
-            const out = window.TSTS_DEALS_UI_MODE ? list.filter(tstsIsDeal) : list;
+            const privateFiltered = filterState.privateBookingOnly ? list.filter(isPrivateBookingAvailable) : list;
+            const out = window.TSTS_DEALS_UI_MODE ? privateFiltered.filter(tstsIsDeal) : privateFiltered;
             if (window.TSTS_DEALS_UI_MODE) tstsSetDealsBanner("");
             renderExperiences(out);
         } catch (err) {
@@ -354,9 +374,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (elDate) filterState.date = elDate.value;
         if (elGuests) filterState.guests = elGuests.value;
         if (elSort) filterState.sort = elSort.value;
+        if (elPrivateBookingOnly) filterState.privateBookingOnly = !!elPrivateBookingOnly.checked;
         
         fetchExperiences();
-        if (elFilterPanel && window.innerWidth < 1280 && !elFilterPanel.classList.contains("hidden")) {
+        if (elFilterPanel && !elFilterPanel.classList.contains("hidden")) {
             setFilterPanelOpen(false);
         }
     };
@@ -370,6 +391,7 @@ document.addEventListener("DOMContentLoaded", () => {
         filterState.guests = "";
         filterState.categories = [];
         filterState.sort = "";
+        filterState.privateBookingOnly = false;
         filterState.minPrice = 0;
         filterState.maxPrice = 300;
 
@@ -379,6 +401,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (elDate) elDate.value = "";
         if (elGuests) elGuests.value = "";
         if (elSort) elSort.value = "";
+        if (elPrivateBookingOnly) elPrivateBookingOnly.checked = false;
         
         if (elPriceSlider && elPriceSlider.noUiSlider) elPriceSlider.noUiSlider.set([0, 300]);
 
@@ -412,6 +435,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const imgUrl = safeUrl(exp.imageUrl || (exp.images && exp.images[0]), fallbackImg);
             const price = exp.price || 0;
             const hostPicUrl = safeUrl(exp.hostPic, fallbackHostPic);
+            const privateAvailable = isPrivateBookingAvailable(exp);
 
             var imgEl = El("img", { className: "w-full h-full object-cover group-hover:scale-105 transition duration-500" });
             window.tstsSafeImg(imgEl, imgUrl, fallbackImg);
@@ -423,6 +447,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 imgEl,
                 El("div", { className: "absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold shadow-sm", textContent: "$" + price })
             ]);
+            if (privateAvailable) {
+                imageContainer.appendChild(
+                    El("div", {
+                        className: "absolute top-3 left-3 bg-emerald-600/90 text-white px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm",
+                        textContent: "Private booking"
+                    })
+                );
+            }
 
             if (exp.isPaused) {
                 imageContainer.appendChild(El("div", { className: "absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold", textContent: "Paused" }));
@@ -485,13 +517,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 : String(filterState.sort);
             addChip("Sort: " + sortLabel);
         }
+        if (filterState.privateBookingOnly) addChip("Private booking");
         if (filterState.minPrice > 0 || filterState.maxPrice < 300) addChip("Price: $" + filterState.minPrice + " - $" + filterState.maxPrice);
         refreshFilterUi();
     };
 
     // === EVENT LISTENERS ===
-    let isDesktopFilters = window.innerWidth >= 1280;
-    setFilterPanelOpen(isDesktopFilters);
+    setFilterPanelOpen(false);
     refreshFilterUi();
 
     if (elFilterBtn) {
@@ -516,6 +548,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (elDate) elDate.addEventListener("change", applyFilters);
     if (elGuests) elGuests.addEventListener("change", applyFilters);
     if (elSort) elSort.addEventListener("change", applyFilters);
+    if (elPrivateBookingOnly) elPrivateBookingOnly.addEventListener("change", applyFilters);
 
     // Category Chips
     categoryChips.forEach(chip => {
@@ -544,14 +577,20 @@ document.addEventListener("DOMContentLoaded", () => {
     function debounce(fn, delay) {
         let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
     }
-
-    const onViewportChange = debounce(() => {
-        const nowDesktop = window.innerWidth >= 1280;
-        if (nowDesktop === isDesktopFilters) return;
-        isDesktopFilters = nowDesktop;
-        setFilterPanelOpen(nowDesktop);
-    }, 120);
-    window.addEventListener("resize", onViewportChange);
+    const closeFiltersOnOutsideClick = (ev) => {
+        if (!elFilterPanel || elFilterPanel.classList.contains("hidden")) return;
+        const target = ev && ev.target;
+        if (!target) return;
+        if (elFilterPanel.contains(target)) return;
+        if (elFilterBtn && elFilterBtn.contains(target)) return;
+        setFilterPanelOpen(false);
+    };
+    document.addEventListener("click", closeFiltersOnOutsideClick);
+    document.addEventListener("keydown", (ev) => {
+        if (!ev || ev.key !== "Escape") return;
+        if (!elFilterPanel || elFilterPanel.classList.contains("hidden")) return;
+        setFilterPanelOpen(false);
+    });
 
     // INITIAL LOAD
     loadExploreCurations();
