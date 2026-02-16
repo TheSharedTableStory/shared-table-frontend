@@ -56,9 +56,26 @@
     return "$" + (Number.isFinite(num) ? num.toFixed(2) : "0.00");
   }
 
+  function moneyNumberString(n) {
+    const num = Number(n || 0);
+    return Number.isFinite(num) ? num.toFixed(2) : "0.00";
+  }
+
   function toFiniteNumber(v) {
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
+  }
+
+  function isStarterTitle(raw) {
+    const t = String(raw || "").trim();
+    if (!t) return false;
+    return /^WORLDCLASS_STARTER_/i.test(t) || /^starter[_\-\s]/i.test(t);
+  }
+
+  function publicTitle(raw) {
+    const t = String(raw || "").trim();
+    if (t && !isStarterTitle(t)) return t;
+    return "Shared experience";
   }
 
   function applyBookingModeButtonState(btn, active, disabled) {
@@ -88,16 +105,20 @@
     else if (guestInput.options.length > 0) guestInput.value = guestInput.options[0].value;
   }
 
-  function lockPrivateGuestCount(capacity) {
+  function setPrivateGuestOptions(capacity) {
     if (!guestInput) return;
     const cap = Math.max(1, Number(capacity) || 1);
+    guestInput.disabled = false;
     guestInput.textContent = "";
-    const opt = document.createElement("option");
-    opt.value = String(cap);
-    opt.textContent = cap + (cap === 1 ? " guest (entire slot)" : " guests (entire slot)");
-    guestInput.appendChild(opt);
-    guestInput.value = String(cap);
-    guestInput.disabled = true;
+    for (let i = 1; i <= cap; i += 1) {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = i + (i === 1 ? " guest" : " guests");
+      guestInput.appendChild(opt);
+    }
+    const target = String(lastPrivateGuestCount || "1");
+    const hasTarget = Array.from(guestInput.options).some((opt) => String(opt.value || "") === target);
+    guestInput.value = hasTarget ? target : "1";
   }
 
   function refreshBookingModeUI() {
@@ -106,11 +127,11 @@
     applyBookingModeButtonState(bookingModePrivateBtn, isPrivate, !privateBookingEnabled);
 
     if (guestCountLabelEl) {
-      guestCountLabelEl.textContent = isPrivate ? "Guests (auto-filled)" : "Guests";
+      guestCountLabelEl.textContent = "Guests";
     }
 
     if (isPrivate && privateBookingEnabled) {
-      lockPrivateGuestCount(privateCapacity);
+      setPrivateGuestOptions(privateCapacity);
     } else {
       restoreSharedGuestOptions();
     }
@@ -128,16 +149,48 @@
       if (!privateBookingEnabled) {
         privateBookingNoteEl.textContent = "Private booking is currently not available for this experience.";
       } else if (isPrivate) {
-        const priceNote = (privatePrice != null) ? (" Flat private price: " + money(privatePrice) + ".") : "";
-        privateBookingNoteEl.textContent = "Private booking reserves the full slot (" + String(privateCapacity) + " guests)." + priceNote;
+        const baseNote = (privatePrice != null) ? ("Base private price: " + money(privatePrice) + " covers up to " + String(privateIncludedGuests) + " guests.") : "";
+        const extraNote = privateExtraGuestPrice > 0
+          ? (" Additional guests up to " + String(privateCapacity) + " are " + money(privateExtraGuestPrice) + " each.")
+          : (" Max private group size: " + String(privateCapacity) + " guests.");
+        privateBookingNoteEl.textContent = baseNote + extraNote;
       } else {
         privateBookingNoteEl.textContent = "Need the entire slot? Switch to Private booking for an exclusive group experience.";
       }
     }
 
     if (submitBtn) {
-      submitBtn.textContent = isPrivate ? "Request private booking" : "Reserve your seat";
+      submitBtn.textContent = isPrivate ? "Book private experience" : "Reserve your seat";
     }
+    updateDisplayedPrice();
+  }
+
+  function currentPrivateGuests() {
+    if (!guestInput) return 1;
+    const selected = Number.parseInt(String(guestInput.value || "1"), 10);
+    const fallback = Number.isFinite(selected) ? selected : 1;
+    const cap = Math.max(1, Number(privateCapacity || 1));
+    return Math.max(1, Math.min(cap, fallback));
+  }
+
+  function updateDisplayedPrice() {
+    if (!expPriceValueEl) return;
+    const isPrivate = bookingMode === "private" && privateBookingEnabled;
+    if (!isPrivate) {
+      expPriceValueEl.textContent = moneyNumberString(sharedUnitPrice);
+      if (expPriceSuffixEl) expPriceSuffixEl.textContent = " per guest";
+      return;
+    }
+
+    const guests = currentPrivateGuests();
+    const included = Math.max(1, Number(privateIncludedGuests || 1));
+    const base = Number(privatePrice || 0);
+    const extra = Math.max(0, Number(privateExtraGuestPrice || 0));
+    const extras = Math.max(0, guests - included);
+    const total = base + (extras * extra);
+
+    expPriceValueEl.textContent = moneyNumberString(total);
+    if (expPriceSuffixEl) expPriceSuffixEl.textContent = " private total";
   }
 
   function setBookingMode(nextMode) {
@@ -151,7 +204,7 @@
   }
 
   function hydrateBookingMode(e) {
-    const capRaw = (e && e.privateCapacity != null) ? e.privateCapacity : (e && e.maxGuests != null) ? e.maxGuests : 0;
+    const capRaw = (e && e.privateCapacity != null) ? e.privateCapacity : 0;
     const cap = toFiniteNumber(capRaw);
     privateCapacity = (cap != null && cap > 0) ? Math.floor(cap) : 0;
 
@@ -159,7 +212,17 @@
     const pp = toFiniteNumber(privatePriceRaw);
     privatePrice = (pp != null && pp > 0) ? pp : null;
 
-    privateBookingEnabled = privateCapacity > 0;
+    const includedRaw = (e && e.privateIncludedGuests != null) ? e.privateIncludedGuests : privateCapacity;
+    const includedNum = toFiniteNumber(includedRaw);
+    privateIncludedGuests = (includedNum != null && includedNum > 0)
+      ? Math.min(privateCapacity || Number.MAX_SAFE_INTEGER, Math.floor(includedNum))
+      : privateCapacity;
+
+    const extraRaw = (e && e.privateExtraGuestPrice != null) ? e.privateExtraGuestPrice : 0;
+    const extraNum = toFiniteNumber(extraRaw);
+    privateExtraGuestPrice = (extraNum != null && extraNum >= 0) ? extraNum : 0;
+
+    privateBookingEnabled = privateCapacity > 0 && privatePrice != null;
     if (!privateBookingEnabled) bookingMode = "shared";
     refreshBookingModeUI();
   }
@@ -179,6 +242,8 @@
   const guestInput = document.getElementById("guest-count");
   const timeSlotInput = document.getElementById("time-slot");
   const submitBtn = document.getElementById("book-btn");
+  const expPriceValueEl = document.getElementById("exp-price");
+  const expPriceSuffixEl = document.getElementById("exp-price-suffix");
   const termsBox = document.getElementById("booking-terms");
   const bookingTypeLabelEl = document.getElementById("booking-type-label");
   const bookingTypeSublineEl = document.getElementById("booking-type-subline");
@@ -217,7 +282,11 @@
   let privateBookingEnabled = false;
   let privateCapacity = 0;
   let privatePrice = null;
+  let privateIncludedGuests = 0;
+  let privateExtraGuestPrice = 0;
+  let sharedUnitPrice = 0;
   let lastSharedGuestCount = (guestInput && guestInput.value) ? String(guestInput.value) : "1";
+  let lastPrivateGuestCount = "1";
 
   function normalizeExperience(payload) {
     if (!payload) return null;
@@ -250,12 +319,12 @@
       return;
     }
 
-    setText("exp-title", exp.title || "");
+    setText("exp-title", publicTitle(exp.title || ""));
     setText("exp-city", exp.city || exp.location || "");
     setText("exp-description", exp.description || "");
-    // keep as-is if backend sends string like "120", otherwise format
-    const priceVal = (exp.price != null) ? exp.price : 0;
-    setText("exp-price", (typeof priceVal === "number") ? money(priceVal).replace("$","") : String(priceVal));
+    const priceNum = Number(exp.price);
+    sharedUnitPrice = Number.isFinite(priceNum) && priceNum >= 0 ? priceNum : 0;
+    updateDisplayedPrice();
 
     setImg(
       "main-image",
@@ -496,7 +565,7 @@
             El("div", { className: "absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold shadow-sm", textContent: "$" + price })
           ]),
           El("div", { className: "p-4" }, [
-            El("div", { className: "font-bold text-slate-900 truncate", textContent: e.title || "Experience" }),
+            El("div", { className: "font-bold text-slate-900 truncate", textContent: publicTitle(e.title || "") }),
             El("div", { className: "text-xs text-slate-500 mt-1", textContent: e.city || "" })
           ])
         ]);
@@ -586,8 +655,13 @@
 
   if (guestInput) {
     guestInput.addEventListener("change", () => {
-      if (bookingMode === "private") return;
+      if (bookingMode === "private") {
+        lastPrivateGuestCount = String(guestInput.value || "1");
+        updateDisplayedPrice();
+        return;
+      }
       lastSharedGuestCount = String(guestInput.value || "1");
+      updateDisplayedPrice();
     });
   }
 
@@ -636,7 +710,7 @@
         }
 
         const numGuests = isPrivateBooking
-          ? Math.max(1, Number(privateCapacity || ((guestInput && guestInput.value) || 1)))
+          ? Math.max(1, Number((guestInput && guestInput.value) || 1))
           : Number((guestInput && guestInput.value) || 1);
         const timeSlot = String((timeSlotInput && timeSlotInput.value) || "").trim();
         const bookingDate = String((dateInput && dateInput.value) || "").trim();

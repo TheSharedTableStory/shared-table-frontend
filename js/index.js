@@ -348,7 +348,16 @@ function renderCard(exp) {
     const avg = (exp && typeof exp.averageRating === 'number') ? exp.averageRating : 0;
     const rating = avg > 0 ? "★ " + avg.toFixed(1) : "New";
     const expId = (exp && (exp._id || exp.id)) || "";
-    const title = exp.title || "";
+    const isStarterTitle = (raw) => {
+      const t = String(raw || "").trim();
+      if (!t) return false;
+      return /^WORLDCLASS_STARTER_/i.test(t) || /^starter[_\-\s]/i.test(t);
+    };
+    const title = (function() {
+      const raw = String(exp.title || "").trim();
+      if (raw && !isStarterTitle(raw)) return raw;
+      return "Shared experience";
+    })();
     const city = exp.city || "";
     const tagsRaw = (exp && Array.isArray(exp.tags)) ? exp.tags : [];
     const labels = tagsRaw

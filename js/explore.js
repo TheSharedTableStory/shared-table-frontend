@@ -87,9 +87,27 @@ document.addEventListener("DOMContentLoaded", () => {
         const e = exp || {};
         if (typeof e.privateBookingAllowed === "boolean") return e.privateBookingAllowed;
         const privateCap = Number(e.privateCapacity || 0);
-        if (Number.isFinite(privateCap) && privateCap > 0) return true;
-        const fallbackCap = Number(e.maxGuests || e.capacity || 0);
-        return Number.isFinite(fallbackCap) && fallbackCap > 0;
+        const privatePrice = Number(e.privatePrice || 0);
+        return Number.isFinite(privateCap) && privateCap > 0 && Number.isFinite(privatePrice) && privatePrice > 0;
+    }
+
+    function isStarterTitle(raw) {
+        const t = String(raw || "").trim();
+        if (!t) return false;
+        return /^WORLDCLASS_STARTER_/i.test(t) || /^starter[_\-\s]/i.test(t);
+    }
+
+    function publicExperienceTitle(exp) {
+        const title = String((exp && exp.title) || "").trim();
+        if (title && !isStarterTitle(title)) return title;
+        return "Shared experience";
+    }
+
+    function cardTeaser(exp) {
+        const raw = String((exp && exp.description) || "").trim().replace(/\s+/g, " ");
+        if (!raw) return "Hosted in " + String((exp && exp.city) || "your city");
+        if (raw.length <= 110) return raw;
+        return raw.slice(0, 107).trimEnd() + "...";
     }
 
     function syncCategoryChips() {
@@ -436,6 +454,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const price = exp.price || 0;
             const hostPicUrl = safeUrl(exp.hostPic, fallbackHostPic);
             const privateAvailable = isPrivateBookingAvailable(exp);
+            const title = publicExperienceTitle(exp);
+            const teaser = cardTeaser(exp);
+            const duration = String(exp.duration || "").trim();
+            const groupCap = Number(exp.maxGuests || exp.capacity || 0);
+            const groupLabel = (Number.isFinite(groupCap) && groupCap > 0) ? ("Up to " + String(groupCap) + " guests") : "Small group";
 
             var imgEl = El("img", { className: "w-full h-full object-cover group-hover:scale-105 transition duration-500" });
             window.tstsSafeImg(imgEl, imgUrl, fallbackImg);
@@ -470,8 +493,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         hostImgEl,
                         El("span", { className: "text-xs text-gray-500 truncate", textContent: exp.hostName || "Local Host" })
                     ]),
-                    El("h3", { className: "font-bold text-gray-900 mb-1 truncate", textContent: exp.title || "" }),
-                    El("p", { className: "text-xs text-gray-500 flex items-center gap-1 mb-3" }, [markerIcon, " " + (exp.city || "")]),
+                    El("h3", { className: "font-bold text-gray-900 mb-1 truncate", textContent: title }),
+                    El("p", { className: "text-xs text-gray-600 mb-2 line-clamp-2 min-h-[2.5rem]", textContent: teaser }),
+                    El("p", { className: "text-xs text-gray-500 flex items-center gap-1 mb-1" }, [markerIcon, " " + (exp.city || "")]),
+                    El("p", { className: "text-[11px] text-gray-500 mb-2", textContent: (duration ? (duration + " \u2022 ") : "") + groupLabel }),
                     El("div", { className: "mt-auto pt-3 border-t border-gray-50 flex justify-between items-center" }, [
                         El("div", { className: "flex items-center text-xs text-yellow-500 gap-1" }, [
                             starIcon,

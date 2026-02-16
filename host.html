@@ -114,6 +114,38 @@
                 </div>
             </div>
 
+            <section class="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-800">Private booking settings</h3>
+                        <p class="text-xs text-gray-500 mt-1">Set a base private rate and extra per guest beyond an included threshold.</p>
+                    </div>
+                    <label class="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+                        <input type="checkbox" id="privateEnabled" class="h-4 w-4 rounded border-gray-300 text-orange-600">
+                        Enable
+                    </label>
+                </div>
+
+                <div id="private-config-fields" class="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-60 pointer-events-none">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" for="privatePrice">Base private price (AUD)</label>
+                        <input type="number" id="privatePrice" min="0" step="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="240">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" for="privateCapacity">Max private guests</label>
+                        <input type="number" id="privateCapacity" min="1" step="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="10">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" for="privateIncludedGuests">Included guests at base price</label>
+                        <input type="number" id="privateIncludedGuests" min="1" step="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="6">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" for="privateExtraGuestPrice">Extra guest price (AUD)</label>
+                        <input type="number" id="privateExtraGuestPrice" min="0" step="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="35">
+                    </div>
+                </div>
+            </section>
+
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1" for="startDate">Start Date</label>

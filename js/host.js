@@ -23,6 +23,12 @@
 	  const addressNotesInput = document.getElementById("addressNotes");
 	  const maxGuestsInput = document.getElementById("maxGuests");
 	  const availableDaysInput = document.getElementById("availableDays");
+	  const privateEnabledInput = document.getElementById("privateEnabled");
+	  const privateConfigFields = document.getElementById("private-config-fields");
+	  const privatePriceInput = document.getElementById("privatePrice");
+	  const privateCapacityInput = document.getElementById("privateCapacity");
+	  const privateIncludedGuestsInput = document.getElementById("privateIncludedGuests");
+	  const privateExtraGuestPriceInput = document.getElementById("privateExtraGuestPrice");
 		  const imageInput = document.getElementById("imageInput");
 		  const uploadPreview = document.getElementById("upload-preview");
 		  const uploadPlaceholder = document.getElementById("upload-placeholder");
@@ -119,6 +125,19 @@
   function safeNum(v) {
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
+  }
+
+  function syncPrivateConfigUi() {
+    const enabled = !!(privateEnabledInput && privateEnabledInput.checked);
+    if (privateConfigFields) {
+      privateConfigFields.classList.toggle("opacity-60", !enabled);
+      privateConfigFields.classList.toggle("pointer-events-none", !enabled);
+    }
+    const fields = [privatePriceInput, privateCapacityInput, privateIncludedGuestsInput, privateExtraGuestPriceInput];
+    fields.forEach((el) => {
+      if (!el) return;
+      el.disabled = !enabled;
+    });
   }
 
   function setPreview(url) {
@@ -288,6 +307,21 @@
       if (addressNotesInput) addressNotesInput.value = exp.addressNotes || "";
       if (maxGuestsInput) maxGuestsInput.value = (exp.maxGuests != null ? String(exp.maxGuests) : (exp.capacity != null ? String(exp.capacity) : ""));
       if (availableDaysInput) availableDaysInput.value = Array.isArray(exp.availableDays) ? exp.availableDays.join(", ") : String(exp.availableDays || "");
+      const privateCap = safeNum(exp.privateCapacity);
+      const privateBase = safeNum(exp.privatePrice);
+      const privateEnabled = (privateCap != null && privateCap > 0 && privateBase != null && privateBase > 0);
+      if (privateEnabledInput) privateEnabledInput.checked = privateEnabled;
+      if (privatePriceInput) privatePriceInput.value = (privateBase != null && privateBase > 0) ? String(privateBase) : "";
+      if (privateCapacityInput) privateCapacityInput.value = (privateCap != null && privateCap > 0) ? String(privateCap) : "";
+      if (privateIncludedGuestsInput) {
+        const included = safeNum(exp.privateIncludedGuests);
+        privateIncludedGuestsInput.value = (included != null && included > 0) ? String(included) : "";
+      }
+      if (privateExtraGuestPriceInput) {
+        const extra = safeNum(exp.privateExtraGuestPrice);
+        privateExtraGuestPriceInput.value = (extra != null && extra >= 0) ? String(extra) : "";
+      }
+      syncPrivateConfigUi();
       setSelectedTags(exp.tags);
 
       if (existingImageUrl) setPreview(existingImageUrl);
@@ -319,6 +353,13 @@
     }
   } catch (_) {}
   syncTagLimitUI();
+  if (privateEnabledInput) {
+    privateEnabledInput.addEventListener("change", function () {
+      hideNotice();
+      syncPrivateConfigUi();
+    });
+  }
+  syncPrivateConfigUi();
 
   if (form) {
     form.addEventListener("submit", async function (e) {
@@ -345,6 +386,11 @@
         const capacity = maxGuestsInput ? safeNum(maxGuestsInput.value) : null;
         const availableDays = availableDaysInput ? parseAvailableDays(availableDaysInput.value) : [];
         const tags = getSelectedTags();
+        const privateEnabled = !!(privateEnabledInput && privateEnabledInput.checked);
+        const privatePrice = privatePriceInput ? safeNum(privatePriceInput.value) : null;
+        const privateCapacity = privateCapacityInput ? safeNum(privateCapacityInput.value) : null;
+        const privateIncludedGuests = privateIncludedGuestsInput ? safeNum(privateIncludedGuestsInput.value) : null;
+        const privateExtraGuestPrice = privateExtraGuestPriceInput ? safeNum(privateExtraGuestPriceInput.value) : null;
 
         if (!title || !description || price == null || !startDate || !endDate || !startTime || !city || !suburb || !postcode || !addressLine || capacity == null) {
           showNotice("error", "Please fill all required fields.");
@@ -361,6 +407,28 @@
         if (new Date(endDate) < new Date(startDate)) {
           showNotice("error", "End date must be on or after start date.");
           return;
+        }
+        if (privateEnabled) {
+          if (privatePrice == null || privatePrice <= 0) {
+            showNotice("error", "Private base price must be greater than 0.");
+            return;
+          }
+          if (privateCapacity == null || privateCapacity < 1) {
+            showNotice("error", "Private max guests must be at least 1.");
+            return;
+          }
+          if (privateIncludedGuests == null || privateIncludedGuests < 1) {
+            showNotice("error", "Included private guests must be at least 1.");
+            return;
+          }
+          if (privateIncludedGuests > privateCapacity) {
+            showNotice("error", "Included private guests cannot exceed private max guests.");
+            return;
+          }
+          if (privateExtraGuestPrice == null || privateExtraGuestPrice < 0) {
+            showNotice("error", "Private extra guest price cannot be negative.");
+            return;
+          }
         }
 
         let imageUrl = existingImageUrl || "";
@@ -399,6 +467,17 @@
         if (startTime && endTime) body.timeSlots = [startTime + "-" + endTime];
         if (imageUrl) body.imageUrl = imageUrl;
         else body.imageUrl = "/assets/experience-default.jpg";
+        if (privateEnabled) {
+          body.privatePrice = Number(privatePrice);
+          body.privateCapacity = Math.max(1, Math.floor(Number(privateCapacity)));
+          body.privateIncludedGuests = Math.max(1, Math.floor(Number(privateIncludedGuests)));
+          body.privateExtraGuestPrice = Math.max(0, Number(privateExtraGuestPrice));
+        } else {
+          body.privatePrice = 0;
+          body.privateCapacity = 0;
+          body.privateIncludedGuests = 0;
+          body.privateExtraGuestPrice = 0;
+        }
 
         const url = isEditing ? ("/api/experiences/" + encodeURIComponent(editId)) : "/api/experiences";
         const method = isEditing ? "PUT" : "POST";
