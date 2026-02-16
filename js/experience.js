@@ -56,6 +56,114 @@
     return "$" + (Number.isFinite(num) ? num.toFixed(2) : "0.00");
   }
 
+  function toFiniteNumber(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function applyBookingModeButtonState(btn, active, disabled) {
+    if (!btn) return;
+    btn.classList.remove("bg-tsts-ink", "text-white", "shadow-sm", "bg-white", "text-slate-600", "hover:bg-slate-50", "opacity-50", "cursor-not-allowed");
+    if (active) {
+      btn.classList.add("bg-tsts-ink", "text-white", "shadow-sm");
+    } else {
+      btn.classList.add("bg-white", "text-slate-600", "hover:bg-slate-50");
+    }
+    if (disabled) {
+      btn.classList.add("opacity-50", "cursor-not-allowed");
+      btn.setAttribute("aria-disabled", "true");
+    } else {
+      btn.removeAttribute("aria-disabled");
+    }
+  }
+
+  function restoreSharedGuestOptions() {
+    if (!guestInput) return;
+    guestInput.disabled = false;
+    if (defaultGuestOptionsMarkup) guestInput.innerHTML = defaultGuestOptionsMarkup;
+
+    const target = String(lastSharedGuestCount || "1");
+    const hasTarget = Array.from(guestInput.options).some((opt) => String(opt.value || "") === target);
+    if (hasTarget) guestInput.value = target;
+    else if (guestInput.options.length > 0) guestInput.value = guestInput.options[0].value;
+  }
+
+  function lockPrivateGuestCount(capacity) {
+    if (!guestInput) return;
+    const cap = Math.max(1, Number(capacity) || 1);
+    guestInput.textContent = "";
+    const opt = document.createElement("option");
+    opt.value = String(cap);
+    opt.textContent = cap + (cap === 1 ? " guest (entire slot)" : " guests (entire slot)");
+    guestInput.appendChild(opt);
+    guestInput.value = String(cap);
+    guestInput.disabled = true;
+  }
+
+  function refreshBookingModeUI() {
+    const isPrivate = bookingMode === "private";
+    applyBookingModeButtonState(bookingModeSharedBtn, !isPrivate, false);
+    applyBookingModeButtonState(bookingModePrivateBtn, isPrivate, !privateBookingEnabled);
+
+    if (guestCountLabelEl) {
+      guestCountLabelEl.textContent = isPrivate ? "Guests (auto-filled)" : "Guests";
+    }
+
+    if (isPrivate && privateBookingEnabled) {
+      lockPrivateGuestCount(privateCapacity);
+    } else {
+      restoreSharedGuestOptions();
+    }
+
+    if (bookingTypeLabelEl) {
+      bookingTypeLabelEl.textContent = isPrivate ? "Private booking" : "Shared experience";
+    }
+    if (bookingTypeSublineEl) {
+      if (isPrivate) bookingTypeSublineEl.textContent = "Exclusive slot for your group.";
+      else if (privateBookingEnabled) bookingTypeSublineEl.textContent = "Private option available for this experience.";
+      else bookingTypeSublineEl.textContent = "Shared booking only for this experience.";
+    }
+
+    if (privateBookingNoteEl) {
+      if (!privateBookingEnabled) {
+        privateBookingNoteEl.textContent = "Private booking is currently not available for this experience.";
+      } else if (isPrivate) {
+        const priceNote = (privatePrice != null) ? (" Flat private price: " + money(privatePrice) + ".") : "";
+        privateBookingNoteEl.textContent = "Private booking reserves the full slot (" + String(privateCapacity) + " guests)." + priceNote;
+      } else {
+        privateBookingNoteEl.textContent = "Need the entire slot? Switch to Private booking for an exclusive group experience.";
+      }
+    }
+
+    if (submitBtn) {
+      submitBtn.textContent = isPrivate ? "Request private booking" : "Reserve your seat";
+    }
+  }
+
+  function setBookingMode(nextMode) {
+    const wanted = String(nextMode || "shared").toLowerCase() === "private" ? "private" : "shared";
+    if (wanted === "private" && !privateBookingEnabled) {
+      bookingMode = "shared";
+    } else {
+      bookingMode = wanted;
+    }
+    refreshBookingModeUI();
+  }
+
+  function hydrateBookingMode(e) {
+    const capRaw = (e && e.privateCapacity != null) ? e.privateCapacity : (e && e.maxGuests != null) ? e.maxGuests : 0;
+    const cap = toFiniteNumber(capRaw);
+    privateCapacity = (cap != null && cap > 0) ? Math.floor(cap) : 0;
+
+    const privatePriceRaw = (e && e.privatePrice != null) ? e.privatePrice : null;
+    const pp = toFiniteNumber(privatePriceRaw);
+    privatePrice = (pp != null && pp > 0) ? pp : null;
+
+    privateBookingEnabled = privateCapacity > 0;
+    if (!privateBookingEnabled) bookingMode = "shared";
+    refreshBookingModeUI();
+  }
+
   function showNotFound(msg) {
     const content = document.getElementById("experience-content");
     const empty = document.getElementById("experience-not-found");
@@ -72,6 +180,12 @@
   const timeSlotInput = document.getElementById("time-slot");
   const submitBtn = document.getElementById("book-btn");
   const termsBox = document.getElementById("booking-terms");
+  const bookingTypeLabelEl = document.getElementById("booking-type-label");
+  const bookingTypeSublineEl = document.getElementById("booking-type-subline");
+  const bookingModeSharedBtn = document.getElementById("booking-mode-shared");
+  const bookingModePrivateBtn = document.getElementById("booking-mode-private");
+  const privateBookingNoteEl = document.getElementById("private-booking-note");
+  const guestCountLabelEl = document.getElementById("guest-count-label");
 
   const bookmarkBtn = document.getElementById("bookmark-btn");
   const bookmarkIcon = document.getElementById("bookmark-icon");
@@ -98,6 +212,12 @@
   let exp = null;
   let activePolicyVersion = "";
   const TERMS_VERSION = "tsts_terms_v1";
+  const defaultGuestOptionsMarkup = guestInput ? String(guestInput.innerHTML || "") : "";
+  let bookingMode = "shared";
+  let privateBookingEnabled = false;
+  let privateCapacity = 0;
+  let privatePrice = null;
+  let lastSharedGuestCount = (guestInput && guestInput.value) ? String(guestInput.value) : "1";
 
   function normalizeExperience(payload) {
     if (!payload) return null;
@@ -150,6 +270,7 @@
     setText("host-name", (exp.host && exp.host.name) ? exp.host.name : "Host");
     setImg("host-pic", (exp.host && (exp.host.avatar || exp.host.profilePic)) ? (exp.host.avatar || exp.host.profilePic) : "");
 
+    hydrateBookingMode(exp);
     hydrateTimeSlots(exp);
 
     if (dateInput) {
@@ -463,6 +584,29 @@
     }
   }
 
+  if (guestInput) {
+    guestInput.addEventListener("change", () => {
+      if (bookingMode === "private") return;
+      lastSharedGuestCount = String(guestInput.value || "1");
+    });
+  }
+
+  if (bookingModeSharedBtn) {
+    bookingModeSharedBtn.addEventListener("click", () => setBookingMode("shared"));
+  }
+
+  if (bookingModePrivateBtn) {
+    bookingModePrivateBtn.addEventListener("click", () => {
+      if (!privateBookingEnabled) {
+        window.tstsNotify("Private booking is not available for this experience.", "warning");
+        return;
+      }
+      setBookingMode("private");
+    });
+  }
+
+  refreshBookingModeUI();
+
   if (bookingForm) {
     bookingForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -484,7 +628,16 @@
           return;
         }
 
-        const numGuests = Number((guestInput && guestInput.value) || 1);
+        const isPrivateBooking = bookingMode === "private";
+        if (isPrivateBooking && !privateBookingEnabled) {
+          window.tstsNotify("Private booking is not available for this experience.", "warning");
+          if (submitBtn) submitBtn.disabled = false;
+          return;
+        }
+
+        const numGuests = isPrivateBooking
+          ? Math.max(1, Number(privateCapacity || ((guestInput && guestInput.value) || 1)))
+          : Number((guestInput && guestInput.value) || 1);
         const timeSlot = String((timeSlotInput && timeSlotInput.value) || "").trim();
         const bookingDate = String((dateInput && dateInput.value) || "").trim();
 
@@ -506,6 +659,7 @@
             bookingDate: bookingDate,
             timeSlot: timeSlot,
             numGuests: numGuests,
+            isPrivate: isPrivateBooking,
             policyVersionAccepted: policyVer,
             termsVersionAccepted: TERMS_VERSION
           })
@@ -519,7 +673,10 @@
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-          const msg = (data && data.message) ? String(data.message) : "Booking failed";
+          let msg = (data && data.message) ? String(data.message) : "Booking failed";
+          if (isPrivateBooking && data && data.nextPrivateAvailable && data.nextPrivateAvailable.bookingDate && data.nextPrivateAvailable.timeSlot) {
+            msg += " Next available private slot: " + fmtDate(data.nextPrivateAvailable.bookingDate) + " (" + String(data.nextPrivateAvailable.timeSlot) + ").";
+          }
           window.tstsNotify(msg, "error");
           if (submitBtn) submitBtn.disabled = false;
           return;

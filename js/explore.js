@@ -8,6 +8,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const elGuests = document.getElementById("guests-input");
     
     const elFilterBtn = document.getElementById("filter-btn");
+    const elFilterBtnLabel = document.getElementById("filter-btn-label");
+    const elFilterCountBadge = document.getElementById("filter-count-badge");
     const elFilterPanel = document.getElementById("filter-panel");
     const elClearFilters = document.getElementById("clear-filters-btn");
     const elClearFiltersEmpty = document.getElementById("clear-filters-empty-btn");
@@ -20,6 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const categoryChips = document.querySelectorAll(".filter-chip");
     const activeFiltersBar = document.getElementById("active-filters-bar");
+    const filtersSummary = document.getElementById("filters-summary");
     const experiencesGrid = document.getElementById("experiences-grid");
     const noResultsEl = document.getElementById("no-results");
     const loadErrorEl = document.getElementById("load-error");
@@ -90,6 +93,47 @@ document.addEventListener("DOMContentLoaded", () => {
                 chip.classList.remove("bg-white", "border-gray-200", "text-gray-600");
             }
         });
+        refreshFilterUi();
+    }
+
+    function getActiveFilterCount() {
+        let count = 0;
+        if (filterState.search) count += 1;
+        if (filterState.location) count += 1;
+        if (filterState.date) count += 1;
+        if (filterState.guests) count += 1;
+        if (filterState.sort) count += 1;
+        if (Array.isArray(filterState.categories) && filterState.categories.some((c) => c && c !== "all")) count += 1;
+        if (filterState.minPrice > 0 || filterState.maxPrice < 300) count += 1;
+        return count;
+    }
+
+    function setFilterPanelOpen(open) {
+        const shouldOpen = !!open;
+        if (elFilterPanel) elFilterPanel.classList.toggle("hidden", !shouldOpen);
+        if (elFilterBtn) {
+            elFilterBtn.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+            elFilterBtn.classList.toggle("filter-btn-active", shouldOpen);
+        }
+        if (elFilterBtnLabel) {
+            elFilterBtnLabel.textContent = shouldOpen ? "Hide filters" : "Filters";
+        }
+    }
+
+    function refreshFilterUi() {
+        const count = getActiveFilterCount();
+        if (elFilterCountBadge) {
+            if (count > 0) {
+                elFilterCountBadge.classList.remove("hidden");
+                elFilterCountBadge.textContent = String(count);
+            } else {
+                elFilterCountBadge.classList.add("hidden");
+                elFilterCountBadge.textContent = "0";
+            }
+        }
+        if (filtersSummary) {
+            filtersSummary.textContent = count > 0 ? (String(count) + " active filter" + (count > 1 ? "s" : "")) : "All stories";
+        }
     }
 
     function tstsIsDeal(exp) {
@@ -312,7 +356,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (elSort) filterState.sort = elSort.value;
         
         fetchExperiences();
-        if (!elFilterPanel.classList.contains("hidden")) elFilterPanel.classList.add("hidden");
+        if (elFilterPanel && window.innerWidth < 1280 && !elFilterPanel.classList.contains("hidden")) {
+            setFilterPanelOpen(false);
+        }
     };
 
     // 3. Clear Filters
@@ -420,6 +466,7 @@ document.addEventListener("DOMContentLoaded", () => {
             activeFiltersBar.appendChild(span);
         };
 
+        if (filterState.search) addChip("Search: " + String(filterState.search));
         if (filterState.location) addChip("City: " + String(filterState.location));
         if (filterState.date) addChip("Date: " + (window.tstsFormatDateShort ? window.tstsFormatDateShort(filterState.date) : String(filterState.date)));
         if (filterState.guests) addChip("Guests: " + String(filterState.guests));
@@ -432,11 +479,28 @@ document.addEventListener("DOMContentLoaded", () => {
                     addChip(String(label || c));
                 });
         }
+        if (filterState.sort) {
+            const sortLabel = filterState.sort === "price_asc" ? "Price: Low to High"
+                : filterState.sort === "rating_desc" ? "Top Rated"
+                : String(filterState.sort);
+            addChip("Sort: " + sortLabel);
+        }
         if (filterState.minPrice > 0 || filterState.maxPrice < 300) addChip("Price: $" + filterState.minPrice + " - $" + filterState.maxPrice);
+        refreshFilterUi();
     };
 
     // === EVENT LISTENERS ===
-    if (elFilterBtn) elFilterBtn.addEventListener("click", () => elFilterPanel.classList.toggle("hidden"));
+    let isDesktopFilters = window.innerWidth >= 1280;
+    setFilterPanelOpen(isDesktopFilters);
+    refreshFilterUi();
+
+    if (elFilterBtn) {
+        elFilterBtn.addEventListener("click", () => {
+            if (!elFilterPanel) return;
+            const isOpen = !elFilterPanel.classList.contains("hidden");
+            setFilterPanelOpen(!isOpen);
+        });
+    }
     if (elApplyFilters) elApplyFilters.addEventListener("click", applyFilters);
     if (elClearFilters) elClearFilters.addEventListener("click", clearFilters);
     if (elClearFiltersEmpty) elClearFiltersEmpty.addEventListener("click", clearFilters);
@@ -450,6 +514,8 @@ document.addEventListener("DOMContentLoaded", () => {
     
     if (elLocation) elLocation.addEventListener("change", applyFilters);
     if (elDate) elDate.addEventListener("change", applyFilters);
+    if (elGuests) elGuests.addEventListener("change", applyFilters);
+    if (elSort) elSort.addEventListener("change", applyFilters);
 
     // Category Chips
     categoryChips.forEach(chip => {
@@ -478,6 +544,14 @@ document.addEventListener("DOMContentLoaded", () => {
     function debounce(fn, delay) {
         let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
     }
+
+    const onViewportChange = debounce(() => {
+        const nowDesktop = window.innerWidth >= 1280;
+        if (nowDesktop === isDesktopFilters) return;
+        isDesktopFilters = nowDesktop;
+        setFilterPanelOpen(nowDesktop);
+    }, 120);
+    window.addEventListener("resize", onViewportChange);
 
     // INITIAL LOAD
     loadExploreCurations();

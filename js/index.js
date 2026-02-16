@@ -23,8 +23,7 @@ function renderWaysToConnectCarousel() {
     if (!slug) return;
 
     const details = El("details", {
-      // NOTE: Use Tailwind fraction widths (prebuilt CSS); avoid arbitrary w-[..] which may not exist.
-      className: "tsts-cat-card group relative flex-shrink-0 w-10/12 sm:w-1/2 lg:w-1/3 h-96 rounded-2xl overflow-hidden shadow-lg bg-gray-900",
+      className: "tsts-cat-card group relative flex-shrink-0 h-96 rounded-2xl overflow-hidden shadow-lg bg-gray-900",
       dataset: { category: slug }
     });
 

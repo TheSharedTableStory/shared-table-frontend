@@ -31,6 +31,24 @@
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         .tsts-carousel { scroll-snap-type: x mandatory; scroll-padding-left: 1rem; }
         .tsts-carousel > * { scroll-snap-align: start; }
+        /* Tailwind utility coverage differs across breakpoints in the compiled bundle;
+           keep card width deterministic so pillars never collapse at non-fullscreen sizes. */
+        .tsts-cat-card {
+            width: clamp(17rem, 86vw, 24rem);
+            min-width: clamp(17rem, 86vw, 24rem);
+        }
+        @media (min-width: 768px) {
+            .tsts-cat-card {
+                width: clamp(18rem, 46vw, 25rem);
+                min-width: clamp(18rem, 46vw, 25rem);
+            }
+        }
+        @media (min-width: 1280px) {
+            .tsts-cat-card {
+                width: clamp(19rem, 31vw, 25rem);
+                min-width: clamp(19rem, 31vw, 25rem);
+            }
+        }
         .tsts-cat-card summary { list-style: none; }
         .tsts-cat-card summary::-webkit-details-marker { display: none; }
         .tsts-cat-header { transition: opacity 220ms ease, transform 220ms ease; }
