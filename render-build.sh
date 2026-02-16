@@ -139,6 +139,12 @@ NODE
 find "$DIST" -mindepth 1 -name ".*" -exec rm -rf {} + || true
 rm -f "$DIST/render-build.sh" "$DIST/package.json" "$DIST/package-lock.json" "$DIST/README.md" || true
 
+# Additional hardening for Render environments:
+# If Render is publishing root artifacts (misconfig/cached behavior), ensure sensitive root files are absent.
+if [ -n "${RENDER_GIT_COMMIT:-}" ] || [ -n "${RENDER:-}" ]; then
+  rm -f "$ROOT/.gitignore" "$ROOT/render-build.sh" "$ROOT/.DS_Store" || true
+fi
+
 echo "BUILD_OK"
 echo "DIST=$DIST"
 echo "API_BASE=$API_BASE"
