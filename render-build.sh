@@ -135,6 +135,10 @@ if (cloud) {
 fs.writeFileSync(file, s);
 NODE
 
+# Defense-in-depth: never publish dotfiles/internal build artifacts.
+find "$DIST" -mindepth 1 -name ".*" -exec rm -rf {} + || true
+rm -f "$DIST/render-build.sh" "$DIST/package.json" "$DIST/package-lock.json" "$DIST/README.md" || true
+
 echo "BUILD_OK"
 echo "DIST=$DIST"
 echo "API_BASE=$API_BASE"
