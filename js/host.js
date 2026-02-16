@@ -29,6 +29,8 @@
 	  const privateCapacityInput = document.getElementById("privateCapacity");
 	  const privateIncludedGuestsInput = document.getElementById("privateIncludedGuests");
 	  const privateExtraGuestPriceInput = document.getElementById("privateExtraGuestPrice");
+	  const verifiedOptInInput = document.getElementById("verifiedOptIn");
+	  const verifiedStatusHint = document.getElementById("verified-status-hint");
 		  const imageInput = document.getElementById("imageInput");
 		  const uploadPreview = document.getElementById("upload-preview");
 		  const uploadPlaceholder = document.getElementById("upload-placeholder");
@@ -40,6 +42,7 @@
   let isEditing = false;
   let editId = null;
   let existingImageUrl = null;
+  let currentVerifiedStatus = "none";
 
   function ensureInlineNotice() {
     let el = document.getElementById("host-inline-notice");
@@ -127,6 +130,14 @@
     return Number.isFinite(n) ? n : null;
   }
 
+  function normalizeVerifiedStatus(v) {
+    const s = String(v || "").trim().toLowerCase();
+    if (s === "verified") return "verified";
+    if (s === "pending") return "pending";
+    if (s === "rejected") return "rejected";
+    return "none";
+  }
+
   function syncPrivateConfigUi() {
     const enabled = !!(privateEnabledInput && privateEnabledInput.checked);
     if (privateConfigFields) {
@@ -138,6 +149,36 @@
       if (!el) return;
       el.disabled = !enabled;
     });
+  }
+
+  function syncVerifiedUi() {
+    const status = normalizeVerifiedStatus(currentVerifiedStatus);
+    if (verifiedOptInInput) {
+      if (status === "verified") {
+        verifiedOptInInput.checked = true;
+        verifiedOptInInput.disabled = true;
+      } else if (status === "pending") {
+        verifiedOptInInput.checked = true;
+        verifiedOptInInput.disabled = true;
+      } else {
+        verifiedOptInInput.disabled = false;
+      }
+    }
+
+    if (!verifiedStatusHint) return;
+    if (status === "verified") {
+      verifiedStatusHint.textContent = "Verified and locked. This experience includes the 5% verification fee.";
+      return;
+    }
+    if (status === "pending") {
+      verifiedStatusHint.textContent = "Verification request pending admin review.";
+      return;
+    }
+    if (status === "rejected") {
+      verifiedStatusHint.textContent = "Previous verification request was rejected. You can request verification again.";
+      return;
+    }
+    verifiedStatusHint.textContent = "Not verified yet. Enable the toggle to submit this experience for admin verification.";
   }
 
   function setPreview(url) {
@@ -321,7 +362,12 @@
         const extra = safeNum(exp.privateExtraGuestPrice);
         privateExtraGuestPriceInput.value = (extra != null && extra >= 0) ? String(extra) : "";
       }
+      currentVerifiedStatus = normalizeVerifiedStatus(exp.verifiedStatus);
+      if (verifiedOptInInput) {
+        verifiedOptInInput.checked = currentVerifiedStatus === "verified" || currentVerifiedStatus === "pending";
+      }
       syncPrivateConfigUi();
+      syncVerifiedUi();
       setSelectedTags(exp.tags);
 
       if (existingImageUrl) setPreview(existingImageUrl);
@@ -359,7 +405,14 @@
       syncPrivateConfigUi();
     });
   }
+  if (verifiedOptInInput) {
+    verifiedOptInInput.addEventListener("change", function () {
+      hideNotice();
+      syncVerifiedUi();
+    });
+  }
   syncPrivateConfigUi();
+  syncVerifiedUi();
 
   if (form) {
     form.addEventListener("submit", async function (e) {
@@ -487,10 +540,35 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)
         });
+        const payload = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-          showNotice("error", "Failed to save experience. Please try again.");
+          showNotice("error", String((payload && payload.message) || "Failed to save experience. Please try again."));
           return;
+        }
+
+        const savedExp = (payload && payload.experience) ? payload.experience : ((payload && payload.data) ? payload.data : payload);
+        const savedExperienceId = String((savedExp && (savedExp._id || savedExp.id)) || editId || "").trim();
+        const wantsVerified = !!(verifiedOptInInput && verifiedOptInInput.checked);
+        if (
+          wantsVerified &&
+          savedExperienceId &&
+          currentVerifiedStatus !== "verified" &&
+          currentVerifiedStatus !== "pending"
+        ) {
+          const vr = await window.authFetch("/api/host/experiences/" + encodeURIComponent(savedExperienceId) + "/verified-opt-in", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({})
+          });
+          const vrPayload = await vr.json().catch(() => ({}));
+          if (!vr.ok) {
+            showNotice("error", String((vrPayload && vrPayload.message) || "Experience saved, but verification request failed."));
+            return;
+          }
+          const updated = (vrPayload && vrPayload.experience) ? vrPayload.experience : vrPayload;
+          currentVerifiedStatus = normalizeVerifiedStatus(updated && updated.verifiedStatus);
+          syncVerifiedUi();
         }
 
         showNotice("success", isEditing ? "Experience updated." : "Experience created.");

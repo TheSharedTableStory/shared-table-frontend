@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const elApplyFilters = document.getElementById("apply-filters");
     const elSort = document.getElementById("sort-select");
     const elPrivateBookingOnly = document.getElementById("private-booking-only");
+    const elVerifiedOnly = document.getElementById("verified-only");
 
     const elPriceSlider = document.getElementById("price-slider");
     const elPriceMinLabel = document.getElementById("price-min-label");
@@ -43,6 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
         categories: [],
         sort: "",
         privateBookingOnly: false,
+        verifiedOnly: false,
         minPrice: 0,
         maxPrice: 300
     };
@@ -62,6 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             if (filterState.sort) p.set("sort", String(filterState.sort));
             if (filterState.privateBookingOnly) p.set("privateBookingAllowed", "true");
+            if (filterState.verifiedOnly) p.set("verified", "true");
             if (filterState.minPrice > 0) p.set("minPrice", String(filterState.minPrice));
             if (filterState.maxPrice < 300) p.set("maxPrice", String(filterState.maxPrice));
             if (window.TSTS_DEALS_UI_MODE) p.set("filter", "deals");
@@ -104,10 +107,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function cardTeaser(exp) {
+        const city = String((exp && exp.city) || "your city");
+        if (isStarterTitle(exp && exp.title)) return "Hosted in " + city;
         const raw = String((exp && exp.description) || "").trim().replace(/\s+/g, " ");
-        if (!raw) return "Hosted in " + String((exp && exp.city) || "your city");
+        if (!raw) return "Hosted in " + city;
+        if (/starter experience|worldclass_starter/i.test(raw)) return "Hosted in " + city;
         if (raw.length <= 110) return raw;
         return raw.slice(0, 107).trimEnd() + "...";
+    }
+
+    function normalizedVerifiedStatus(exp) {
+        const s = String((exp && exp.verifiedStatus) || "").trim().toLowerCase();
+        if (s === "verified") return "verified";
+        if (s === "pending") return "pending";
+        if (s === "rejected") return "rejected";
+        return "none";
     }
 
     function syncCategoryChips() {
@@ -134,6 +148,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (filterState.guests) count += 1;
         if (filterState.sort) count += 1;
         if (filterState.privateBookingOnly) count += 1;
+        if (filterState.verifiedOnly) count += 1;
         if (Array.isArray(filterState.categories) && filterState.categories.some((c) => c && c !== "all")) count += 1;
         if (filterState.minPrice > 0 || filterState.maxPrice < 300) count += 1;
         return count;
@@ -290,6 +305,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const urlQuery = urlParams.get("q");
     const urlFilter = urlParams.get("filter");
     const urlPrivateBookingAllowed = String(urlParams.get("privateBookingAllowed") || "").trim().toLowerCase();
+    const urlVerified = String(urlParams.get("verified") || "").trim().toLowerCase();
 
     if (urlQuery && elSearch) {
         filterState.search = String(urlQuery).trim();
@@ -310,6 +326,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (urlPrivateBookingAllowed === "true" || urlPrivateBookingAllowed === "1") {
         filterState.privateBookingOnly = true;
         if (elPrivateBookingOnly) elPrivateBookingOnly.checked = true;
+    }
+    if (urlVerified === "true" || urlVerified === "1" || urlVerified === "yes") {
+        filterState.verifiedOnly = true;
+        if (elVerifiedOnly) elVerifiedOnly.checked = true;
     }
     syncCategoryChips();
 
@@ -364,6 +384,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (filterState.maxPrice < 300) params.set("maxPrice", filterState.maxPrice);
         if (filterState.guests) params.set("guests", filterState.guests);
         if (filterState.privateBookingOnly) params.set("privateBookingAllowed", "true");
+        if (filterState.verifiedOnly) params.set("verified", "true");
 
         try {
             const res = await window.authFetch(`/api/experiences?${params.toString()}`, { method: "GET" });
@@ -393,6 +414,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (elGuests) filterState.guests = elGuests.value;
         if (elSort) filterState.sort = elSort.value;
         if (elPrivateBookingOnly) filterState.privateBookingOnly = !!elPrivateBookingOnly.checked;
+        if (elVerifiedOnly) filterState.verifiedOnly = !!elVerifiedOnly.checked;
         
         fetchExperiences();
         if (elFilterPanel && !elFilterPanel.classList.contains("hidden")) {
@@ -410,6 +432,7 @@ document.addEventListener("DOMContentLoaded", () => {
         filterState.categories = [];
         filterState.sort = "";
         filterState.privateBookingOnly = false;
+        filterState.verifiedOnly = false;
         filterState.minPrice = 0;
         filterState.maxPrice = 300;
 
@@ -420,6 +443,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (elGuests) elGuests.value = "";
         if (elSort) elSort.value = "";
         if (elPrivateBookingOnly) elPrivateBookingOnly.checked = false;
+        if (elVerifiedOnly) elVerifiedOnly.checked = false;
         
         if (elPriceSlider && elPriceSlider.noUiSlider) elPriceSlider.noUiSlider.set([0, 300]);
 
@@ -454,6 +478,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const price = exp.price || 0;
             const hostPicUrl = safeUrl(exp.hostPic, fallbackHostPic);
             const privateAvailable = isPrivateBookingAvailable(exp);
+            const verifiedState = normalizedVerifiedStatus(exp);
             const title = publicExperienceTitle(exp);
             const teaser = cardTeaser(exp);
             const duration = String(exp.duration || "").trim();
@@ -475,6 +500,25 @@ document.addEventListener("DOMContentLoaded", () => {
                     El("div", {
                         className: "absolute top-3 left-3 bg-emerald-600/90 text-white px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm",
                         textContent: "Private booking"
+                    })
+                );
+            }
+            if (verifiedState === "verified") {
+                imageContainer.appendChild(
+                    El("div", {
+                        className: privateAvailable
+                            ? "absolute top-11 left-3 bg-blue-600/90 text-white px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm"
+                            : "absolute top-3 left-3 bg-blue-600/90 text-white px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm",
+                        textContent: "Verified"
+                    })
+                );
+            } else if (verifiedState === "pending") {
+                imageContainer.appendChild(
+                    El("div", {
+                        className: privateAvailable
+                            ? "absolute top-11 left-3 bg-amber-500/90 text-white px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm"
+                            : "absolute top-3 left-3 bg-amber-500/90 text-white px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm",
+                        textContent: "Verification pending"
                     })
                 );
             }
@@ -543,6 +587,7 @@ document.addEventListener("DOMContentLoaded", () => {
             addChip("Sort: " + sortLabel);
         }
         if (filterState.privateBookingOnly) addChip("Private booking");
+        if (filterState.verifiedOnly) addChip("Verified events");
         if (filterState.minPrice > 0 || filterState.maxPrice < 300) addChip("Price: $" + filterState.minPrice + " - $" + filterState.maxPrice);
         refreshFilterUi();
     };
@@ -574,6 +619,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (elGuests) elGuests.addEventListener("change", applyFilters);
     if (elSort) elSort.addEventListener("change", applyFilters);
     if (elPrivateBookingOnly) elPrivateBookingOnly.addEventListener("change", applyFilters);
+    if (elVerifiedOnly) elVerifiedOnly.addEventListener("change", applyFilters);
 
     // Category Chips
     categoryChips.forEach(chip => {

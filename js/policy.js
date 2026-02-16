@@ -30,7 +30,7 @@
       const payload = await res.json().catch(() => null);
       if (!res.ok || !payload || payload.ok !== true) throw new Error("policy");
 
-      const p = payload.policy || {};
+      const p = (payload.data && payload.data.policy) ? payload.data.policy : (payload.policy || {});
       const rules = p.rules || {};
 
       if (vEl) vEl.textContent = String(p.version || "—");

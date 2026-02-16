@@ -60,6 +60,18 @@
               </h1>
             <p id="exp-city" class="text-sm sm:text-base text-slate-600">
               </p>
+            <div id="exp-verified-badge" class="hidden">
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-100">
+                <i class="fa-solid fa-badge-check"></i>
+                Verified event
+              </span>
+            </div>
+            <div id="exp-verified-pending-badge" class="hidden">
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 border border-amber-100">
+                <i class="fa-regular fa-clock"></i>
+                Verification pending
+              </span>
+            </div>
           </header>
 
           <div class="flex flex-wrap items-center gap-2">
@@ -197,6 +209,7 @@
                     </button>
                   </div>
                   <p id="private-booking-note" class="text-xs text-slate-500 leading-relaxed"></p>
+                  <p id="verified-fee-note" class="hidden text-xs text-blue-700 leading-relaxed">Verified events include a 5% platform verification fee.</p>
                 </div>
 
                 <div class="space-y-1.5">
@@ -239,6 +252,21 @@
                         <span>Total</span>
                         <span id="math-total">--</span>
                     </div>
+                </div>
+
+                <div class="space-y-1.5">
+                  <label for="promo-code" class="text-xs font-medium text-slate-700">
+                    Coupon code
+                  </label>
+                  <input
+                    type="text"
+                    id="promo-code"
+                    maxlength="40"
+                    autocomplete="off"
+                    placeholder="Enter code"
+                    class="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm uppercase tracking-wide text-slate-900 focus:outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent"
+                  />
+                  <p class="text-[11px] text-slate-500">One code per booking. Eligibility and expiry rules apply.</p>
                 </div>
 
                 <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
@@ -287,6 +315,6 @@
 
   <script src="js/runtime-config.js?v=20260216"></script>
   <script src="js/common.js?v=20260216"></script>
-  <script src="js/experience.js?v=20260216"></script>
+  <script src="js/experience.js?v=20260217"></script>
 </body>
 </html>

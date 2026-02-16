@@ -106,6 +106,34 @@ async function toggleExperience(id) {
   return res.json().catch(() => ({}));
 }
 
+async function approveVerifiedExperience(id) {
+  const res = await adminFetch("/api/admin/experiences/" + encodeURIComponent(id) + "/verified/approve", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+  if (!res.ok) {
+    let msg = "Failed to approve verification";
+    try { msg = (await res.json()).message || msg; } catch (_) {}
+    throw new Error(msg);
+  }
+  return res.json().catch(() => ({}));
+}
+
+async function rejectVerifiedExperience(id) {
+  const res = await adminFetch("/api/admin/experiences/" + encodeURIComponent(id) + "/verified/reject", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+  if (!res.ok) {
+    let msg = "Failed to reject verification";
+    try { msg = (await res.json()).message || msg; } catch (_) {}
+    throw new Error(msg);
+  }
+  return res.json().catch(() => ({}));
+}
+
 async function deleteExperience(id) {
   const res = await window.authFetch("/api/experiences/" + encodeURIComponent(id), withOptionalAdminReasonHeaders({ method: "DELETE" }));
   if (!res.ok) {
@@ -156,6 +184,14 @@ function formatDateValue(raw) {
 function formatCurrencyValue(raw) {
   const num = toNumberOrNull(raw);
   return num === null ? "—" : "$" + String(num);
+}
+
+function normalizeVerifiedStatus(v) {
+  const s = String(v || "").trim().toLowerCase();
+  if (s === "verified") return "verified";
+  if (s === "pending") return "pending";
+  if (s === "rejected") return "rejected";
+  return "none";
 }
 
 function renderStats(stats) {
@@ -240,6 +276,12 @@ function renderExperiences(exps) {
     var host = e.hostName || "—";
     var price = formatCurrencyValue(e.price);
     var statusText = e.isDeleted ? "Deleted" : (e.isPaused ? "Paused" : "Active");
+    var verifiedStatus = normalizeVerifiedStatus(e.verifiedStatus);
+    var verifiedText = verifiedStatus === "verified"
+      ? "Verified"
+      : (verifiedStatus === "pending"
+        ? "Verification pending"
+        : (verifiedStatus === "rejected" ? "Verification rejected" : "Not verified"));
 
     var imgUrl = (window.tstsSafeUrl && window.tstsSafeUrl(e.imageUrl || (Array.isArray(e.images) ? e.images[0] : ""), "/assets/experience-default.jpg")) || (e.imageUrl || "");
     var imgEl = El("img", { className: "h-12 w-16 rounded-lg object-cover", alt: "Experience" });
@@ -258,14 +300,29 @@ function renderExperiences(exps) {
 
     var deleteBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-red-200 text-red-600 hover:bg-red-50", textContent: "Delete" });
     deleteBtn.addEventListener("click", function() { handleDeleteExperience(id); });
+    var verifyApproveBtn = null;
+    var verifyRejectBtn = null;
+    if (verifiedStatus === "pending") {
+      verifyApproveBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-blue-200 text-blue-700 hover:bg-blue-50", textContent: "Approve" });
+      verifyApproveBtn.addEventListener("click", function() { handleApproveVerifiedExperience(id); });
+      verifyRejectBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-amber-200 text-amber-700 hover:bg-amber-50", textContent: "Reject" });
+      verifyRejectBtn.addEventListener("click", function() { handleRejectVerifiedExperience(id); });
+    }
+    var actions = [toggleBtn];
+    if (verifyApproveBtn) actions.push(El("span", { textContent: " " }), verifyApproveBtn);
+    if (verifyRejectBtn) actions.push(El("span", { textContent: " " }), verifyRejectBtn);
+    actions.push(El("span", { textContent: " " }), deleteBtn);
 
     tbody.appendChild(El("tr", { className: "border-t border-slate-100" }, [
       El("td", { className: "px-6 py-4" }, [imgEl]),
       El("td", { className: "px-6 py-4 text-sm font-semibold text-slate-800", textContent: title }),
       El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: host }),
       El("td", { className: "px-6 py-4 text-sm text-emerald-700 font-semibold", textContent: price }),
-      El("td", { className: "px-6 py-4 text-sm text-slate-500", textContent: statusText }),
-      El("td", { className: "px-6 py-4 text-sm text-right" }, [toggleBtn, El("span", { textContent: " " }), deleteBtn])
+      El("td", { className: "px-6 py-4 text-sm text-slate-500" }, [
+        El("div", { className: "font-semibold text-slate-700", textContent: statusText }),
+        El("div", { className: "text-xs mt-1 " + (verifiedStatus === "verified" ? "text-blue-700" : verifiedStatus === "pending" ? "text-amber-700" : "text-slate-500"), textContent: verifiedText })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-right" }, actions)
     ]));
   });
 }
@@ -312,6 +369,16 @@ async function handleDeleteExperience(id) {
   var confirmed = await window.tstsConfirm("Delete this experience?", { destructive: true, confirmText: "Delete" });
   if (!confirmed) return;
   try { await deleteExperience(id); await boot(); } catch (e) { window.tstsNotify(e.message || "Failed", "error"); }
+}
+async function handleApproveVerifiedExperience(id) {
+  var confirmed = await window.tstsConfirm("Approve verification for this experience?", { confirmText: "Approve" });
+  if (!confirmed) return;
+  try { await approveVerifiedExperience(id); await boot(); } catch (e) { window.tstsNotify(e.message || "Failed", "error"); }
+}
+async function handleRejectVerifiedExperience(id) {
+  var confirmed = await window.tstsConfirm("Reject verification for this experience?", { destructive: true, confirmText: "Reject" });
+  if (!confirmed) return;
+  try { await rejectVerifiedExperience(id); await boot(); } catch (e) { window.tstsNotify(e.message || "Failed", "error"); }
 }
 async function handleDeleteUser(id) {
   var confirmed = await window.tstsConfirm("Delete this user?", { destructive: true, confirmText: "Delete" });

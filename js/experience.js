@@ -78,6 +78,25 @@
     return "Shared experience";
   }
 
+  function publicDescription(expLike) {
+    const expObj = expLike || {};
+    const city = String(expObj.city || expObj.location || "").trim();
+    const fallback = city ? ("Hosted in " + city + ".") : "Hosted by our community.";
+    if (isStarterTitle(expObj.title)) return fallback;
+    const raw = String(expObj.description || "").trim();
+    if (!raw) return fallback;
+    if (/starter experience|worldclass_starter/i.test(raw)) return fallback;
+    return raw;
+  }
+
+  function normalizedVerifiedStatus(raw) {
+    const s = String(raw || "").trim().toLowerCase();
+    if (s === "verified") return "verified";
+    if (s === "pending") return "pending";
+    if (s === "rejected") return "rejected";
+    return "none";
+  }
+
   function applyBookingModeButtonState(btn, active, disabled) {
     if (!btn) return;
     btn.classList.remove("bg-tsts-ink", "text-white", "shadow-sm", "bg-white", "text-slate-600", "hover:bg-slate-50", "opacity-50", "cursor-not-allowed");
@@ -247,10 +266,14 @@
   const termsBox = document.getElementById("booking-terms");
   const bookingTypeLabelEl = document.getElementById("booking-type-label");
   const bookingTypeSublineEl = document.getElementById("booking-type-subline");
+  const verifiedFeeNoteEl = document.getElementById("verified-fee-note");
   const bookingModeSharedBtn = document.getElementById("booking-mode-shared");
   const bookingModePrivateBtn = document.getElementById("booking-mode-private");
   const privateBookingNoteEl = document.getElementById("private-booking-note");
   const guestCountLabelEl = document.getElementById("guest-count-label");
+  const verifiedBadgeEl = document.getElementById("exp-verified-badge");
+  const verifiedPendingBadgeEl = document.getElementById("exp-verified-pending-badge");
+  const promoCodeInput = document.getElementById("promo-code");
 
   const bookmarkBtn = document.getElementById("bookmark-btn");
   const bookmarkIcon = document.getElementById("bookmark-icon");
@@ -321,7 +344,7 @@
 
     setText("exp-title", publicTitle(exp.title || ""));
     setText("exp-city", exp.city || exp.location || "");
-    setText("exp-description", exp.description || "");
+    setText("exp-description", publicDescription(exp));
     const priceNum = Number(exp.price);
     sharedUnitPrice = Number.isFinite(priceNum) && priceNum >= 0 ? priceNum : 0;
     updateDisplayedPrice();
@@ -338,6 +361,11 @@
 
     setText("host-name", (exp.host && exp.host.name) ? exp.host.name : "Host");
     setImg("host-pic", (exp.host && (exp.host.avatar || exp.host.profilePic)) ? (exp.host.avatar || exp.host.profilePic) : "");
+
+    const verifiedState = normalizedVerifiedStatus(exp.verifiedStatus);
+    if (verifiedBadgeEl) verifiedBadgeEl.classList.toggle("hidden", verifiedState !== "verified");
+    if (verifiedPendingBadgeEl) verifiedPendingBadgeEl.classList.toggle("hidden", verifiedState !== "pending");
+    if (verifiedFeeNoteEl) verifiedFeeNoteEl.classList.toggle("hidden", verifiedState !== "verified");
 
     hydrateBookingMode(exp);
     hydrateTimeSlots(exp);
@@ -380,7 +408,9 @@
       const res = await af("/api/policy/active", { method: "GET" });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data || data.ok !== true) return "";
-      const v = String((data.policy && data.policy.version) || "");
+      const payload = (data && typeof data === "object") ? data : {};
+      const p = (payload.data && payload.data.policy) ? payload.data.policy : (payload.policy || {});
+      const v = String((p && p.version) || "");
       activePolicyVersion = v;
       return v;
     } catch (_) {
@@ -714,6 +744,8 @@
           : Number((guestInput && guestInput.value) || 1);
         const timeSlot = String((timeSlotInput && timeSlotInput.value) || "").trim();
         const bookingDate = String((dateInput && dateInput.value) || "").trim();
+        const promoCode = promoCodeInput ? String(promoCodeInput.value || "").trim().toUpperCase() : "";
+        if (promoCodeInput) promoCodeInput.value = promoCode;
 
         if (!bookingDate) {
           window.tstsNotify("Please select a date.", "warning");
@@ -734,6 +766,7 @@
             timeSlot: timeSlot,
             numGuests: numGuests,
             isPrivate: isPrivateBooking,
+            promoCode: promoCode,
             policyVersionAccepted: policyVer,
             termsVersionAccepted: TERMS_VERSION
           })
