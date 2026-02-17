@@ -8,6 +8,7 @@ const tabHost = document.getElementById("tab-hosting");
 const guestModal = document.getElementById("guest-modal");
 const reviewModal = document.getElementById("review-modal");
 const complaintModal = document.getElementById("complaint-modal");
+const cancelReviewModal = document.getElementById("cancel-review-modal");
 
 const closeGuestBtn = document.getElementById("close-modal-btn");
 const reviewCancelBtn = document.getElementById("review-cancel-btn");
@@ -18,9 +19,19 @@ const complaintMessageInput = document.getElementById("complaint-message");
 const complaintWordCount = document.getElementById("complaint-word-count");
 const complaintStatus = document.getElementById("complaint-status");
 const complaintSubmitBtn = document.getElementById("complaint-submit-btn");
+const cancelReviewBookingIdInput = document.getElementById("cancel-review-booking-id");
+const cancelReviewPolicyVersionEl = document.getElementById("cancel-review-policy-version");
+const cancelReviewRefundStateEl = document.getElementById("cancel-review-refund-state");
+const cancelReviewRefundBaseEl = document.getElementById("cancel-review-refund-base");
+const cancelReviewRefundPercentEl = document.getElementById("cancel-review-refund-percent");
+const cancelReviewRefundEstimateEl = document.getElementById("cancel-review-refund-estimate");
+const cancelReviewNoteEl = document.getElementById("cancel-review-note");
+const cancelReviewCloseBtn = document.getElementById("cancel-review-close-btn");
+const cancelReviewConfirmBtn = document.getElementById("cancel-review-confirm-btn");
 
 let hostBookingsCache = []; // for modal lookup by booking id
 let guestBookingsCache = []; // for complaint modal lookup by booking id
+let activePolicySnapshot = null;
 
 function redirectToLogin() {
   const returnTo = encodeURIComponent(location.pathname + location.search);
@@ -72,6 +83,169 @@ function safeStr(x) {
 function safeDate(d) {
   const dt = new Date(d);
   return isNaN(dt.getTime()) ? null : dt;
+}
+
+function toMoney(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return "—";
+  const rounded = Math.round(n * 100) / 100;
+  return "$" + rounded.toFixed(2);
+}
+
+function centsToMoney(cents) {
+  const n = Number(cents);
+  if (!Number.isFinite(n)) return "—";
+  return toMoney(n / 100);
+}
+
+function percentLikeToPct(raw, fallbackPct) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return fallbackPct;
+  if (n >= 0 && n <= 1) return n * 100;
+  return n;
+}
+
+function clampPct(raw, maxPct) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(maxPct, n));
+}
+
+function normalizeState(raw) {
+  const s = String(raw || "").trim().toLowerCase();
+  if (!s) return "none";
+  return s;
+}
+
+function stateLabel(raw) {
+  const s = normalizeState(raw);
+  if (s === "none") return "None";
+  return s.replace(/_/g, " ").toUpperCase();
+}
+
+function bookingPolicyVersion(booking) {
+  return (
+    safeStr(booking && booking.policyVersion) ||
+    safeStr(booking && booking.policySnapshot && booking.policySnapshot.version) ||
+    safeStr(booking && booking.refundDecision && booking.refundDecision.policyVersionUsed) ||
+    safeStr(activePolicySnapshot && activePolicySnapshot.version)
+  );
+}
+
+function resolveBookingStartAt(booking) {
+  const b = booking || {};
+  const direct = safeDate(b.startAt || b.experienceStartAt || b.experienceDateTime);
+  if (direct) return direct;
+
+  const dateOnlyRaw = b.bookingDate || b.experienceDate || b.date;
+  const dateOnly = safeDate(dateOnlyRaw);
+  if (!dateOnly) return null;
+
+  const slot = safeStr(b.timeSlot || b.startTime || (Array.isArray(b.timeSlots) ? b.timeSlots[0] : ""));
+  const part = slot.split("-")[0] || "";
+  const m = part.match(/^([0-1][0-9]|2[0-3]):([0-5][0-9])$/);
+  if (!m) return dateOnly;
+  const merged = new Date(dateOnly);
+  merged.setHours(Number(m[1]), Number(m[2]), 0, 0);
+  return merged;
+}
+
+function resolveRefundBaseCents(booking) {
+  const b = booking || {};
+  const candidates = [
+    b.amountCents,
+    b.pricingSnapshot && b.pricingSnapshot.totalCents,
+    b.feeBreakdown && b.feeBreakdown.totalCents,
+    b.pricing && b.pricing.totalCents
+  ];
+  for (const v of candidates) {
+    const n = Number(v);
+    if (Number.isFinite(n) && n > 0) return Math.floor(n);
+  }
+  return 0;
+}
+
+function pickUserCancelTier(rules, hoursBeforeStart) {
+  const rows = Array.isArray(rules && rules.userCancelTiers) ? rules.userCancelTiers : [];
+  if (!(Number.isFinite(hoursBeforeStart))) return null;
+  let chosen = null;
+  for (const row of rows) {
+    const min = Number(row && row.hoursBeforeStartMin);
+    if (!Number.isFinite(min)) continue;
+    if (hoursBeforeStart < min) continue;
+    if (!chosen || min > Number(chosen.hoursBeforeStartMin || 0)) chosen = row;
+  }
+  return chosen;
+}
+
+function buildCancelPreview(booking) {
+  const b = booking || {};
+  const status = normalizeState(b.status);
+  const blockedStates = new Set(["cancelled", "cancelled_by_host", "completed", "refunded", "expired"]);
+  const canCancel = !blockedStates.has(status);
+
+  const paymentStatus = normalizeState(b.paymentStatus);
+  const baseCents = (paymentStatus === "paid") ? resolveRefundBaseCents(b) : 0;
+  const policy = (b.policySnapshot && typeof b.policySnapshot === "object") ? b.policySnapshot : activePolicySnapshot;
+  const rules = (policy && policy.rules && typeof policy.rules === "object") ? policy.rules : null;
+
+  let refundPct = 0;
+  let refundCents = 0;
+  let note = "";
+  let state = "not_computed";
+
+  if (!canCancel) {
+    note = "This booking is in a terminal lifecycle state and cannot be cancelled from dashboard.";
+    state = status;
+  } else if (baseCents <= 0) {
+    state = "no_paid_amount";
+    note = "No paid amount is recorded for this booking. Refund is 0 in the current state.";
+  } else if (!rules) {
+    const existingAmount = Number(b && b.refundDecision && b.refundDecision.amountCents);
+    if (Number.isFinite(existingAmount) && existingAmount >= 0) {
+      refundCents = Math.floor(existingAmount);
+      refundPct = clampPct(percentLikeToPct((b && b.refundDecision && b.refundDecision.percent), 0), 95);
+      state = normalizeState((b && b.refundDecision && b.refundDecision.status) || "from_existing_decision");
+      note = "Refund estimate is from the latest stored refund decision.";
+    } else {
+      state = "manual";
+      note = "Refund policy snapshot is unavailable. Server will compute refund at cancellation time.";
+    }
+  } else {
+    const configuredCap = percentLikeToPct(
+      (rules.userCancelRefundCapPercent != null) ? rules.userCancelRefundCapPercent : rules.absoluteMaxGuestRefundPercent,
+      95
+    );
+    const capPct = clampPct(Math.round(configuredCap), 95);
+
+    const startAt = resolveBookingStartAt(b);
+    const hoursBeforeStart = startAt ? ((startAt.getTime() - Date.now()) / (60 * 60 * 1000)) : null;
+    const tier = pickUserCancelTier(rules, hoursBeforeStart);
+    let tierPct = percentLikeToPct(
+      (tier && tier.refundPercent != null) ? tier.refundPercent : rules.guestMaxRefundPercent,
+      0
+    );
+
+    const freeCancelHours = Math.max(0, Math.floor(Number(rules.guestFreeCancelHours) || 0));
+    if (Number.isFinite(hoursBeforeStart) && freeCancelHours > 0 && hoursBeforeStart >= freeCancelHours) {
+      tierPct = Math.max(tierPct, 100);
+    }
+
+    refundPct = clampPct(Math.min(capPct, tierPct), 95);
+    refundCents = Math.max(0, Math.round(baseCents * (refundPct / 100)));
+    state = "estimated";
+    note = "Estimated using current policy snapshot and booking state.";
+  }
+
+  return {
+    canCancel,
+    policyVersion: bookingPolicyVersion(b) || "Unavailable",
+    state: state,
+    baseCents: baseCents,
+    refundPct: refundPct,
+    refundCents: refundCents,
+    note: note || "Refund will be computed by server at cancellation time."
+  };
 }
 
 function fmtTripDate(dt) {
@@ -181,6 +355,12 @@ function renderTripCard(booking) {
   const title = exp.title || booking.title || "Unknown Experience";
   const guests = booking.guests || booking.numGuests || booking.guestCount || 1;
   const city = exp.city || booking.city || "Location TBA";
+  const policyVersion = bookingPolicyVersion(booking) || "Unavailable";
+  const refundDecision = booking && booking.refundDecision ? booking.refundDecision : {};
+  const refundState = stateLabel(refundDecision.status || "none");
+  const refundCents = Number(refundDecision.amountCents);
+  const refundAmountText = Number.isFinite(refundCents) && refundCents > 0 ? (" • " + centsToMoney(refundCents)) : "";
+  const payoutState = stateLabel((booking && booking.payoutStatus) || "none");
 
   var statusBadge, actionArea, actionNote = null;
 
@@ -239,7 +419,9 @@ function renderTripCard(booking) {
         El("div", { className: "text-gray-500 text-sm flex flex-col gap-1" }, [
           El("span", { className: "flex items-center gap-2" }, [El("i", { className: "far fa-calendar w-4" }), " " + dateStr]),
           El("span", { className: "flex items-center gap-2" }, [El("i", { className: "fas fa-user-friends w-4" }), " " + guests + " Guests"]),
-          El("span", { className: "flex items-center gap-2" }, [El("i", { className: "fas fa-map-marker-alt w-4" }), " " + city])
+          El("span", { className: "flex items-center gap-2" }, [El("i", { className: "fas fa-map-marker-alt w-4" }), " " + city]),
+          El("span", { className: "flex items-center gap-2 text-xs text-slate-500" }, [El("i", { className: "fas fa-file-contract w-4" }), " Policy: " + policyVersion]),
+          El("span", { className: "flex items-center gap-2 text-xs text-slate-500" }, [El("i", { className: "fas fa-receipt w-4" }), " Refund: " + refundState + refundAmountText + " • Payout: " + payoutState])
         ])
       ]),
       El("div", { className: "mt-4 md:mt-0 pt-4 md:pt-0 flex flex-col gap-2 items-stretch md:items-end" }, [
@@ -310,6 +492,64 @@ async function submitReview(e) {
 function getGuestBookingById(bookingId) {
   const id = String(bookingId || "");
   return (guestBookingsCache || []).find((b) => String((b && b._id) || "") === id) || null;
+}
+
+async function loadActivePolicySnapshot() {
+  try {
+    const res = await window.authFetch("/api/policy/active", { method: "GET" });
+    if (!res || !res.ok) {
+      activePolicySnapshot = null;
+      return;
+    }
+    const payload = await res.json().catch(() => ({}));
+    const policy = (payload && payload.data && payload.data.policy)
+      ? payload.data.policy
+      : ((payload && payload.policy) ? payload.policy : null);
+    activePolicySnapshot = (policy && typeof policy === "object") ? policy : null;
+  } catch (_) {
+    activePolicySnapshot = null;
+  }
+}
+
+function closeCancelReviewModal() {
+  if (cancelReviewModal) cancelReviewModal.classList.add("hidden");
+}
+
+function openCancelReviewModalById(bookingId) {
+  const b = getGuestBookingById(bookingId);
+  if (!b) {
+    window.tstsNotify("Booking details are unavailable. Please refresh and try again.", "error");
+    return;
+  }
+
+  const preview = buildCancelPreview(b);
+
+  if (cancelReviewBookingIdInput) cancelReviewBookingIdInput.value = String(bookingId || "");
+  if (cancelReviewPolicyVersionEl) cancelReviewPolicyVersionEl.textContent = preview.policyVersion || "Unavailable";
+  if (cancelReviewRefundStateEl) cancelReviewRefundStateEl.textContent = stateLabel(preview.state);
+  if (cancelReviewRefundBaseEl) cancelReviewRefundBaseEl.textContent = centsToMoney(preview.baseCents);
+  if (cancelReviewRefundPercentEl) cancelReviewRefundPercentEl.textContent = preview.refundPct.toFixed(0) + "%";
+  if (cancelReviewRefundEstimateEl) cancelReviewRefundEstimateEl.textContent = centsToMoney(preview.refundCents);
+  if (cancelReviewNoteEl) cancelReviewNoteEl.textContent = preview.note;
+
+  if (cancelReviewConfirmBtn) {
+    cancelReviewConfirmBtn.disabled = !preview.canCancel;
+    cancelReviewConfirmBtn.classList.toggle("opacity-60", !preview.canCancel);
+    cancelReviewConfirmBtn.classList.toggle("cursor-not-allowed", !preview.canCancel);
+    cancelReviewConfirmBtn.textContent = preview.canCancel ? "Cancel Booking" : "Cancellation Unavailable";
+  }
+
+  if (cancelReviewModal) cancelReviewModal.classList.remove("hidden");
+}
+
+async function handleCancelReviewConfirm() {
+  const bid = String((cancelReviewBookingIdInput && cancelReviewBookingIdInput.value) || "").trim();
+  if (!bid) {
+    window.tstsNotify("Booking not selected.", "error");
+    return;
+  }
+  const ok = await cancelBooking(bid, true);
+  if (ok) closeCancelReviewModal();
 }
 
 function openComplaintModalById(bookingId) {
@@ -450,24 +690,30 @@ async function submitComplaint(e) {
 
 /* ====================== CANCEL ====================== */
 
-async function cancelBooking(id) {
-  if (!id) return;
-  var confirmed = await window.tstsConfirm("Are you sure? Refund policies apply.", { destructive: true, confirmText: "Cancel Booking" });
-  if (!confirmed) return;
+async function cancelBooking(id, skipInlineConfirm) {
+  if (!id) return false;
+  if (!skipInlineConfirm) {
+    var confirmed = await window.tstsConfirm("Are you sure? Refund policies apply.", { destructive: true, confirmText: "Cancel Booking" });
+    if (!confirmed) return false;
+  }
 
   try {
     const res = await window.authFetch(`/api/bookings/${id}/cancel`, { method: "POST" });
     const data = await res.json().catch(() => ({}));
 
     if (res.ok) {
-      const amount = (data && data.refund && data.refund.amount) ? data.refund.amount : "";
-      window.tstsNotify(amount !== "" ? "Cancelled. Refund: $" + amount : "Cancelled.", "success");
-      loadTrips();
+      const refundCents = Number(data && data.refund && data.refund.amountCents);
+      const refundText = Number.isFinite(refundCents) ? centsToMoney(refundCents) : "";
+      window.tstsNotify(refundText ? ("Cancelled. Refund: " + refundText) : "Cancelled.", "success");
+      await loadTrips();
+      return true;
     } else {
       window.tstsNotify("Error: " + (data.message || "Unable to cancel."), "error");
+      return false;
     }
   } catch (_) {
     window.tstsNotify("Network error.", "error");
+    return false;
   }
 }
 
@@ -563,6 +809,20 @@ function renderHostBookingsSection(bookings) {
     const guestName = guest.name || b.guestName || "Unknown Guest";
     const pax = b.guests || b.numGuests || b.guestCount || "-";
     const paid = b.amountTotal || (b.pricing && b.pricing.totalPrice) || "";
+    const policyVersion = bookingPolicyVersion(b) || "Unavailable";
+    const refundState = stateLabel(b && b.refundDecision && b.refundDecision.status);
+    const payoutState = stateLabel(b && b.payoutStatus);
+    const paymentState = stateLabel(b && b.paymentStatus);
+    const disputeActive = !!(b && b.dispute && b.dispute.active === true);
+    const hostPayoutCents = Number(
+      (b && b.payoutNetHostCents != null) ? b.payoutNetHostCents :
+      (b && b.payoutGrossHostCents != null) ? b.payoutGrossHostCents :
+      (b && b.pricingSnapshot && b.pricingSnapshot.hostPayoutCents != null) ? b.pricingSnapshot.hostPayoutCents :
+      (b && b.feeBreakdown && b.feeBreakdown.hostPayoutCents != null) ? b.feeBreakdown.hostPayoutCents :
+      (b && b.pricing && b.pricing.hostPayoutCents != null) ? b.pricing.hostPayoutCents :
+      NaN
+    );
+    const refundAmountCents = Number(b && b.refundDecision && b.refundDecision.amountCents);
 
     var viewBtn = El("button", {
       className: "w-full md:w-auto bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition whitespace-nowrap",
@@ -582,6 +842,17 @@ function renderHostBookingsSection(bookings) {
             El("span", { textContent: "Paid: " + (paid !== "" ? "$" + paid : "—") }),
             El("span", { textContent: "•" }),
             El("span", { textContent: pax + " Pax" })
+          ]),
+          El("div", { className: "flex flex-wrap gap-2 mt-2" }, [
+            El("span", { className: "px-2 py-1 text-[11px] font-bold rounded bg-slate-100 text-slate-700", textContent: "Payment: " + paymentState }),
+            El("span", { className: "px-2 py-1 text-[11px] font-bold rounded bg-slate-100 text-slate-700", textContent: "Refund: " + refundState }),
+            El("span", { className: "px-2 py-1 text-[11px] font-bold rounded bg-slate-100 text-slate-700", textContent: "Payout: " + payoutState }),
+            disputeActive ? El("span", { className: "px-2 py-1 text-[11px] font-bold rounded bg-red-100 text-red-700", textContent: "Dispute Active" }) : El("span", { className: "hidden", textContent: "" })
+          ]),
+          El("div", { className: "text-xs text-slate-500 mt-2 flex flex-col gap-1" }, [
+            El("span", { textContent: "Policy: " + policyVersion }),
+            El("span", { textContent: "Host payout estimate: " + (Number.isFinite(hostPayoutCents) ? centsToMoney(hostPayoutCents) : "—") }),
+            El("span", { textContent: "Refund amount: " + (Number.isFinite(refundAmountCents) ? centsToMoney(refundAmountCents) : "—") })
           ])
         ])
       ]),
@@ -721,7 +992,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const bid = btn.getAttribute("data-booking-id") || "";
     const expId = btn.getAttribute("data-exp-id") || "";
 
-    if (action === "cancel") cancelBooking(bid);
+    if (action === "cancel") openCancelReviewModalById(bid);
     if (action === "review") openReviewModal(bid, expId);
     if (action === "complaint") openComplaintModalById(bid);
     if (action === "guest") openGuestModalById(bid);
@@ -733,12 +1004,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Close review modal (cancel button)
   if (reviewCancelBtn) reviewCancelBtn.addEventListener("click", closeReviewModal);
   if (complaintCancelBtn) complaintCancelBtn.addEventListener("click", closeComplaintModal);
+  if (cancelReviewCloseBtn) cancelReviewCloseBtn.addEventListener("click", closeCancelReviewModal);
+  if (cancelReviewConfirmBtn) cancelReviewConfirmBtn.addEventListener("click", handleCancelReviewConfirm);
 
   // Click outside to close
   document.addEventListener("click", (e) => {
     if (guestModal && !guestModal.classList.contains("hidden") && e.target === guestModal) closeGuestModal();
     if (reviewModal && !reviewModal.classList.contains("hidden") && e.target === reviewModal) closeReviewModal();
     if (complaintModal && !complaintModal.classList.contains("hidden") && e.target === complaintModal) closeComplaintModal();
+    if (cancelReviewModal && !cancelReviewModal.classList.contains("hidden") && e.target === cancelReviewModal) closeCancelReviewModal();
   });
 
   // ESC to close
@@ -747,9 +1021,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     closeGuestModal();
     closeReviewModal();
     closeComplaintModal();
+    closeCancelReviewModal();
   });
 
   // Default load
+  loadActivePolicySnapshot().catch(() => {});
   toggleTab("trips");
   loadTrips();
 });

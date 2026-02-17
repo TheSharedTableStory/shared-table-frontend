@@ -101,6 +101,59 @@ async function loadCoupons() {
   return Array.isArray(data.promos) ? data.promos : [];
 }
 
+async function loadReports() {
+  const res = await adminFetch("/api/admin/reports?limit=100", { method: "GET" });
+  if (!res.ok) throw new Error("reports");
+  const data = await res.json().catch(() => ({}));
+  return Array.isArray(data.items) ? data.items : [];
+}
+
+async function updateReport(id, payload) {
+  const res = await adminFetch("/api/admin/reports/" + encodeURIComponent(id), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {})
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to update report");
+  }
+  return data;
+}
+
+async function loadPrivateBookingRequests() {
+  const res = await adminFetch("/api/admin/private-booking-requests?limit=100", { method: "GET" });
+  if (!res.ok) throw new Error("private_requests");
+  const data = await res.json().catch(() => ({}));
+  return Array.isArray(data.requests) ? data.requests : [];
+}
+
+async function updatePrivateBookingRequestStatus(id, payload) {
+  const res = await adminFetch("/api/admin/private-booking-requests/" + encodeURIComponent(id) + "/status", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {})
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to update private booking request");
+  }
+  return data.request || null;
+}
+
+async function refundBookingPartial(id, payload) {
+  const res = await adminFetch("/api/admin/bookings/" + encodeURIComponent(id) + "/refund-partial", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {})
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to request partial refund");
+  }
+  return data;
+}
+
 async function createCoupon(payload) {
   const res = await adminFetch("/api/admin/promo-codes", {
     method: "POST",
@@ -230,6 +283,17 @@ function formatCurrencyValue(raw) {
   return num === null ? "—" : "$" + String(num);
 }
 
+function formatCurrencyFromCents(raw) {
+  const num = toNumberOrNull(raw);
+  return num === null ? "—" : ("$" + (num / 100).toFixed(2));
+}
+
+function normalizeStateLabel(raw) {
+  const s = String(raw || "").trim().toLowerCase();
+  if (!s) return "None";
+  return s.replace(/_/g, " ");
+}
+
 function normalizeVerifiedStatus(v) {
   const s = String(v || "").trim().toLowerCase();
   if (s === "verified") return "verified";
@@ -312,24 +376,76 @@ function renderBookings(bookings) {
     var title = exp.title || b.experienceTitle || "Experience";
     var guest = (b.guestId && b.guestId.name) || (b.user && b.user.name) || b.guestName || "Guest";
     var date = formatDateValue(b.bookingDate || b.experienceDate || b.date || b.createdAt);
-    var amount = formatCurrencyValue((b.pricing && b.pricing.totalPrice) || b.amountTotal || b.totalPrice || "");
-    var status = String(b.status || "—");
+    var totalCents = toNumberOrNull(
+      (b.pricing && b.pricing.totalCents) ||
+      (b.pricingSnapshot && b.pricingSnapshot.totalCents) ||
+      (b.feeBreakdown && b.feeBreakdown.totalCents) ||
+      b.amountCents
+    );
+    var totalPaid = totalCents === null ? formatCurrencyValue((b.pricing && b.pricing.totalPrice) || b.amountTotal || b.totalPrice || "") : formatCurrencyFromCents(totalCents);
+    var hostPayoutCents = toNumberOrNull(
+      b.payoutNetHostCents ||
+      b.payoutGrossHostCents ||
+      (b.pricingSnapshot && b.pricingSnapshot.hostPayoutCents) ||
+      (b.feeBreakdown && b.feeBreakdown.hostPayoutCents) ||
+      (b.pricing && b.pricing.hostPayoutCents)
+    );
+    var refundedCents = toNumberOrNull(
+      b.totalRefundedCents ||
+      (b.refundDecision && b.refundDecision.amountCents)
+    );
+    var status = String(b.status || "none");
+    var paymentStatus = String(b.paymentStatus || "none");
+    var refundStatus = String((b.refundDecision && b.refundDecision.status) || "none");
+    var payoutStatus = String(b.payoutStatus || "none");
+    var policyVersion = String(b.policyVersion || (b.policySnapshot && b.policySnapshot.version) || "");
     var isCancelled = status.toLowerCase().includes("cancel");
+    var isPaid = String(paymentStatus || "").toLowerCase() === "paid";
 
-    var actionEl = El("span", { className: "text-xs text-slate-400", textContent: "—" });
+    var actions = [];
     if (!isCancelled) {
-      var cancelBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-red-200 text-red-600 hover:bg-red-50", textContent: "Cancel" });
+      var cancelBtn = El("button", {
+        className: "px-3 py-1 text-xs font-bold rounded border border-red-200 text-red-600 hover:bg-red-50",
+        textContent: "Cancel"
+      });
       cancelBtn.addEventListener("click", function() { handleCancelBooking(id); });
-      actionEl = cancelBtn;
+      actions.push(cancelBtn);
+    }
+    if (isPaid) {
+      var refundBtn = El("button", {
+        className: "px-3 py-1 text-xs font-bold rounded border border-amber-200 text-amber-700 hover:bg-amber-50",
+        textContent: "Partial Refund"
+      });
+      refundBtn.addEventListener("click", function() { handlePartialRefundBooking(id, b); });
+      actions.push(refundBtn);
+    }
+    if (actions.length === 0) {
+      actions.push(El("span", { className: "text-xs text-slate-400", textContent: "—" }));
     }
 
-    tbody.appendChild(El("tr", { className: "border-t border-slate-100" }, [
+    var financial = El("div", { className: "text-sm text-slate-700 space-y-1" }, [
+      El("div", { className: "font-semibold text-emerald-700", textContent: "Total: " + totalPaid }),
+      El("div", { className: "text-xs text-slate-500", textContent: "Host payout: " + (hostPayoutCents === null ? "—" : formatCurrencyFromCents(hostPayoutCents)) }),
+      El("div", { className: "text-xs text-slate-500", textContent: "Refunded: " + (refundedCents === null ? "—" : formatCurrencyFromCents(refundedCents)) })
+    ]);
+
+    var lifecycle = El("div", { className: "text-xs text-slate-600 space-y-1" }, [
+      El("div", { textContent: "Booking: " + normalizeStateLabel(status) }),
+      El("div", { textContent: "Payment: " + normalizeStateLabel(paymentStatus) }),
+      El("div", { textContent: "Refund: " + normalizeStateLabel(refundStatus) }),
+      El("div", { textContent: "Payout: " + normalizeStateLabel(payoutStatus) }),
+      El("div", { textContent: "Policy: " + (policyVersion || "Unavailable") })
+    ]);
+
+    var actionWrap = El("div", { className: "flex flex-wrap gap-2 justify-end" }, actions);
+
+    tbody.appendChild(El("tr", { className: "border-t border-slate-100 align-top" }, [
       El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: date }),
       El("td", { className: "px-6 py-4 text-sm font-semibold text-slate-800", textContent: guest }),
       El("td", { className: "px-6 py-4 text-sm text-slate-700", textContent: title }),
-      El("td", { className: "px-6 py-4 text-sm text-emerald-700 font-semibold", textContent: amount }),
-      El("td", { className: "px-6 py-4 text-sm text-slate-500", textContent: status }),
-      El("td", { className: "px-6 py-4 text-sm text-right" }, [actionEl])
+      El("td", { className: "px-6 py-4" }, [financial]),
+      El("td", { className: "px-6 py-4" }, [lifecycle]),
+      El("td", { className: "px-6 py-4 text-sm text-right" }, [actionWrap])
     ]));
   });
 }
@@ -468,11 +584,146 @@ function renderCoupons(promos) {
 
     tbody.appendChild(El("tr", { className: "border-t border-slate-100" }, [
       El("td", { className: "px-6 py-4 text-sm font-semibold text-slate-800", textContent: code || "—" }),
-      El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: formatPromoScope(promo) }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-600" }, [
+        El("div", { className: "font-semibold text-slate-700", textContent: formatPromoScope(promo) }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Funding: Platform subsidy (current pricing policy)" })
+      ]),
       El("td", { className: "px-6 py-4 text-sm text-slate-700 font-semibold", textContent: formatPromoDiscount(promo) }),
       El("td", { className: "px-6 py-4 text-sm " + statusClass, textContent: statusText }),
       El("td", { className: "px-6 py-4 text-sm text-slate-500", textContent: formatPromoWindow(promo) }),
       El("td", { className: "px-6 py-4 text-sm text-right" }, [editBtn, El("span", { textContent: " " }), stopBtn])
+    ]));
+  });
+}
+
+function renderReports(items) {
+  const El = window.tstsEl;
+  const tbody = $("reports-table-body");
+  if (!tbody) return;
+  tbody.textContent = "";
+
+  var list = Array.isArray(items) ? items : [];
+  if (list.length === 0) {
+    tbody.appendChild(El("tr", {}, [
+      El("td", { className: "px-6 py-6 text-center text-sm text-slate-500", colSpan: "5", textContent: "No reports." })
+    ]));
+    return;
+  }
+
+  list.forEach(function (r) {
+    var id = String((r && (r._id || r.id)) || "");
+    var created = formatDateValue(r && r.createdAt);
+    var targetType = String((r && r.targetType) || "unknown");
+    var targetId = String((r && r.targetId) || "").slice(0, 10);
+    var category = String((r && r.category) || "general");
+    var status = normalizeStateLabel(r && r.status);
+    var summary = String((r && r.message) || (r && r.reason) || "").slice(0, 120);
+
+    var triageBtn = El("button", {
+      className: "px-2 py-1 text-xs font-bold rounded border border-slate-200 text-slate-700 hover:bg-slate-50",
+      textContent: "Triage"
+    });
+    triageBtn.addEventListener("click", function () { handleReportStatusUpdate(id, "triaged"); });
+
+    var closeBtn = El("button", {
+      className: "px-2 py-1 text-xs font-bold rounded border border-slate-200 text-slate-700 hover:bg-slate-50",
+      textContent: "Close"
+    });
+    closeBtn.addEventListener("click", function () { handleReportStatusUpdate(id, "closed"); });
+
+    var actionBtns = [triageBtn, closeBtn];
+    if (targetType === "user") {
+      var muteBtn = El("button", {
+        className: "px-2 py-1 text-xs font-bold rounded border border-amber-200 text-amber-700 hover:bg-amber-50",
+        textContent: "Mute 24h"
+      });
+      muteBtn.addEventListener("click", function () { handleReportAction(id, "mute_user", "actioned", { muteMinutes: 1440 }); });
+      var delBtn = El("button", {
+        className: "px-2 py-1 text-xs font-bold rounded border border-red-200 text-red-600 hover:bg-red-50",
+        textContent: "Delete User"
+      });
+      delBtn.addEventListener("click", function () { handleReportAction(id, "delete_user", "actioned", {}); });
+      actionBtns.push(muteBtn, delBtn);
+    } else if (targetType === "experience") {
+      var pauseBtn = El("button", {
+        className: "px-2 py-1 text-xs font-bold rounded border border-amber-200 text-amber-700 hover:bg-amber-50",
+        textContent: "Pause Listing"
+      });
+      pauseBtn.addEventListener("click", function () { handleReportAction(id, "pause_experience", "actioned", {}); });
+      actionBtns.push(pauseBtn);
+    }
+
+    tbody.appendChild(El("tr", { className: "border-t border-slate-100 align-top" }, [
+      El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: created }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700", textContent: targetType + (targetId ? (" • " + targetId) : "") }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { className: "font-semibold", textContent: category }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: summary || "No additional details." })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: status }),
+      El("td", { className: "px-6 py-4 text-sm" }, [
+        El("div", { className: "flex flex-wrap gap-2" }, actionBtns)
+      ])
+    ]));
+  });
+}
+
+function renderPrivateRequests(requests) {
+  const El = window.tstsEl;
+  const tbody = $("private-requests-table-body");
+  if (!tbody) return;
+  tbody.textContent = "";
+
+  var list = Array.isArray(requests) ? requests : [];
+  if (list.length === 0) {
+    tbody.appendChild(El("tr", {}, [
+      El("td", { className: "px-6 py-6 text-center text-sm text-slate-500", colSpan: "6", textContent: "No private booking requests." })
+    ]));
+    return;
+  }
+
+  list.forEach(function (r) {
+    var id = String((r && (r._id || r.id)) || "");
+    var created = formatDateValue(r && r.createdAt);
+    var expTitle = String((r && r.experienceTitle) || "Experience");
+    var requester = String((r && r.requesterName) || "Guest");
+    var requesterEmail = String((r && r.requesterEmail) || "");
+    var schedule = String((r && r.preferredDate) || "Date TBA") + " • " + String((r && r.preferredTime) || "Time TBA");
+    var status = normalizeStateLabel(r && r.status);
+    var guests = Number(r && r.guests);
+    var adminNote = String((r && r.adminNote) || "").slice(0, 100);
+
+    function mkStatusBtn(label, nextStatus, className) {
+      var btn = El("button", { className: className, textContent: label });
+      btn.addEventListener("click", function () { handlePrivateRequestStatus(id, nextStatus); });
+      return btn;
+    }
+
+    var actions = [
+      mkStatusBtn("Contacted", "contacted", "px-2 py-1 text-xs font-bold rounded border border-slate-200 text-slate-700 hover:bg-slate-50"),
+      mkStatusBtn("Approve", "approved", "px-2 py-1 text-xs font-bold rounded border border-emerald-200 text-emerald-700 hover:bg-emerald-50"),
+      mkStatusBtn("Decline", "declined", "px-2 py-1 text-xs font-bold rounded border border-red-200 text-red-600 hover:bg-red-50"),
+      mkStatusBtn("Close", "closed", "px-2 py-1 text-xs font-bold rounded border border-slate-200 text-slate-700 hover:bg-slate-50")
+    ];
+
+    tbody.appendChild(El("tr", { className: "border-t border-slate-100 align-top" }, [
+      El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: created }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700", textContent: expTitle }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { className: "font-semibold", textContent: requester }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: requesterEmail || "No email provided" })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { textContent: schedule }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: (Number.isFinite(guests) ? (guests + " guests") : "Guests not set") })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-slate-600" }, [
+        El("div", { className: "font-semibold", textContent: status }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: adminNote || "No admin note" })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm" }, [
+        El("div", { className: "flex flex-wrap gap-2" }, actions)
+      ])
     ]));
   });
 }
@@ -505,6 +756,67 @@ async function handleCancelBooking(id) {
   var confirmed = await window.tstsConfirm("Cancel this booking?", { destructive: true, confirmText: "Cancel Booking" });
   if (!confirmed) return;
   try { await cancelBooking(id); await boot(); } catch (e) { window.tstsNotify(e.message || "Failed", "error"); }
+}
+async function handlePartialRefundBooking(id, booking) {
+  var totalCents = toNumberOrNull(
+    (booking && booking.pricingSnapshot && booking.pricingSnapshot.totalCents) ||
+    (booking && booking.feeBreakdown && booking.feeBreakdown.totalCents) ||
+    (booking && booking.pricing && booking.pricing.totalCents) ||
+    booking.amountCents
+  );
+  var hint = totalCents === null ? "" : ("Max total: " + formatCurrencyFromCents(totalCents));
+  var raw = await window.tstsPrompt("Partial refund amount (AUD)", "", { minLength: 1, placeholder: hint || "e.g. 25.50" });
+  raw = String(raw || "").trim();
+  if (!raw) return;
+  var aud = Number(raw);
+  if (!Number.isFinite(aud) || aud <= 0) {
+    window.tstsNotify("Enter a valid amount greater than 0.", "error");
+    return;
+  }
+  var amountCents = Math.max(1, Math.round(aud * 100));
+  var confirmed = await window.tstsConfirm("Request partial refund of " + formatCurrencyFromCents(amountCents) + "?", { destructive: true, confirmText: "Request Refund" });
+  if (!confirmed) return;
+  try {
+    await refundBookingPartial(id, { amountCents: amountCents, reason: "requested_by_customer" });
+    window.tstsNotify("Partial refund requested.", "success");
+    await boot();
+  } catch (e) {
+    window.tstsNotify(e.message || "Partial refund failed", "error");
+  }
+}
+async function handleReportStatusUpdate(id, nextStatus) {
+  try {
+    await updateReport(id, { status: String(nextStatus || ""), action: "none" });
+    window.tstsNotify("Report updated.", "success");
+    await loadReports().then(renderReports);
+  } catch (e) {
+    window.tstsNotify(e.message || "Report update failed", "error");
+  }
+}
+async function handleReportAction(id, action, status, extra) {
+  var confirmText = action === "delete_user" ? "Delete User" : (action === "pause_experience" ? "Pause Listing" : "Apply Action");
+  var confirmed = await window.tstsConfirm("Apply moderation action: " + action.replace(/_/g, " ") + "?", { destructive: action !== "mute_user", confirmText: confirmText });
+  if (!confirmed) return;
+  try {
+    var payload = Object.assign({}, extra || {}, { action: action, status: status || "actioned" });
+    await updateReport(id, payload);
+    window.tstsNotify("Moderation action applied.", "success");
+    await loadReports().then(renderReports);
+    await loadUsers().then(renderUsers).catch(() => renderUsers([]));
+    await loadExperiences().then(renderExperiences).catch(() => renderExperiences([]));
+  } catch (e) {
+    window.tstsNotify(e.message || "Moderation action failed", "error");
+  }
+}
+async function handlePrivateRequestStatus(id, status) {
+  try {
+    var note = await window.tstsPrompt("Optional admin note", "", { minLength: 0, placeholder: "Add internal context..." });
+    await updatePrivateBookingRequestStatus(id, { status: status, adminNote: String(note || "").trim() });
+    window.tstsNotify("Private request updated.", "success");
+    await loadPrivateBookingRequests().then(renderPrivateRequests);
+  } catch (e) {
+    window.tstsNotify(e.message || "Private request update failed", "error");
+  }
 }
 async function handleCreateCoupon(e) {
   e.preventDefault();
@@ -579,7 +891,7 @@ async function handleDeactivateCoupon(code) {
 
 // Tab switching functionality (local, no window.* exposure)
 function switchTab(tabName) {
-  const views = ['dashboard', 'listings', 'users', 'coupons'];
+  const views = ['dashboard', 'listings', 'users', 'coupons', 'moderation', 'private-requests'];
   const activeClass = "border-tsts-clay text-tsts-clay border-b-2 py-4 px-1 font-bold text-sm";
   const inactiveClass = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm";
 
@@ -608,6 +920,12 @@ function switchTab(tabName) {
   if (tabName === 'coupons') {
     loadCoupons().then(renderCoupons).catch(() => renderCoupons([]));
   }
+  if (tabName === 'moderation') {
+    loadReports().then(renderReports).catch(() => renderReports([]));
+  }
+  if (tabName === 'private-requests') {
+    loadPrivateBookingRequests().then(renderPrivateRequests).catch(() => renderPrivateRequests([]));
+  }
   if (tabName === 'dashboard') {
     Promise.all([
       loadStats().catch(() => ({})),
@@ -629,18 +947,26 @@ function wireAdminEvents() {
   const tabListings = $("tab-listings");
   const tabUsers = $("tab-users");
   const tabCoupons = $("tab-coupons");
+  const tabModeration = $("tab-moderation");
+  const tabPrivateRequests = $("tab-private-requests");
   const refreshListings = $("btn-refresh-listings");
   const refreshUsers = $("btn-refresh-users");
   const refreshCoupons = $("btn-refresh-coupons");
+  const refreshReports = $("btn-refresh-reports");
+  const refreshPrivateRequests = $("btn-refresh-private-requests");
   const couponCreateForm = $("coupon-create-form");
 
   if (tabDashboard) tabDashboard.addEventListener("click", () => switchTab("dashboard"));
   if (tabListings) tabListings.addEventListener("click", () => switchTab("listings"));
   if (tabUsers) tabUsers.addEventListener("click", () => switchTab("users"));
   if (tabCoupons) tabCoupons.addEventListener("click", () => switchTab("coupons"));
+  if (tabModeration) tabModeration.addEventListener("click", () => switchTab("moderation"));
+  if (tabPrivateRequests) tabPrivateRequests.addEventListener("click", () => switchTab("private-requests"));
   if (refreshListings) refreshListings.addEventListener("click", () => loadExperiences().then(renderExperiences).catch(() => renderExperiences([])));
   if (refreshUsers) refreshUsers.addEventListener("click", () => loadUsers().then(renderUsers).catch(() => renderUsers([])));
   if (refreshCoupons) refreshCoupons.addEventListener("click", () => loadCoupons().then(renderCoupons).catch(() => renderCoupons([])));
+  if (refreshReports) refreshReports.addEventListener("click", () => loadReports().then(renderReports).catch(() => renderReports([])));
+  if (refreshPrivateRequests) refreshPrivateRequests.addEventListener("click", () => loadPrivateBookingRequests().then(renderPrivateRequests).catch(() => renderPrivateRequests([])));
   if (couponCreateForm) couponCreateForm.addEventListener("submit", handleCreateCoupon);
 }
 
@@ -653,12 +979,14 @@ async function boot() {
 
   // basic skeleton if containers exist
   try {
-    const [stats, bookings, exps, users, promos] = await Promise.all([
+    const [stats, bookings, exps, users, promos, reports, privateRequests] = await Promise.all([
       loadStats().catch(() => ({})),
       loadBookings().catch(() => ([])),
       loadExperiences().catch(() => ([])),
       loadUsers().catch(() => ([])),
-      loadCoupons().catch(() => ([]))
+      loadCoupons().catch(() => ([])),
+      loadReports().catch(() => ([])),
+      loadPrivateBookingRequests().catch(() => ([]))
     ]);
 
     renderStats(stats);
@@ -666,6 +994,8 @@ async function boot() {
     renderExperiences(exps);
     renderUsers(users);
     renderCoupons(promos);
+    renderReports(reports);
+    renderPrivateRequests(privateRequests);
   } catch (e) {
     window.tstsNotify("Admin load failed.", "error");
   }

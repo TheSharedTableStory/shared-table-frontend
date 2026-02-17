@@ -31,11 +31,16 @@
 	  const privateExtraGuestPriceInput = document.getElementById("privateExtraGuestPrice");
 	  const verifiedOptInInput = document.getElementById("verifiedOptIn");
 	  const verifiedStatusHint = document.getElementById("verified-status-hint");
-		  const imageInput = document.getElementById("imageInput");
-		  const uploadPreview = document.getElementById("upload-preview");
-		  const uploadPlaceholder = document.getElementById("upload-placeholder");
-		  const submitBtn = document.getElementById("submit-btn");
+	  const imageInput = document.getElementById("imageInput");
+	  const uploadPreview = document.getElementById("upload-preview");
+	  const uploadPlaceholder = document.getElementById("upload-placeholder");
+	  const submitBtn = document.getElementById("submit-btn");
       const tagLimitHint = document.getElementById("tag-limit-hint");
+  const pricingPublicPerGuestEl = document.getElementById("pricing-public-per-guest");
+  const pricingHostPayoutEstimateEl = document.getElementById("pricing-host-payout-estimate");
+  const pricingVerifiedImpactEl = document.getElementById("pricing-verified-impact");
+  const pricingPrivateSummaryEl = document.getElementById("pricing-private-summary");
+  const pricingPolicyReferenceEl = document.getElementById("pricing-policy-reference");
 
   const CLOUDINARY_URL = (window.CLOUDINARY_URL || "");
 
@@ -43,6 +48,7 @@
   let editId = null;
   let existingImageUrl = null;
   let currentVerifiedStatus = "none";
+  let activePolicySnapshot = null;
 
   function ensureInlineNotice() {
     let el = document.getElementById("host-inline-notice");
@@ -128,6 +134,102 @@
   function safeNum(v) {
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
+  }
+
+  function formatMoney(raw) {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return "—";
+    return "$" + n.toFixed(2) + " AUD";
+  }
+
+  function percentLikeToPct(v, fallback) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return fallback;
+    if (n >= 0 && n <= 1) return n * 100;
+    return n;
+  }
+
+  function resolvePolicyVersion() {
+    const v = activePolicySnapshot && activePolicySnapshot.version ? String(activePolicySnapshot.version) : "";
+    return v || "Unavailable";
+  }
+
+  function resolveHostPayoutEstimate(price) {
+    if (!Number.isFinite(price) || price <= 0) return "—";
+    return formatMoney(price) + " (before host-funded discounts or recovery offsets)";
+  }
+
+  function resolvePrivateSummary() {
+    const enabled = !!(privateEnabledInput && privateEnabledInput.checked);
+    if (!enabled) return "Private booking disabled";
+
+    const base = privatePriceInput ? safeNum(privatePriceInput.value) : null;
+    const cap = privateCapacityInput ? safeNum(privateCapacityInput.value) : null;
+    const included = privateIncludedGuestsInput ? safeNum(privateIncludedGuestsInput.value) : null;
+    const extra = privateExtraGuestPriceInput ? safeNum(privateExtraGuestPriceInput.value) : null;
+
+    if (!(base != null && base > 0 && cap != null && cap > 0 && included != null && included > 0 && extra != null && extra >= 0)) {
+      return "Set private base, capacity, included guests, and extra guest price to see the full formula.";
+    }
+
+    return formatMoney(base) + " covers first " + String(Math.floor(included)) + " guests, then +" + formatMoney(extra) +
+      " per extra guest (max " + String(Math.floor(cap)) + ").";
+  }
+
+  function resolveVerifiedImpact(publicPrice) {
+    if (!(Number.isFinite(publicPrice) && publicPrice > 0)) {
+      return "Enter a public price to see verified fee impact.";
+    }
+    const fee = Number((publicPrice * 0.05).toFixed(2));
+    const status = normalizeVerifiedStatus(currentVerifiedStatus);
+    if (status === "verified") {
+      return "Verified active: guest checkout includes about +" + formatMoney(fee) + " (5%).";
+    }
+    if (status === "pending") {
+      return "Verification pending: fee applies only after approval. Estimated +" + formatMoney(fee) + ".";
+    }
+    const requestedNow = !!(verifiedOptInInput && verifiedOptInInput.checked);
+    if (requestedNow) {
+      return "Verification requested: if approved, guest checkout adds about +" + formatMoney(fee) + " (5%).";
+    }
+    return "No verified fee until a verification request is approved.";
+  }
+
+  function syncPricingTransparency() {
+    const publicPrice = priceInput ? safeNum(priceInput.value) : null;
+    if (pricingPublicPerGuestEl) {
+      pricingPublicPerGuestEl.textContent = (publicPrice != null && publicPrice > 0) ? formatMoney(publicPrice) : "Set a valid public price";
+    }
+    if (pricingHostPayoutEstimateEl) {
+      pricingHostPayoutEstimateEl.textContent = resolveHostPayoutEstimate(publicPrice);
+    }
+    if (pricingVerifiedImpactEl) {
+      pricingVerifiedImpactEl.textContent = resolveVerifiedImpact(publicPrice);
+    }
+    if (pricingPrivateSummaryEl) {
+      pricingPrivateSummaryEl.textContent = resolvePrivateSummary();
+    }
+    if (pricingPolicyReferenceEl) {
+      const ver = resolvePolicyVersion();
+      pricingPolicyReferenceEl.textContent = "Policy reference: " + ver + ". Refund/cancellation rules are snapshotted per booking.";
+    }
+  }
+
+  async function loadActivePolicySnapshot() {
+    try {
+      const res = await window.authFetch("/api/policy/active", { method: "GET" });
+      if (!res || !res.ok) {
+        activePolicySnapshot = null;
+        syncPricingTransparency();
+        return;
+      }
+      const payload = await res.json().catch(() => ({}));
+      const policy = (payload && payload.data && payload.data.policy) ? payload.data.policy : ((payload && payload.policy) ? payload.policy : null);
+      activePolicySnapshot = (policy && typeof policy === "object") ? policy : null;
+    } catch (_) {
+      activePolicySnapshot = null;
+    }
+    syncPricingTransparency();
   }
 
   function normalizeVerifiedStatus(v) {
@@ -369,6 +471,7 @@
       syncPrivateConfigUi();
       syncVerifiedUi();
       setSelectedTags(exp.tags);
+      syncPricingTransparency();
 
       if (existingImageUrl) setPreview(existingImageUrl);
 
@@ -403,16 +506,26 @@
     privateEnabledInput.addEventListener("change", function () {
       hideNotice();
       syncPrivateConfigUi();
+      syncPricingTransparency();
     });
   }
   if (verifiedOptInInput) {
     verifiedOptInInput.addEventListener("change", function () {
       hideNotice();
       syncVerifiedUi();
+      syncPricingTransparency();
     });
   }
+  [priceInput, privatePriceInput, privateCapacityInput, privateIncludedGuestsInput, privateExtraGuestPriceInput].forEach(function (el) {
+    if (!el) return;
+    el.addEventListener("input", function () {
+      hideNotice();
+      syncPricingTransparency();
+    });
+  });
   syncPrivateConfigUi();
   syncVerifiedUi();
+  syncPricingTransparency();
 
   if (form) {
     form.addEventListener("submit", async function (e) {
@@ -569,6 +682,7 @@
           const updated = (vrPayload && vrPayload.experience) ? vrPayload.experience : vrPayload;
           currentVerifiedStatus = normalizeVerifiedStatus(updated && updated.verifiedStatus);
           syncVerifiedUi();
+          syncPricingTransparency();
         }
 
         showNotice("success", isEditing ? "Experience updated." : "Experience created.");
@@ -590,6 +704,8 @@
       return;
     }
     await loadEditMode();
+    await loadActivePolicySnapshot();
+    syncPricingTransparency();
     unmaskAuthGate();
   })().catch(function () {
     unmaskAuthGate();

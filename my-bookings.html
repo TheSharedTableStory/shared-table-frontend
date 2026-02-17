@@ -161,8 +161,51 @@
         </div>
     </div>
 
+    <div id="cancel-review-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+            <div class="p-6 border-b border-gray-100">
+                <h3 class="font-serif text-2xl font-bold text-gray-900">Review Cancellation</h3>
+                <p class="text-sm text-gray-500 mt-1">Refund estimate and policy reference before you cancel.</p>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="cancel-review-booking-id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                        <p class="text-[11px] uppercase tracking-wide text-slate-500">Policy Version</p>
+                        <p id="cancel-review-policy-version" class="text-sm font-bold text-slate-800">—</p>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                        <p class="text-[11px] uppercase tracking-wide text-slate-500">Refund State</p>
+                        <p id="cancel-review-refund-state" class="text-sm font-bold text-slate-800">—</p>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                        <p class="text-[11px] uppercase tracking-wide text-slate-500">Refund Base</p>
+                        <p id="cancel-review-refund-base" class="text-sm font-bold text-slate-800">—</p>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                        <p class="text-[11px] uppercase tracking-wide text-slate-500">Refund Percent</p>
+                        <p id="cancel-review-refund-percent" class="text-sm font-bold text-slate-800">—</p>
+                    </div>
+                </div>
+                <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                    <p class="text-[11px] uppercase tracking-wide text-emerald-700">Estimated Refund</p>
+                    <p id="cancel-review-refund-estimate" class="text-lg font-bold text-emerald-800">—</p>
+                </div>
+                <p id="cancel-review-note" class="text-xs text-slate-600">Cancellation may be blocked for terminal booking states.</p>
+            </div>
+            <div class="p-6 border-t border-gray-100 flex justify-end gap-3">
+                <button id="cancel-review-close-btn" type="button" class="px-4 py-2 text-gray-600 hover:bg-gray-100 font-medium rounded-lg transition">
+                    Keep Booking
+                </button>
+                <button id="cancel-review-confirm-btn" type="button" class="px-6 py-2 bg-red-600 text-white font-bold rounded-lg shadow-md hover:bg-red-700 transition">
+                    Cancel Booking
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="js/runtime-config.js?v=20260216"></script>
   <script src="js/common.js?v=20260216"></script>
-    <script src="js/my-bookings.js?v=20260217"></script>
+    <script src="js/my-bookings.js?v=20260218"></script>
 </body>
 </html>
