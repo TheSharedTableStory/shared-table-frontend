@@ -473,75 +473,172 @@ async function cancelBooking(id) {
 
 /* ====================== HOSTING DASHBOARD ====================== */
 
+function formatPriceLabel(priceRaw) {
+  const n = Number(priceRaw);
+  if (!Number.isFinite(n) || n < 0) return "Price TBA";
+  const rounded = Math.round(n * 100) / 100;
+  return "$" + (Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2)) + " per guest";
+}
+
+function getSessionUserId() {
+  return window.tstsGetSession({ force: true })
+    .then(function (sess) {
+      const u = (sess && sess.user) ? sess.user : {};
+      return String(u._id || u.id || "").trim();
+    })
+    .catch(function () { return ""; });
+}
+
+function renderHostListingsSection(listings, hostBookings) {
+  const El = window.tstsEl;
+  const wrap = El("section", { className: "space-y-4 mb-8" });
+  wrap.appendChild(El("h2", { className: "text-xl font-bold text-gray-900", textContent: "Your Listings" }));
+
+  const countByExperienceId = new Map();
+  (Array.isArray(hostBookings) ? hostBookings : []).forEach(function (b) {
+    const expId = String((b && (b.experienceId || (b.experience && b.experience._id))) || "").trim();
+    if (!expId) return;
+    countByExperienceId.set(expId, Number(countByExperienceId.get(expId) || 0) + 1);
+  });
+
+  (Array.isArray(listings) ? listings : []).forEach(function (exp) {
+    const expId = String((exp && (exp._id || exp.id)) || "").trim();
+    const bookingCount = Number(countByExperienceId.get(expId) || 0);
+    const verifiedStatus = String((exp && exp.verifiedStatus) || "").trim().toLowerCase();
+    const privateAllowed = !!(exp && exp.privateBookingAllowed);
+    const chips = [];
+    if (verifiedStatus === "verified") chips.push(El("span", { className: "px-2 py-1 text-xs font-bold rounded bg-blue-100 text-blue-700", textContent: "Verified" }));
+    else if (verifiedStatus === "pending") chips.push(El("span", { className: "px-2 py-1 text-xs font-bold rounded bg-amber-100 text-amber-700", textContent: "Verification pending" }));
+    if (privateAllowed) chips.push(El("span", { className: "px-2 py-1 text-xs font-bold rounded bg-slate-100 text-slate-700", textContent: "Private booking" }));
+
+    wrap.appendChild(
+      El("div", { className: "bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between gap-4" }, [
+        El("div", { className: "space-y-2" }, [
+          El("div", { className: "flex flex-wrap items-center gap-2" }, [
+            El("h3", { className: "font-bold text-lg text-gray-900", textContent: String((exp && exp.title) || "Untitled listing") })
+          ].concat(chips)),
+          El("p", { className: "text-sm text-gray-500", textContent: String((exp && exp.city) || "Location TBA") + " • " + formatPriceLabel(exp && exp.price) }),
+          El("p", { className: "text-xs text-gray-500", textContent: "Bookings received: " + bookingCount })
+        ]),
+        El("div", { className: "flex flex-wrap items-center gap-2" }, [
+          El("a", {
+            href: "host.html?edit=" + encodeURIComponent(expId),
+            className: "inline-flex items-center px-4 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg shadow hover:bg-black transition",
+            textContent: "Edit Listing"
+          }),
+          El("a", {
+            href: "experience.html?id=" + encodeURIComponent(expId),
+            className: "inline-flex items-center px-4 py-2 border border-gray-200 text-gray-700 text-sm font-bold rounded-lg hover:bg-gray-50 transition",
+            textContent: "View Public Page"
+          })
+        ])
+      ])
+    );
+  });
+
+  return wrap;
+}
+
+function renderHostBookingsSection(bookings) {
+  const El = window.tstsEl;
+  const wrap = El("section", { className: "space-y-4" });
+  wrap.appendChild(El("h2", { className: "text-xl font-bold text-gray-900", textContent: "Recent Booking Requests" }));
+
+  if (!Array.isArray(bookings) || bookings.length === 0) {
+    wrap.appendChild(
+      El("div", { className: "bg-white p-6 rounded-2xl border border-gray-100 text-gray-500", textContent: "No bookings yet. Your listing is live and ready." })
+    );
+    return wrap;
+  }
+
+  bookings.forEach(function(b) {
+    const dt = safeDate(b.bookingDate || b.experienceDate || b.createdAt);
+    const month = dt ? dt.toLocaleString("default", { month: "short" }) : "--";
+    const day = dt ? dt.getDate() : "--";
+
+    const exp = b.experience || {};
+    const title = exp.title || b.title || "Listing";
+
+    const guest = b.guestId || b.user || {};
+    const guestName = guest.name || b.guestName || "Unknown Guest";
+    const pax = b.guests || b.numGuests || b.guestCount || "-";
+    const paid = b.amountTotal || (b.pricing && b.pricing.totalPrice) || "";
+
+    var viewBtn = El("button", {
+      className: "w-full md:w-auto bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition whitespace-nowrap",
+      "data-action": "guest", "data-booking-id": b._id || "", textContent: "View Details"
+    });
+
+    var card = El("div", { className: "bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 mb-4" }, [
+      El("div", { className: "flex items-center gap-4 w-full" }, [
+        El("div", { className: "bg-orange-50 text-orange-600 w-16 h-16 rounded-xl flex flex-col items-center justify-center border border-orange-100 flex-shrink-0" }, [
+          El("span", { className: "text-xs font-bold uppercase", textContent: month }),
+          El("span", { className: "text-xl font-bold", textContent: String(day) })
+        ]),
+        El("div", {}, [
+          El("h3", { className: "font-bold text-lg text-gray-900", textContent: title }),
+          El("p", { className: "text-sm text-gray-500" }, ["Guest: ", El("span", { className: "font-bold text-gray-700", textContent: guestName })]),
+          El("div", { className: "flex gap-4 text-xs text-gray-400 mt-1" }, [
+            El("span", { textContent: "Paid: " + (paid !== "" ? "$" + paid : "—") }),
+            El("span", { textContent: "•" }),
+            El("span", { textContent: pax + " Pax" })
+          ])
+        ])
+      ]),
+      viewBtn
+    ]);
+    wrap.appendChild(card);
+  });
+
+  return wrap;
+}
+
 async function loadHost() {
   if (!(await requireAuthOrRedirect())) return;
   setLoading();
 
   try {
-    const res = await window.authFetch("/api/bookings/host-bookings");
-    const bookings = await res.json().catch(() => null);
-
-    if (!res.ok) {
-      setError((bookings && bookings.message) || "Failed to load hosting data.");
+    const hostId = await getSessionUserId();
+    if (!hostId) {
+      setError("Unable to load hosting profile.");
       return;
     }
 
-    if (!Array.isArray(bookings) || bookings.length === 0) {
+    const [bookingsRes, listingsRes] = await Promise.all([
+      window.authFetch("/api/bookings/host-bookings"),
+      window.authFetch("/api/experiences?hostId=" + encodeURIComponent(hostId) + "&limit=200", { method: "GET" })
+    ]);
+
+    const bookings = await bookingsRes.json().catch(() => []);
+    const listings = await listingsRes.json().catch(() => []);
+
+    if (!bookingsRes.ok && !listingsRes.ok) {
+      const msg = (bookings && bookings.message) || (listings && listings.message) || "Failed to load hosting data.";
+      setError(msg);
+      return;
+    }
+
+    hostBookingsCache = Array.isArray(bookings) ? bookings : [];
+    const listingRows = Array.isArray(listings) ? listings : [];
+
+    if (listingRows.length === 0 && hostBookingsCache.length === 0) {
       const El = window.tstsEl;
       contentEl.textContent = "";
       contentEl.appendChild(
         El("div", { className: "text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm" }, [
           El("div", { className: "text-5xl mb-4", textContent: "🍳" }),
-          El("h3", { className: "text-xl font-bold text-gray-900 mb-2", textContent: "No bookings received" }),
-          El("p", { className: "text-gray-500 mb-6", textContent: "Your listings are quiet for now." }),
-          El("a", { href: "host.html", className: "inline-block bg-gray-900 text-white px-8 py-3 rounded-full font-bold shadow hover:bg-black transition", textContent: "Manage Listings" })
+          El("h3", { className: "text-xl font-bold text-gray-900 mb-2", textContent: "No listings yet" }),
+          El("p", { className: "text-gray-500 mb-6", textContent: "Create your first experience and it will appear here for editing." }),
+          El("a", { href: "host.html", className: "inline-block bg-gray-900 text-white px-8 py-3 rounded-full font-bold shadow hover:bg-black transition", textContent: "Create Listing" })
         ])
       );
       return;
     }
 
-    hostBookingsCache = bookings;
-
     const El = window.tstsEl;
     contentEl.textContent = "";
-    bookings.forEach(function(b) {
-      const dt = safeDate(b.bookingDate || b.experienceDate || b.createdAt);
-      const month = dt ? dt.toLocaleString("default", { month: "short" }) : "--";
-      const day = dt ? dt.getDate() : "--";
-
-      const exp = b.experience || {};
-      const title = exp.title || b.title || "Listing";
-
-      const guest = b.guestId || b.user || {};
-      const guestName = guest.name || b.guestName || "Unknown Guest";
-      const pax = b.guests || b.numGuests || b.guestCount || "-";
-      const paid = b.amountTotal || (b.pricing && b.pricing.totalPrice) || "";
-
-      var viewBtn = El("button", {
-        className: "w-full md:w-auto bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition whitespace-nowrap",
-        "data-action": "guest", "data-booking-id": b._id || "", textContent: "View Details"
-      });
-
-      var card = El("div", { className: "bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 mb-4" }, [
-        El("div", { className: "flex items-center gap-4 w-full" }, [
-          El("div", { className: "bg-orange-50 text-orange-600 w-16 h-16 rounded-xl flex flex-col items-center justify-center border border-orange-100 flex-shrink-0" }, [
-            El("span", { className: "text-xs font-bold uppercase", textContent: month }),
-            El("span", { className: "text-xl font-bold", textContent: String(day) })
-          ]),
-          El("div", {}, [
-            El("h3", { className: "font-bold text-lg text-gray-900", textContent: title }),
-            El("p", { className: "text-sm text-gray-500" }, ["Guest: ", El("span", { className: "font-bold text-gray-700", textContent: guestName })]),
-            El("div", { className: "flex gap-4 text-xs text-gray-400 mt-1" }, [
-              El("span", { textContent: "Paid: " + (paid !== "" ? "$" + paid : "—") }),
-              El("span", { textContent: "•" }),
-              El("span", { textContent: pax + " Pax" })
-            ])
-          ])
-        ]),
-        viewBtn
-      ]);
-      contentEl.appendChild(card);
-    });
+    if (listingRows.length > 0) contentEl.appendChild(renderHostListingsSection(listingRows, hostBookingsCache));
+    contentEl.appendChild(renderHostBookingsSection(hostBookingsCache));
   } catch (_) {
     setError("Failed to load hosting data.");
   }

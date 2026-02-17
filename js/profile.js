@@ -12,6 +12,7 @@
   const profilePicPreview = document.getElementById("profile-pic-preview");
   const uploadBtn = document.getElementById("upload-btn");
   const uploadStatus = document.getElementById("upload-status");
+  let previewObjectUrl = "";
 
   function redirectToLogin() {
     const returnTo = encodeURIComponent(location.pathname + location.search);
@@ -41,6 +42,13 @@
     try {
       const img = document.getElementById("nav-user-pic");
       if (img && url) window.tstsSafeImg(img, url, "/assets/avatar-default.svg");
+    } catch (_) {}
+  }
+
+  function releasePreviewUrl() {
+    try {
+      if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+      previewObjectUrl = "";
     } catch (_) {}
   }
 
@@ -91,31 +99,69 @@
   }
 
   async function uploadImage(file) {
-    if (!CLOUDINARY_URL) throw new Error("upload_not_configured");
-    const sig = await getSignature();
+    const directUpload = async () => {
+      if (!CLOUDINARY_URL) throw new Error("upload_not_configured");
+      const sig = await getSignature();
+      return await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", CLOUDINARY_URL, true);
+        xhr.onload = () => {
+          try {
+            const r = JSON.parse(xhr.responseText || "{}");
+            const url = r.secure_url || r.url || "";
+            if (!url) return reject(new Error("upload_no_url"));
+            resolve(url);
+          } catch (_) {
+            reject(new Error("upload_parse_error"));
+          }
+        };
+        xhr.onerror = () => reject(new Error("upload_network_error"));
 
-    return await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", CLOUDINARY_URL, true);
-      xhr.onload = () => {
-        try {
-          const r = JSON.parse(xhr.responseText || "{}");
-          const url = r.secure_url || r.url || "";
-          if (!url) return reject(new Error("upload_no_url"));
-          resolve(url);
-        } catch (e) {
-          reject(new Error("upload_parse_error"));
-        }
-      };
-      xhr.onerror = () => reject(new Error("upload_network_error"));
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("timestamp", String(sig.timestamp));
+        fd.append("signature", String(sig.signature));
+        fd.append("api_key", String(sig.apiKey));
+        fd.append("folder", String(sig.folder));
+        xhr.send(fd);
+      });
+    };
 
+    const backendUpload = async () => {
       const fd = new FormData();
-      fd.append("file", file);
-      fd.append("timestamp", String(sig.timestamp));
-      fd.append("signature", String(sig.signature));
-      fd.append("api_key", String(sig.apiKey));
-      fd.append("folder", String(sig.folder));
-      xhr.send(fd);
+      fd.append("photos", file);
+      const res = await window.authFetch("/api/upload", { method: "POST", body: fd });
+      if (handleUnauthorized(res)) throw new Error("unauthorized");
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((out && out.message) ? out.message : "upload_failed");
+      const images = (out && Array.isArray(out.images)) ? out.images : [];
+      const url = String(images[0] || "");
+      if (!url) throw new Error("upload_no_url");
+      return url;
+    };
+
+    try {
+      return await directUpload();
+    } catch (_) {
+      return await backendUpload();
+    }
+  }
+
+  if (profilePicInput) {
+    profilePicInput.addEventListener("change", function () {
+      const f = profilePicInput.files && profilePicInput.files[0];
+      if (!f) {
+        if (uploadBtn) uploadBtn.classList.add("hidden");
+        setUploadStatus("info", "");
+        return;
+      }
+      releasePreviewUrl();
+      try {
+        previewObjectUrl = URL.createObjectURL(f);
+        if (profilePicPreview) window.tstsSafeImg(profilePicPreview, previewObjectUrl, "/assets/avatar-default.svg");
+      } catch (_) {}
+      if (uploadBtn) uploadBtn.classList.remove("hidden");
+      setUploadStatus("info", "Ready to upload.");
     });
   }
 
@@ -157,6 +203,9 @@
 
         if (profilePicPreview) window.tstsSafeImg(profilePicPreview, secureUrl, "/assets/avatar-default.svg");
         syncNavAvatar(secureUrl);
+        if (profilePicInput) profilePicInput.value = "";
+        if (uploadBtn) uploadBtn.classList.add("hidden");
+        releasePreviewUrl();
 
         const prev = getStoredUser();
         prev.profilePic = secureUrl;
