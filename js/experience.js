@@ -46,6 +46,26 @@
     window.tstsSafeImg(el, url, fallback);
   }
 
+  function normalizeHostName(expLike) {
+    const expObj = expLike || {};
+    const fromTop = String(expObj.hostName || "").trim();
+    if (fromTop) return fromTop;
+    const hostObj = (expObj.host && typeof expObj.host === "object") ? expObj.host : {};
+    const fromNested = String(hostObj.name || "").trim();
+    if (fromNested) return fromNested;
+    return "";
+  }
+
+  function normalizeHostPic(expLike) {
+    const expObj = expLike || {};
+    const fromTop = String(expObj.hostPic || "").trim();
+    if (fromTop) return fromTop;
+    const hostObj = (expObj.host && typeof expObj.host === "object") ? expObj.host : {};
+    const fromNested = String(hostObj.avatar || hostObj.profilePic || "").trim();
+    if (fromNested) return fromNested;
+    return "";
+  }
+
   function show(id) {
     const el = document.getElementById(id);
     if (el) el.classList.remove("hidden");
@@ -359,8 +379,25 @@
       show("menu-section");
     }
 
-    setText("host-name", (exp.host && exp.host.name) ? exp.host.name : "Host");
-    setImg("host-pic", (exp.host && (exp.host.avatar || exp.host.profilePic)) ? (exp.host.avatar || exp.host.profilePic) : "");
+    let hostName = normalizeHostName(exp);
+    let hostPic = normalizeHostPic(exp);
+
+    // Backfill host display for legacy experiences that were saved without hostName/hostPic.
+    if ((!hostName || !hostPic) && /^[a-f0-9]{24}$/i.test(String(exp.hostId || "").trim())) {
+      try {
+        const profileRes = await af("/api/users/" + encodeURIComponent(String(exp.hostId || "")) + "/profile", { method: "GET" });
+        if (profileRes && profileRes.ok) {
+          const profile = await profileRes.json().catch(() => ({}));
+          if (!hostName) hostName = String((profile && profile.name) || "").trim();
+          if (!hostPic) hostPic = String((profile && profile.profilePic) || "").trim();
+        }
+      } catch (_) {
+        // Keep safe fallbacks below.
+      }
+    }
+
+    setText("host-name", hostName || "Host");
+    setImg("host-pic", hostPic || "");
 
     const verifiedState = normalizedVerifiedStatus(exp.verifiedStatus);
     if (verifiedBadgeEl) verifiedBadgeEl.classList.toggle("hidden", verifiedState !== "verified");
