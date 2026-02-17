@@ -39,17 +39,31 @@
     if (el) el.textContent = (val ?? "");
   }
 
-  function setImg(id, url) {
+  function setImg(id, url, fallbackOverride) {
     const el = document.getElementById(id);
     if (!el) return;
-    const fallback = "/assets/experience-default.jpg";
+    const fallback = String(fallbackOverride || "/assets/experience-default.jpg");
     window.tstsSafeImg(el, url, fallback);
   }
 
   function looksLikeEmail(v) {
     const s = String(v || "").trim();
     if (!s) return false;
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+    if (s.length > 254) return false;
+    if (/\s/.test(s)) return false;
+    const at = s.indexOf("@");
+    if (at <= 0 || at !== s.lastIndexOf("@")) return false;
+    const local = s.slice(0, at);
+    const domain = s.slice(at + 1);
+    if (!local || !domain) return false;
+    if (local.length > 64 || domain.length < 3 || domain.length > 253) return false;
+    if (domain.indexOf(".") < 1) return false;
+    if (domain.startsWith(".") || domain.endsWith(".") || domain.startsWith("-") || domain.endsWith("-")) return false;
+    const tld = domain.split(".").pop() || "";
+    if (!/^[a-z]{2,24}$/i.test(tld)) return false;
+    if (!/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+$/i.test(local)) return false;
+    if (!/^[a-z0-9.-]+$/i.test(domain)) return false;
+    return true;
   }
 
   function normalizeHostName(expLike) {
@@ -405,10 +419,11 @@
       }
     }
 
-    setText("host-name", hostName || "Host");
-    setImg("host-pic", hostPic || "");
-
     const verifiedState = normalizedVerifiedStatus(exp.verifiedStatus);
+    const hostFallbackName = (verifiedState === "verified") ? "Verified Host" : "Host";
+    setText("host-name", hostName || hostFallbackName);
+    setImg("host-pic", hostPic || "", "/assets/avatar-default.svg");
+
     if (verifiedBadgeEl) verifiedBadgeEl.classList.toggle("hidden", verifiedState !== "verified");
     if (verifiedPendingBadgeEl) verifiedPendingBadgeEl.classList.toggle("hidden", verifiedState !== "pending");
     if (verifiedFeeNoteEl) verifiedFeeNoteEl.classList.toggle("hidden", verifiedState !== "verified");

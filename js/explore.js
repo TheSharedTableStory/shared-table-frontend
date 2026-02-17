@@ -97,7 +97,21 @@ document.addEventListener("DOMContentLoaded", () => {
     function looksLikeEmailName(v) {
         const s = String(v || "").trim();
         if (!s) return false;
-        return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/i.test(s);
+        if (s.length > 254) return false;
+        if (/\s/.test(s)) return false;
+        const at = s.indexOf("@");
+        if (at <= 0 || at !== s.lastIndexOf("@")) return false;
+        const local = s.slice(0, at);
+        const domain = s.slice(at + 1);
+        if (!local || !domain) return false;
+        if (local.length > 64 || domain.length < 3 || domain.length > 253) return false;
+        if (domain.indexOf(".") < 1) return false;
+        if (domain.startsWith(".") || domain.endsWith(".") || domain.startsWith("-") || domain.endsWith("-")) return false;
+        const tld = domain.split(".").pop() || "";
+        if (!/^[a-z]{2,24}$/i.test(tld)) return false;
+        if (!/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+$/i.test(local)) return false;
+        if (!/^[a-z0-9.-]+$/i.test(domain)) return false;
+        return true;
     }
 
     function isStarterTitle(raw) {
@@ -536,7 +550,9 @@ document.addEventListener("DOMContentLoaded", () => {
             var markerIcon = El("i", { className: "fas fa-map-marker-alt text-orange-500" });
             var starIcon = El("i", { className: "fas fa-star" });
             var hostDisplayName = String(exp.hostName || "").trim();
-            if (!hostDisplayName || looksLikeEmailName(hostDisplayName)) hostDisplayName = "Local Host";
+            if (!hostDisplayName || looksLikeEmailName(hostDisplayName)) {
+                hostDisplayName = (verifiedState === "verified") ? "Verified Host" : "Host";
+            }
 
             var card = El("a", { href: "experience.html?id=" + encodeURIComponent(exp._id || ""), className: "group block bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col" }, [
                 imageContainer,
