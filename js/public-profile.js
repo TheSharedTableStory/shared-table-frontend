@@ -18,6 +18,7 @@ const hostBioEl = document.getElementById('host-bio');
 const hostBadgeEl = document.getElementById('host-badge');
 const gridEl = document.getElementById('experiences-grid');
 const noExpEl = document.getElementById('no-experiences');
+const reportUserLinkEl = document.getElementById('report-user-link');
 
 // Review Elements
 const reviewsContainer = document.getElementById('reviews-container');
@@ -27,6 +28,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!userId) {
         showError();
         return;
+    }
+
+    if (reportUserLinkEl) {
+        reportUserLinkEl.href = "report.html?targetType=user&targetId=" + encodeURIComponent(userId);
     }
 
     try {
@@ -128,6 +133,7 @@ function createExperienceCard(exp) {
     (exp.tags || []).slice(0, 2).forEach(function(tag) {
         tagsContainer.appendChild(El('span', { className: 'px-2 py-1 bg-black/60 text-white text-[10px] uppercase font-bold rounded', textContent: tag }));
     });
+    var visibilityChip = El('span', { className: 'absolute top-3 left-3 inline-flex items-center rounded-full bg-blue-100/90 text-blue-700 px-2 py-1 text-[10px] font-bold', textContent: 'Visible to: Public' });
 
     var markerIcon = El('i', { className: 'fas fa-map-marker-alt text-orange-500' });
     var starIcon = El('i', { className: 'fas fa-star' });
@@ -135,6 +141,7 @@ function createExperienceCard(exp) {
     var card = El('a', { href: 'experience.html?id=' + encodeURIComponent(safeId), className: 'group block bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col' }, [
         El('div', { className: 'relative h-48 w-full overflow-hidden bg-gray-100' }, [
             imgEl,
+            visibilityChip,
             El('div', { className: 'absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold shadow-sm', textContent: '$' + (exp.price || '') }),
             tagsContainer
         ]),

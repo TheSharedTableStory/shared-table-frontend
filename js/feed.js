@@ -50,6 +50,7 @@
     var titleLink = El("a", { href: "experience.html?id=" + encodeURIComponent(expId), className: "font-bold text-gray-900 hover:text-orange-600 transition", textContent: title });
     var whenEl = El("div", { className: "text-xs text-gray-500 mt-1", textContent: when ? ("Booked: " + when) : "" });
     var cityEl = El("div", { className: "text-xs text-gray-500", textContent: exp.city || "" });
+    var visibilityChip = El("span", { className: "inline-flex items-center rounded-full bg-violet-100 text-violet-700 px-2 py-0.5 text-[11px] font-bold", textContent: "Visible to: Connections" });
     var guestNameEl = El("div", { className: "text-sm font-bold text-gray-900 truncate", textContent: guestName });
     var handleEl = El("div", { className: "text-xs text-gray-500 truncate", textContent: handle });
 
@@ -59,7 +60,7 @@
         El("div", { className: "flex-1 p-5" }, [
           El("div", { className: "flex items-start justify-between gap-4" }, [
             El("div", {}, [titleLink, whenEl]),
-            cityEl
+            El("div", { className: "text-right flex flex-col items-end gap-2" }, [cityEl, visibilityChip])
           ]),
           El("div", { className: "mt-4 flex items-center justify-between gap-4" }, [
             El("a", { href: "public-profile.html?id=" + encodeURIComponent(guestId), className: "flex items-center gap-3 min-w-0" }, [

@@ -322,6 +322,7 @@
   const likeBtn = document.getElementById("like-btn");
   const likeIcon = document.getElementById("like-icon");
   const likeCountEl = document.getElementById("like-count");
+  const reportExperienceBtn = document.getElementById("report-experience-btn");
 
   const similarSection = document.getElementById("similar-section");
   const similarGrid = document.getElementById("similar-grid");
@@ -380,6 +381,10 @@
     if (!exp) {
       showNotFound("This experience could not be loaded.");
       return;
+    }
+    if (reportExperienceBtn) {
+      const reportId = String((exp && (exp._id || exp.id)) || experienceId || "").trim();
+      reportExperienceBtn.href = "report.html?targetType=experience&targetId=" + encodeURIComponent(reportId);
     }
 
     setText("exp-title", publicTitle(exp.title || ""));

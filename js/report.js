@@ -14,7 +14,8 @@
       const sess = await window.tstsGetSession({ force: true });
       if (sess && sess.ok && sess.user) return true;
     } catch (_) {}
-    const returnTo = encodeURIComponent("report.html");
+    const returnTarget = String((location.pathname || "report.html") + (location.search || "")).replace(/^\//, "");
+    const returnTo = encodeURIComponent(returnTarget || "report.html");
     location.href = "login.html?returnTo=" + returnTo;
     return false;
   }

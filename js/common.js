@@ -838,6 +838,10 @@ document.addEventListener("DOMContentLoaded", () => {
   injectFooter();
   applyAuthStateToNav();
   initMobileMenu();
+  setTimeout(function () {
+    initGlobalStatusBanner().catch(() => {});
+  }, 900);
+  hydrateFooterPolicyMeta().catch(() => {});
 });
 
 // 1) NAVBAR (single truth) - DOM-safe construction
@@ -909,16 +913,152 @@ function injectFooter() {
       tstsEl("li", {}, [tstsEl("a", { href: "terms.html", className: "hover:text-white transition" }, "Terms of Service")]),
       tstsEl("li", {}, [tstsEl("a", { href: "privacy.html", className: "hover:text-white transition" }, "Privacy Policy")]),
       tstsEl("li", {}, [tstsEl("a", { href: "policy.html", className: "hover:text-white transition" }, "Cancellation Policy")]),
+      tstsEl("li", {}, [tstsEl("a", { href: "settings-data.html", className: "hover:text-white transition" }, "Data & Privacy")]),
       tstsEl("li", {}, [tstsEl("a", { href: "report.html", className: "hover:text-white transition" }, "Report an Issue")])
     ])
   ]);
 
   const grid = tstsEl("div", { className: "container mx-auto px-4 grid md:grid-cols-3 gap-8" }, [col1, col2, col3]);
   const companyInfo = tstsEl("p", { className: "text-gray-500 text-sm" }, "The Shared Table Story PTY LTD | 24 Balance Pl, Birtinya QLD 4575");
+  const policyMeta = tstsEl("p", { id: "footer-policy-version", className: "text-gray-500 text-xs" }, "Policy metadata unavailable.");
   const copyrightText = "© " + new Date().getFullYear() + " The Shared Table Story. All rights reserved.";
-  const copyright = tstsEl("div", { className: "border-t border-gray-800 mt-12 pt-8 text-center text-gray-500 text-sm space-y-2" }, [tstsEl("p", {}, copyrightText), companyInfo]);
+  const copyright = tstsEl("div", { className: "border-t border-gray-800 mt-12 pt-8 text-center text-gray-500 text-sm space-y-2" }, [tstsEl("p", {}, copyrightText), companyInfo, policyMeta]);
   const footer = tstsEl("footer", { className: "bg-gray-900 text-white py-12 mt-auto" }, [grid, copyright]);
   root.appendChild(footer);
+}
+
+function formatPolicyDate(v) {
+  if (!v) return "";
+  try {
+    if (window.tstsFormatDateShort) return window.tstsFormatDateShort(v);
+  } catch (_) {}
+  try {
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  } catch (_) {
+    return "";
+  }
+}
+
+function shouldSkipGlobalMetaFetch() {
+  var path = "";
+  try { path = String(location.pathname || "").toLowerCase(); } catch (_) {}
+  var file = path.split("/").pop() || "";
+  var protectedPages = {
+    "admin.html": true,
+    "bookmarks.html": true,
+    "connections.html": true,
+    "feed.html": true,
+    "host.html": true,
+    "my-bookings.html": true,
+    "profile.html": true,
+    "report.html": true,
+    "settings-data.html": true
+  };
+  if (!protectedPages[file]) return false;
+
+  var hasUserHint = false;
+  try { hasUserHint = !!localStorage.getItem("tsts_user"); } catch (_) { hasUserHint = false; }
+  return !hasUserHint;
+}
+
+async function resolveSystemStatus() {
+  // Probe a CORS-safe API route through authFetch. Do not call /health directly
+  // because /health is defined before CORS middleware in backend server.js.
+  try {
+    if (shouldSkipGlobalMetaFetch()) return { level: "normal", label: "Normal", message: "" };
+
+    if (!window.authFetch) {
+      return {
+        level: "outage",
+        label: "Outage",
+        message: "We cannot reach platform services right now. Please retry shortly."
+      };
+    }
+
+    const res = await window.authFetch("/api/policy/active", { method: "GET" });
+    if (!res) {
+      return {
+        level: "outage",
+        label: "Outage",
+        message: "We cannot reach platform services right now. Please retry shortly."
+      };
+    }
+
+    // Any reachable non-5xx response means platform is reachable.
+    if (res.status < 500) return { level: "normal", label: "Normal", message: "" };
+
+    return {
+      level: "degraded",
+      label: "Degraded",
+      message: "Core systems are responding slowly. Actions may take longer than usual."
+    };
+  } catch (_) {
+    return {
+      level: "outage",
+      label: "Outage",
+      message: "We cannot reach platform services right now. Please retry shortly."
+    };
+  }
+}
+
+async function initGlobalStatusBanner() {
+  const root = document.getElementById("navbar-placeholder");
+  if (!root) return;
+
+  const existing = document.getElementById("tsts-system-status-banner");
+  if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+  const status = await resolveSystemStatus();
+  if (!status || status.level === "normal") return;
+
+  const isDegraded = status.level === "degraded";
+  const badgeClass = isDegraded
+    ? "bg-amber-100 text-amber-800 border-amber-200"
+    : "bg-red-100 text-red-800 border-red-200";
+  const rowClass = isDegraded
+    ? "bg-amber-50 border-b border-amber-200 text-amber-900"
+    : "bg-red-50 border-b border-red-200 text-red-900";
+
+  const banner = tstsEl("div", { id: "tsts-system-status-banner", className: rowClass }, [
+    tstsEl("div", { className: "container mx-auto px-4 py-2.5 text-xs sm:text-sm flex flex-wrap items-center gap-2" }, [
+      tstsEl("span", { className: "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold border " + badgeClass, textContent: status.label }),
+      tstsEl("span", { className: "font-medium", textContent: String(status.message || "") })
+    ])
+  ]);
+
+  root.appendChild(banner);
+}
+
+async function hydrateFooterPolicyMeta() {
+  const line = document.getElementById("footer-policy-version");
+  if (!line || !window.authFetch) return;
+  if (shouldSkipGlobalMetaFetch()) {
+    line.textContent = "Policy metadata unavailable.";
+    return;
+  }
+
+  try {
+    const res = await window.authFetch("/api/policy/active", { method: "GET" });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok || !payload || payload.ok !== true) {
+      line.textContent = "Policy metadata unavailable.";
+      return;
+    }
+    const policy = (payload.data && payload.data.policy) ? payload.data.policy : (payload.policy || {});
+    const version = String((policy && policy.version) || "").trim();
+    const effective = formatPolicyDate(policy && policy.effectiveFrom);
+    if (!version) {
+      line.textContent = "Policy metadata unavailable.";
+      return;
+    }
+    line.textContent = effective
+      ? ("Policy: " + version + " • Effective: " + effective)
+      : ("Policy: " + version);
+  } catch (_) {
+    line.textContent = "Policy metadata unavailable.";
+  }
 }
 
 // 3) AUTH STATE IN NAV - DOM-safe construction
@@ -949,7 +1089,8 @@ async function applyAuthStateToNav() {
       { href: "my-bookings.html", text: "Dashboard" },
       { href: "profile.html", text: "My Profile" },
       { href: "bookmarks.html", text: "Bookmarks" },
-      { href: "connections.html", text: "Connections" }
+      { href: "connections.html", text: "Connections" },
+      { href: "settings-data.html", text: "Data & Privacy" }
     ];
     const dropdownItems = menuLinks.map(function(lnk) {
       return tstsEl("a", { href: lnk.href, className: "block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition" }, lnk.text);
@@ -972,7 +1113,8 @@ async function applyAuthStateToNav() {
     mobileAuth.textContent = "";
     const mobileLinks = [
       { href: "my-bookings.html", text: "Dashboard" },
-      { href: "profile.html", text: "My Profile" }
+      { href: "profile.html", text: "My Profile" },
+      { href: "settings-data.html", text: "Data & Privacy" }
     ];
     mobileLinks.forEach(function(lnk) {
       mobileAuth.appendChild(tstsEl("a", { href: lnk.href, className: "block text-gray-700 hover:text-orange-600 font-medium py-2" }, lnk.text));

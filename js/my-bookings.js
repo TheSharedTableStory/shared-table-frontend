@@ -21,6 +21,7 @@ const complaintStatus = document.getElementById("complaint-status");
 const complaintSubmitBtn = document.getElementById("complaint-submit-btn");
 const cancelReviewBookingIdInput = document.getElementById("cancel-review-booking-id");
 const cancelReviewPolicyVersionEl = document.getElementById("cancel-review-policy-version");
+const cancelReviewPolicyEffectiveEl = document.getElementById("cancel-review-policy-effective");
 const cancelReviewRefundStateEl = document.getElementById("cancel-review-refund-state");
 const cancelReviewRefundBaseEl = document.getElementById("cancel-review-refund-base");
 const cancelReviewRefundPercentEl = document.getElementById("cancel-review-refund-percent");
@@ -132,6 +133,52 @@ function bookingPolicyVersion(booking) {
   );
 }
 
+function bookingPolicyEffectiveRaw(booking) {
+  return (
+    (booking && booking.policyEffectiveFrom) ||
+    (booking && booking.policySnapshot && booking.policySnapshot.effectiveFrom) ||
+    (activePolicySnapshot && activePolicySnapshot.effectiveFrom) ||
+    ""
+  );
+}
+
+function formatPolicyEffective(booking) {
+  const raw = bookingPolicyEffectiveRaw(booking);
+  if (!raw) return "";
+  try {
+    if (window.tstsFormatDateShort) return window.tstsFormatDateShort(raw);
+  } catch (_) {}
+  const dt = safeDate(raw);
+  if (!dt) return "";
+  try {
+    return dt.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  } catch (_) {
+    return dt.toDateString();
+  }
+}
+
+function bookingVisibilityState(booking) {
+  const direct = normalizeState(booking && (booking.visibilityState || booking.visibility));
+  if (direct === "public") return "public";
+  if (direct === "connections" || direct === "friends" || direct === "connections_only") return "connections";
+  if (direct === "private") return "private";
+  return (booking && booking.visibilityToFriends === true) ? "connections" : "private";
+}
+
+function bookingVisibilityLabel(visibilityState) {
+  const s = normalizeState(visibilityState);
+  if (s === "public") return "Public";
+  if (s === "connections") return "Connections";
+  return "Private";
+}
+
+function bookingVisibilityChipClass(visibilityState) {
+  const s = normalizeState(visibilityState);
+  if (s === "public") return "bg-blue-100 text-blue-700";
+  if (s === "connections") return "bg-violet-100 text-violet-700";
+  return "bg-slate-100 text-slate-700";
+}
+
 function resolveBookingStartAt(booking) {
   const b = booking || {};
   const direct = safeDate(b.startAt || b.experienceStartAt || b.experienceDateTime);
@@ -240,6 +287,7 @@ function buildCancelPreview(booking) {
   return {
     canCancel,
     policyVersion: bookingPolicyVersion(b) || "Unavailable",
+    policyEffectiveDate: formatPolicyEffective(b) || "Unavailable",
     state: state,
     baseCents: baseCents,
     refundPct: refundPct,
@@ -356,11 +404,24 @@ function renderTripCard(booking) {
   const guests = booking.guests || booking.numGuests || booking.guestCount || 1;
   const city = exp.city || booking.city || "Location TBA";
   const policyVersion = bookingPolicyVersion(booking) || "Unavailable";
+  const policyEffective = formatPolicyEffective(booking) || "Unavailable";
   const refundDecision = booking && booking.refundDecision ? booking.refundDecision : {};
   const refundState = stateLabel(refundDecision.status || "none");
   const refundCents = Number(refundDecision.amountCents);
   const refundAmountText = Number.isFinite(refundCents) && refundCents > 0 ? (" • " + centsToMoney(refundCents)) : "";
   const payoutState = stateLabel((booking && booking.payoutStatus) || "none");
+  const visibilityState = bookingVisibilityState(booking);
+  const visibilityLabel = bookingVisibilityLabel(visibilityState);
+  const visibilityClass = bookingVisibilityChipClass(visibilityState);
+  const canToggleVisibility = !isCancelled;
+  const nextVisibilityToFriends = visibilityState !== "connections";
+  const visibilityToggleBtn = canToggleVisibility ? El("button", {
+    className: "w-full md:w-auto px-5 py-2 border border-violet-200 text-violet-700 text-sm font-bold rounded-lg hover:bg-violet-50 transition",
+    "data-action": "toggle-visibility",
+    "data-booking-id": bookingId,
+    "data-to-friends": nextVisibilityToFriends ? "true" : "false",
+    textContent: nextVisibilityToFriends ? "Share to Connections" : "Set Private"
+  }) : null;
 
   var statusBadge, actionArea, actionNote = null;
 
@@ -393,16 +454,21 @@ function renderTripCard(booking) {
     } else if (complaintId) {
       actionNote = El("p", { className: "text-xs text-gray-500 md:text-right", textContent: "Issue already reported for this booking." });
     }
+    if (visibilityToggleBtn) nodes.push(visibilityToggleBtn);
     actionArea = El("div", { className: "w-full md:w-auto flex flex-col gap-2 md:items-end" }, nodes);
   } else if (isPast) {
     statusBadge = El("span", { className: "px-2 py-1 text-xs font-bold rounded bg-blue-100 text-blue-700", textContent: "AWAITING COMPLETION" });
-    actionArea = El("span", { className: "text-sm text-gray-500 italic", textContent: "Completion is being finalized." });
+    const nodes = [El("span", { className: "text-sm text-gray-500 italic", textContent: "Completion is being finalized." })];
+    if (visibilityToggleBtn) nodes.push(visibilityToggleBtn);
+    actionArea = El("div", { className: "w-full md:w-auto flex flex-col gap-2 md:items-end" }, nodes);
   } else {
     statusBadge = El("span", { className: "px-2 py-1 text-xs font-bold rounded bg-green-100 text-green-700", textContent: "CONFIRMED" });
-    actionArea = El("button", {
+    const nodes = [El("button", {
       className: "w-full md:w-auto px-5 py-2 border border-red-200 text-red-600 text-sm font-bold rounded-lg hover:bg-red-50 transition",
       "data-action": "cancel", "data-booking-id": bookingId, textContent: "Cancel Booking"
-    });
+    })];
+    if (visibilityToggleBtn) nodes.push(visibilityToggleBtn);
+    actionArea = El("div", { className: "w-full md:w-auto flex flex-col gap-2 md:items-end" }, nodes);
   }
 
   var imgEl = El("img", { className: "w-full h-full object-cover", alt: "Experience" });
@@ -420,8 +486,13 @@ function renderTripCard(booking) {
           El("span", { className: "flex items-center gap-2" }, [El("i", { className: "far fa-calendar w-4" }), " " + dateStr]),
           El("span", { className: "flex items-center gap-2" }, [El("i", { className: "fas fa-user-friends w-4" }), " " + guests + " Guests"]),
           El("span", { className: "flex items-center gap-2" }, [El("i", { className: "fas fa-map-marker-alt w-4" }), " " + city]),
-          El("span", { className: "flex items-center gap-2 text-xs text-slate-500" }, [El("i", { className: "fas fa-file-contract w-4" }), " Policy: " + policyVersion]),
-          El("span", { className: "flex items-center gap-2 text-xs text-slate-500" }, [El("i", { className: "fas fa-receipt w-4" }), " Refund: " + refundState + refundAmountText + " • Payout: " + payoutState])
+          El("span", { className: "flex items-center gap-2 text-xs text-slate-500" }, [El("i", { className: "fas fa-file-contract w-4" }), " Policy: " + policyVersion + " • Effective: " + policyEffective]),
+          El("span", { className: "flex items-center gap-2 text-xs text-slate-500" }, [El("i", { className: "fas fa-receipt w-4" }), " Refund: " + refundState + refundAmountText + " • Payout: " + payoutState]),
+          El("span", { className: "flex items-center gap-2 text-xs text-slate-500" }, [
+            El("i", { className: "fas fa-eye w-4" }),
+            " Visible to:",
+            El("span", { className: "px-2 py-0.5 rounded-full text-[11px] font-bold " + visibilityClass, textContent: visibilityLabel })
+          ])
         ])
       ]),
       El("div", { className: "mt-4 md:mt-0 pt-4 md:pt-0 flex flex-col gap-2 items-stretch md:items-end" }, [
@@ -526,6 +597,7 @@ function openCancelReviewModalById(bookingId) {
 
   if (cancelReviewBookingIdInput) cancelReviewBookingIdInput.value = String(bookingId || "");
   if (cancelReviewPolicyVersionEl) cancelReviewPolicyVersionEl.textContent = preview.policyVersion || "Unavailable";
+  if (cancelReviewPolicyEffectiveEl) cancelReviewPolicyEffectiveEl.textContent = preview.policyEffectiveDate || "Unavailable";
   if (cancelReviewRefundStateEl) cancelReviewRefundStateEl.textContent = stateLabel(preview.state);
   if (cancelReviewRefundBaseEl) cancelReviewRefundBaseEl.textContent = centsToMoney(preview.baseCents);
   if (cancelReviewRefundPercentEl) cancelReviewRefundPercentEl.textContent = preview.refundPct.toFixed(0) + "%";
@@ -717,6 +789,29 @@ async function cancelBooking(id, skipInlineConfirm) {
   }
 }
 
+async function updateBookingVisibility(id, toFriends) {
+  const bookingId = String(id || "").trim();
+  if (!bookingId) return;
+  if (!(await requireAuthOrRedirect())) return;
+
+  try {
+    const res = await window.authFetch("/api/bookings/" + encodeURIComponent(bookingId) + "/visibility", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ toFriends: !!toFriends })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      window.tstsNotify((data && data.message) ? data.message : "Could not update visibility.", "error");
+      return;
+    }
+    window.tstsNotify(toFriends ? "Booking shared with your connections." : "Booking visibility set to private.", "success");
+    await loadTrips();
+  } catch (_) {
+    window.tstsNotify("Could not update visibility.", "error");
+  }
+}
+
 /* ====================== HOSTING DASHBOARD ====================== */
 
 function formatPriceLabel(priceRaw) {
@@ -810,6 +905,7 @@ function renderHostBookingsSection(bookings) {
     const pax = b.guests || b.numGuests || b.guestCount || "-";
     const paid = b.amountTotal || (b.pricing && b.pricing.totalPrice) || "";
     const policyVersion = bookingPolicyVersion(b) || "Unavailable";
+    const policyEffective = formatPolicyEffective(b) || "Unavailable";
     const refundState = stateLabel(b && b.refundDecision && b.refundDecision.status);
     const payoutState = stateLabel(b && b.payoutStatus);
     const paymentState = stateLabel(b && b.paymentStatus);
@@ -850,7 +946,7 @@ function renderHostBookingsSection(bookings) {
             disputeActive ? El("span", { className: "px-2 py-1 text-[11px] font-bold rounded bg-red-100 text-red-700", textContent: "Dispute Active" }) : El("span", { className: "hidden", textContent: "" })
           ]),
           El("div", { className: "text-xs text-slate-500 mt-2 flex flex-col gap-1" }, [
-            El("span", { textContent: "Policy: " + policyVersion }),
+            El("span", { textContent: "Policy: " + policyVersion + " • Effective: " + policyEffective }),
             El("span", { textContent: "Host payout estimate: " + (Number.isFinite(hostPayoutCents) ? centsToMoney(hostPayoutCents) : "—") }),
             El("span", { textContent: "Refund amount: " + (Number.isFinite(refundAmountCents) ? centsToMoney(refundAmountCents) : "—") })
           ])
@@ -991,11 +1087,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     const action = btn.getAttribute("data-action");
     const bid = btn.getAttribute("data-booking-id") || "";
     const expId = btn.getAttribute("data-exp-id") || "";
+    const toFriendsRaw = btn.getAttribute("data-to-friends");
 
     if (action === "cancel") openCancelReviewModalById(bid);
     if (action === "review") openReviewModal(bid, expId);
     if (action === "complaint") openComplaintModalById(bid);
     if (action === "guest") openGuestModalById(bid);
+    if (action === "toggle-visibility") {
+      const toFriends = String(toFriendsRaw || "").toLowerCase() === "true";
+      updateBookingVisibility(bid, toFriends);
+    }
   });
 
   // Close guest modal

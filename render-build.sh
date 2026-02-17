@@ -60,6 +60,7 @@ PUBLIC_FILES=(
   "report.html"
   "reset-password.html"
   "robots.txt"
+  "settings-data.html"
   "sitemap.xml"
   "success.html"
   "terms.html"
@@ -70,6 +71,7 @@ PUBLIC_DIRS=(
   "assets"
   "css"
   "js"
+  "settings"
   "vendor"
 )
 
