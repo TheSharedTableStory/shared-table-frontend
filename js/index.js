@@ -353,8 +353,11 @@ function renderCard(exp) {
       if (!t) return false;
       return /^WORLDCLASS_STARTER_/i.test(t) || /^starter[_\-\s]/i.test(t);
     };
+    const stripWorldClassPrefix = (raw) => String(raw || "").trim().replace(/^world[\s_-]*class\s*[:\-]?\s*/i, "").trim();
     const title = (function() {
       const raw = String(exp.title || "").trim();
+      const debranded = stripWorldClassPrefix(raw);
+      if (debranded) return debranded;
       if (raw && !isStarterTitle(raw)) return raw;
       return "Shared experience";
     })();

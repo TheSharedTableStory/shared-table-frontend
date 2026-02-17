@@ -22,6 +22,14 @@
     if (which && which.classList) which.classList.remove("hidden");
   }
 
+  function sanitizeExperienceTitle(raw) {
+    const title = String(raw || "").trim();
+    const debranded = title.replace(/^world[\s_-]*class\s*[:\-]?\s*/i, "").trim();
+    if (debranded) return debranded;
+    if (title && !/^WORLDCLASS_STARTER_/i.test(title) && !/^starter[_\-\s]/i.test(title)) return title;
+    return "Shared experience";
+  }
+
   function card(exp) {
     const El = window.tstsEl;
     const e = exp || {};
@@ -41,7 +49,7 @@
         El("div", { className: "absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold shadow-sm", textContent: "$" + price })
       ]),
       El("div", { className: "p-4 flex flex-col gap-2 flex-grow" }, [
-        El("h3", { className: "font-bold text-gray-900 mb-1 truncate", textContent: e.title || "Untitled" }),
+        El("h3", { className: "font-bold text-gray-900 mb-1 truncate", textContent: sanitizeExperienceTitle(e.title) }),
         El("p", { className: "text-xs text-gray-500 flex items-center gap-1" }, [markerIcon, " " + (e.city || "")]),
         El("div", { className: "mt-auto pt-3 border-t border-gray-50 flex justify-between items-center" }, [
           El("span", { className: "text-xs text-gray-500", textContent: "Saved" }),

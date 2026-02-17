@@ -137,6 +137,14 @@ function createExperienceCard(exp) {
 
     var markerIcon = El('i', { className: 'fas fa-map-marker-alt text-orange-500' });
     var starIcon = El('i', { className: 'fas fa-star' });
+    const rawTitle = String((exp && exp.title) || "").trim();
+    const debrandedTitle = rawTitle.replace(/^world[\s_-]*class\s*[:\-]?\s*/i, "").trim();
+    const safeTitle = debrandedTitle || ((/^WORLDCLASS_STARTER_/i.test(rawTitle) || /^starter[_\-\s]/i.test(rawTitle)) ? "Shared experience" : (rawTitle || "Shared experience"));
+    visibilityChip.addEventListener("click", function(ev) {
+        if (!ev) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+    });
 
     var card = El('a', { href: 'experience.html?id=' + encodeURIComponent(safeId), className: 'group block bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col' }, [
         El('div', { className: 'relative h-48 w-full overflow-hidden bg-gray-100' }, [
@@ -146,7 +154,7 @@ function createExperienceCard(exp) {
             tagsContainer
         ]),
         El('div', { className: 'p-4 flex flex-col gap-2 flex-grow' }, [
-            El('h3', { className: 'font-bold text-gray-900 mb-1 truncate', textContent: exp.title || '' }),
+            El('h3', { className: 'font-bold text-gray-900 mb-1 truncate', textContent: safeTitle }),
             El('p', { className: 'text-xs text-gray-500 flex items-center gap-1' }, [markerIcon, ' ' + (exp.city || '')]),
             El('div', { className: 'mt-auto pt-3 border-t border-gray-50 flex justify-between items-center' }, [
                 El('div', { className: 'flex items-center text-xs text-yellow-500 gap-1' }, [

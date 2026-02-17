@@ -113,25 +113,34 @@
             </div>
           </section>
 
-          <section class="bg-tsts-soft rounded-3xl border border-white shadow-soft-card px-5 sm:px-7 py-6 sm:py-7 flex items-start gap-4 sm:gap-5">
-            <div class="flex-shrink-0">
-              <img
-                id="host-pic"
-                src="/assets/avatar-default.svg"
-                alt="Host profile picture"
-                class="h-16 w-16 sm:h-20 sm:w-20 rounded-full object-cover border-2 border-white shadow-md"
-              />
-            </div>
-            <div>
-              <p class="text-xs uppercase tracking-[0.16em] text-slate-500 mb-1">
-                Hosted by
-              </p>
-              <p id="host-name" class="text-base sm:text-lg font-semibold text-tsts-ink mb-2">
+          <section class="bg-tsts-soft rounded-3xl border border-white shadow-soft-card px-5 sm:px-7 py-6 sm:py-7">
+            <a
+              id="host-profile-link"
+              href="#"
+              class="group flex items-start gap-4 sm:gap-5 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+            >
+              <div class="flex-shrink-0">
+                <img
+                  id="host-pic"
+                  src="/assets/avatar-default.svg"
+                  alt="Host profile picture"
+                  class="h-16 w-16 sm:h-20 sm:w-20 rounded-full object-cover border-2 border-white shadow-md"
+                />
+              </div>
+              <div>
+                <p class="text-xs uppercase tracking-[0.16em] text-slate-500 mb-1">
+                  Hosted by
                 </p>
-              <p class="text-sm text-slate-700">
-                A local host ready to share their table and stories with you.
-              </p>
-            </div>
+                <p id="host-name" class="text-base sm:text-lg font-semibold text-tsts-ink mb-2 group-hover:text-orange-600 transition">
+                </p>
+                <p class="text-sm text-slate-700">
+                  A local host ready to share their table and stories with you.
+                </p>
+                <p id="host-profile-cta" class="mt-2 text-xs font-semibold text-orange-600 group-hover:underline">
+                  View public profile
+                </p>
+              </div>
+            </a>
           </section>
 
           <section id="reviews-section" class="bg-white/90 rounded-3xl shadow-soft-card border border-white px-5 sm:px-7 py-6 sm:py-7 hidden">

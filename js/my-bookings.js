@@ -313,6 +313,14 @@ function isEmailLite(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 }
 
+function sanitizeExperienceTitle(raw) {
+  const title = String(raw || "").trim();
+  const debranded = title.replace(/^world[\s_-]*class\s*[:\-]?\s*/i, "").trim();
+  if (debranded) return debranded;
+  if (title && !/^WORLDCLASS_STARTER_/i.test(title) && !/^starter[_\-\s]/i.test(title)) return title;
+  return "Shared experience";
+}
+
 function countWords(v) {
   const s = String(v || "").trim();
   if (!s) return 0;
@@ -400,7 +408,7 @@ function renderTripCard(booking) {
 
   const expId = exp._id || exp.id || booking.experienceId || booking.expId || "";
   const bookingId = booking._id || "";
-  const title = exp.title || booking.title || "Unknown Experience";
+  const title = sanitizeExperienceTitle(exp.title || booking.title || "Unknown Experience");
   const guests = booking.guests || booking.numGuests || booking.guestCount || 1;
   const city = exp.city || booking.city || "Location TBA";
   const policyVersion = bookingPolicyVersion(booking) || "Unavailable";
@@ -856,7 +864,7 @@ function renderHostListingsSection(listings, hostBookings) {
       El("div", { className: "bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between gap-4" }, [
         El("div", { className: "space-y-2" }, [
           El("div", { className: "flex flex-wrap items-center gap-2" }, [
-            El("h3", { className: "font-bold text-lg text-gray-900", textContent: String((exp && exp.title) || "Untitled listing") })
+            El("h3", { className: "font-bold text-lg text-gray-900", textContent: sanitizeExperienceTitle(String((exp && exp.title) || "Untitled listing")) })
           ].concat(chips)),
           El("p", { className: "text-sm text-gray-500", textContent: String((exp && exp.city) || "Location TBA") + " • " + formatPriceLabel(exp && exp.price) }),
           El("p", { className: "text-xs text-gray-500", textContent: "Bookings received: " + bookingCount })
@@ -898,7 +906,7 @@ function renderHostBookingsSection(bookings) {
     const day = dt ? dt.getDate() : "--";
 
     const exp = b.experience || {};
-    const title = exp.title || b.title || "Listing";
+    const title = sanitizeExperienceTitle(exp.title || b.title || "Listing");
 
     const guest = b.guestId || b.user || {};
     const guestName = guest.name || b.guestName || "Unknown Guest";

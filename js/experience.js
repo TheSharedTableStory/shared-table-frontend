@@ -112,20 +112,34 @@
     return /^WORLDCLASS_STARTER_/i.test(t) || /^starter[_\-\s]/i.test(t);
   }
 
+  function stripWorldClassPrefix(raw) {
+    const t = String(raw || "").trim();
+    if (!t) return "";
+    return t.replace(/^world[\s_-]*class\s*[:\-]?\s*/i, "").trim();
+  }
+
+  function normalizeHostId(expLike) {
+    const expObj = expLike || {};
+    const fromTop = String(expObj.hostId || "").trim();
+    if (/^[a-f0-9]{24}$/i.test(fromTop)) return fromTop;
+    const hostObj = (expObj.host && typeof expObj.host === "object") ? expObj.host : {};
+    const fromNested = String(hostObj._id || hostObj.id || "").trim();
+    if (/^[a-f0-9]{24}$/i.test(fromNested)) return fromNested;
+    return "";
+  }
+
   function publicTitle(raw) {
     const t = String(raw || "").trim();
+    const debranded = stripWorldClassPrefix(t);
+    if (debranded) return debranded;
     if (t && !isStarterTitle(t)) return t;
     return "Shared experience";
   }
 
   function publicDescription(expLike) {
     const expObj = expLike || {};
-    const city = String(expObj.city || expObj.location || "").trim();
-    const fallback = city ? ("Hosted in " + city + ".") : "Hosted by our community.";
-    if (isStarterTitle(expObj.title)) return fallback;
     const raw = String(expObj.description || "").trim();
-    if (!raw) return fallback;
-    if (/starter experience|worldclass_starter/i.test(raw)) return fallback;
+    if (!raw) return "Details coming soon.";
     return raw;
   }
 
@@ -428,6 +442,22 @@
     const hostFallbackName = (verifiedState === "verified") ? "Verified Host" : "Host";
     setText("host-name", hostName || hostFallbackName);
     setImg("host-pic", hostPic || "", "/assets/avatar-default.svg");
+    const hostLinkEl = document.getElementById("host-profile-link");
+    const hostCtaEl = document.getElementById("host-profile-cta");
+    const hostId = normalizeHostId(exp);
+    if (hostLinkEl) {
+      if (hostId) {
+        hostLinkEl.href = "public-profile.html?id=" + encodeURIComponent(hostId);
+        hostLinkEl.classList.remove("cursor-default", "pointer-events-none");
+        hostLinkEl.removeAttribute("aria-disabled");
+        if (hostCtaEl) hostCtaEl.textContent = "View public profile";
+      } else {
+        hostLinkEl.removeAttribute("href");
+        hostLinkEl.classList.add("cursor-default", "pointer-events-none");
+        hostLinkEl.setAttribute("aria-disabled", "true");
+        if (hostCtaEl) hostCtaEl.textContent = "Profile unavailable";
+      }
+    }
 
     if (verifiedBadgeEl) verifiedBadgeEl.classList.toggle("hidden", verifiedState !== "verified");
     if (verifiedPendingBadgeEl) verifiedPendingBadgeEl.classList.toggle("hidden", verifiedState !== "pending");

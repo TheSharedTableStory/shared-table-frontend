@@ -120,10 +120,28 @@ document.addEventListener("DOMContentLoaded", () => {
         return /^WORLDCLASS_STARTER_/i.test(t) || /^starter[_\-\s]/i.test(t);
     }
 
+    function stripWorldClassPrefix(raw) {
+        const t = String(raw || "").trim();
+        if (!t) return "";
+        return t.replace(/^world[\s_-]*class\s*[:\-]?\s*/i, "").trim();
+    }
+
     function publicExperienceTitle(exp) {
         const title = String((exp && exp.title) || "").trim();
+        const debranded = stripWorldClassPrefix(title);
+        if (debranded) return debranded;
         if (title && !isStarterTitle(title)) return title;
         return "Shared experience";
+    }
+
+    function normalizeHostId(expLike) {
+        const expObj = expLike || {};
+        const fromTop = String(expObj.hostId || "").trim();
+        if (/^[a-f0-9]{24}$/i.test(fromTop)) return fromTop;
+        const hostObj = (expObj.host && typeof expObj.host === "object") ? expObj.host : {};
+        const fromNested = String(hostObj._id || hostObj.id || "").trim();
+        if (/^[a-f0-9]{24}$/i.test(fromNested)) return fromNested;
+        return "";
     }
 
     function cardTeaser(exp) {
@@ -481,6 +499,16 @@ document.addEventListener("DOMContentLoaded", () => {
         const safeUrl = window.tstsSafeUrl;
         const fallbackImg = "/assets/experience-default.jpg";
         const fallbackHostPic = "/assets/avatar-default.svg";
+        const preventCardNav = (node) => {
+            if (!node || typeof node.setAttribute !== "function") return node;
+            node.setAttribute("data-no-card-nav", "true");
+            node.addEventListener("click", function(ev) {
+                if (!ev) return;
+                ev.preventDefault();
+                ev.stopPropagation();
+            });
+            return node;
+        };
 
         experiencesGrid.textContent = "";
         if (!experiences || !experiences.length) {
@@ -504,6 +532,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const duration = String(exp.duration || "").trim();
             const groupCap = Number(exp.maxGuests || exp.capacity || 0);
             const groupLabel = (Number.isFinite(groupCap) && groupCap > 0) ? ("Up to " + String(groupCap) + " guests") : "Small group";
+            const hostId = normalizeHostId(exp);
 
             var imgEl = El("img", { className: "w-full h-full object-cover group-hover:scale-105 transition duration-500" });
             window.tstsSafeImg(imgEl, imgUrl, fallbackImg);
@@ -516,31 +545,28 @@ document.addEventListener("DOMContentLoaded", () => {
                 El("div", { className: "absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold shadow-sm", textContent: "$" + price })
             ]);
             if (privateAvailable) {
-                imageContainer.appendChild(
-                    El("div", {
-                        className: "absolute top-3 left-3 bg-emerald-600/90 text-white px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm",
-                        textContent: "Private booking"
-                    })
-                );
+                const privateBadge = preventCardNav(El("div", {
+                    className: "absolute top-3 left-3 bg-emerald-600/90 text-white px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm",
+                    textContent: "Private booking"
+                }));
+                imageContainer.appendChild(privateBadge);
             }
             if (verifiedState === "verified") {
-                imageContainer.appendChild(
-                    El("div", {
-                        className: privateAvailable
-                            ? "absolute top-11 left-3 bg-blue-600/90 text-white px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm"
-                            : "absolute top-3 left-3 bg-blue-600/90 text-white px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm",
-                        textContent: "Verified"
-                    })
-                );
+                const verifiedBadge = preventCardNav(El("div", {
+                    className: privateAvailable
+                        ? "absolute top-11 left-3 bg-blue-600/90 text-white px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm"
+                        : "absolute top-3 left-3 bg-blue-600/90 text-white px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm",
+                    textContent: "Verified"
+                }));
+                imageContainer.appendChild(verifiedBadge);
             } else if (verifiedState === "pending") {
-                imageContainer.appendChild(
-                    El("div", {
-                        className: privateAvailable
-                            ? "absolute top-11 left-3 bg-amber-500/90 text-white px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm"
-                            : "absolute top-3 left-3 bg-amber-500/90 text-white px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm",
-                        textContent: "Verification pending"
-                    })
-                );
+                const pendingBadge = preventCardNav(El("div", {
+                    className: privateAvailable
+                        ? "absolute top-11 left-3 bg-amber-500/90 text-white px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm"
+                        : "absolute top-3 left-3 bg-amber-500/90 text-white px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm",
+                    textContent: "Verification pending"
+                }));
+                imageContainer.appendChild(pendingBadge);
             }
 
             if (exp.isPaused) {
@@ -554,13 +580,35 @@ document.addEventListener("DOMContentLoaded", () => {
                 hostDisplayName = (verifiedState === "verified") ? "Verified Host" : "Host";
             }
 
-            var card = El("a", { href: "experience.html?id=" + encodeURIComponent(exp._id || ""), className: "group block bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col" }, [
+            const expHref = "experience.html?id=" + encodeURIComponent(exp._id || "");
+            var hostMeta = El("div", { className: "inline-flex items-center gap-2 mb-1" }, [
+                hostImgEl,
+                El("span", { className: "text-xs text-gray-500 truncate", textContent: hostDisplayName })
+            ]);
+            if (hostId) {
+                hostMeta = El("a", {
+                    href: "public-profile.html?id=" + encodeURIComponent(hostId),
+                    className: "inline-flex items-center gap-2 mb-1 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500",
+                    "data-no-card-nav": "true"
+                }, [
+                    hostImgEl,
+                    El("span", { className: "text-xs text-gray-500 truncate hover:text-orange-600 transition", textContent: hostDisplayName })
+                ]);
+                hostMeta.addEventListener("click", function(ev) {
+                    if (!ev) return;
+                    ev.stopPropagation();
+                });
+            }
+
+            var card = El("div", {
+                className: "group block bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col cursor-pointer",
+                role: "link",
+                tabindex: "0",
+                "aria-label": "Open " + title
+            }, [
                 imageContainer,
                 El("div", { className: "p-4 flex flex-col gap-2 flex-grow" }, [
-                    El("div", { className: "flex items-center gap-2 mb-1" }, [
-                        hostImgEl,
-                        El("span", { className: "text-xs text-gray-500 truncate", textContent: hostDisplayName })
-                    ]),
+                    hostMeta,
                     El("h3", { className: "font-bold text-gray-900 mb-1 truncate", textContent: title }),
                     El("p", { className: "text-xs text-gray-600 mb-2 line-clamp-2 min-h-[2.5rem]", textContent: teaser }),
                     El("p", { className: "text-xs text-gray-500 flex items-center gap-1 mb-1" }, [markerIcon, " " + (exp.city || "")]),
@@ -575,6 +623,18 @@ document.addEventListener("DOMContentLoaded", () => {
                     ])
                 ])
             ]);
+            card.addEventListener("click", function(ev) {
+                const t = ev && ev.target;
+                if (t && typeof t.closest === "function" && t.closest('[data-no-card-nav=\"true\"]')) return;
+                window.location.href = expHref;
+            });
+            card.addEventListener("keydown", function(ev) {
+                if (!ev) return;
+                const key = String(ev.key || "");
+                if (key !== "Enter" && key !== " ") return;
+                ev.preventDefault();
+                window.location.href = expHref;
+            });
             experiencesGrid.appendChild(card);
         });
     };
