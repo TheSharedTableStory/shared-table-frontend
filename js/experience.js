@@ -46,13 +46,19 @@
     window.tstsSafeImg(el, url, fallback);
   }
 
+  function looksLikeEmail(v) {
+    const s = String(v || "").trim();
+    if (!s) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+  }
+
   function normalizeHostName(expLike) {
     const expObj = expLike || {};
     const fromTop = String(expObj.hostName || "").trim();
-    if (fromTop) return fromTop;
+    if (fromTop && !looksLikeEmail(fromTop)) return fromTop;
     const hostObj = (expObj.host && typeof expObj.host === "object") ? expObj.host : {};
     const fromNested = String(hostObj.name || "").trim();
-    if (fromNested) return fromNested;
+    if (fromNested && !looksLikeEmail(fromNested)) return fromNested;
     return "";
   }
 
@@ -388,7 +394,10 @@
         const profileRes = await af("/api/users/" + encodeURIComponent(String(exp.hostId || "")) + "/profile", { method: "GET" });
         if (profileRes && profileRes.ok) {
           const profile = await profileRes.json().catch(() => ({}));
-          if (!hostName) hostName = String((profile && profile.name) || "").trim();
+          if (!hostName) {
+            const profileName = String((profile && (profile.name || profile.displayName || profile.fullName)) || "").trim();
+            if (profileName && !looksLikeEmail(profileName)) hostName = profileName;
+          }
           if (!hostPic) hostPic = String((profile && profile.profilePic) || "").trim();
         }
       } catch (_) {
