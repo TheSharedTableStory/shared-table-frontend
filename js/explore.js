@@ -94,6 +94,12 @@ document.addEventListener("DOMContentLoaded", () => {
         return Number.isFinite(privateCap) && privateCap > 0 && Number.isFinite(privatePrice) && privatePrice > 0;
     }
 
+    function looksLikeEmailName(v) {
+        const s = String(v || "").trim();
+        if (!s) return false;
+        return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/i.test(s);
+    }
+
     function isStarterTitle(raw) {
         const t = String(raw || "").trim();
         if (!t) return false;
@@ -529,13 +535,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
             var markerIcon = El("i", { className: "fas fa-map-marker-alt text-orange-500" });
             var starIcon = El("i", { className: "fas fa-star" });
+            var hostDisplayName = String(exp.hostName || "").trim();
+            if (!hostDisplayName || looksLikeEmailName(hostDisplayName)) hostDisplayName = "Local Host";
 
             var card = El("a", { href: "experience.html?id=" + encodeURIComponent(exp._id || ""), className: "group block bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col" }, [
                 imageContainer,
                 El("div", { className: "p-4 flex flex-col gap-2 flex-grow" }, [
                     El("div", { className: "flex items-center gap-2 mb-1" }, [
                         hostImgEl,
-                        El("span", { className: "text-xs text-gray-500 truncate", textContent: exp.hostName || "Local Host" })
+                        El("span", { className: "text-xs text-gray-500 truncate", textContent: hostDisplayName })
                     ]),
                     El("h3", { className: "font-bold text-gray-900 mb-1 truncate", textContent: title }),
                     El("p", { className: "text-xs text-gray-600 mb-2 line-clamp-2 min-h-[2.5rem]", textContent: teaser }),
