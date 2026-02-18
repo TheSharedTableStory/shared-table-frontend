@@ -813,7 +813,7 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
           }
 
           if (res && (res.status === 401 || res.status === 403)) {
-            const shouldTryRefresh = !!authHint;
+            const shouldTryRefresh = force || !!authHint;
             const refreshed = shouldTryRefresh ? await refreshAccessTokenOnce() : false;
             if (refreshed) {
               res = await window.authFetch("/api/auth/me", { method: "GET" });
@@ -920,7 +920,7 @@ function injectNavbar() {
   const navExplore = tstsEl("a", { href: "explore.html", className: "text-gray-600 hover:text-orange-600 font-medium transition" }, "Explore");
   const dealsIcon = tstsEl("i", { className: "fas fa-fire" });
   const navDeals = tstsEl("a", { href: "explore.html?filter=deals", className: "text-red-600 hover:text-red-700 font-bold transition flex items-center gap-1" }, [dealsIcon, " Deals"]);
-  const navHost = tstsEl("a", { href: "host.html", className: "text-gray-600 hover:text-orange-600 font-medium transition" }, "Host Dashboard");
+  const navHost = tstsEl("a", { href: "host.html", className: "text-gray-600 hover:text-orange-600 font-medium transition" }, "Become a Host");
   const authDesktop = tstsEl("div", { id: "auth-section-desktop" }, [
     tstsEl("a", { href: "login.html", className: "bg-gray-900 text-white px-5 py-2 rounded-full font-medium hover:bg-gray-800 transition" }, "Login")
   ]);
@@ -937,7 +937,7 @@ function injectNavbar() {
   const mobileExplore = tstsEl("a", { href: "explore.html", className: "text-gray-700 hover:text-orange-600 font-medium" }, "Explore");
   const mobileDealsIcon = tstsEl("i", { className: "fas fa-fire" });
   const mobileDeals = tstsEl("a", { href: "explore.html?filter=deals", className: "text-red-600 font-bold flex items-center gap-2" }, [mobileDealsIcon, " Deals"]);
-  const mobileHost = tstsEl("a", { href: "host.html", className: "text-gray-700 hover:text-orange-600 font-medium" }, "Host Dashboard");
+  const mobileHost = tstsEl("a", { href: "host.html", className: "text-gray-700 hover:text-orange-600 font-medium" }, "Become a Host");
   const authMobile = tstsEl("div", { id: "auth-section-mobile", className: "pt-4 border-t border-gray-100" }, [
     tstsEl("a", { href: "login.html", className: "block w-full text-center bg-gray-900 text-white px-5 py-3 rounded-lg font-medium" }, "Login / Sign Up")
   ]);
@@ -962,7 +962,7 @@ function injectFooter() {
     tstsEl("h4", { className: "font-bold mb-4" }, "Company"),
     tstsEl("ul", { className: "space-y-2 text-gray-400 text-sm" }, [
       tstsEl("li", {}, [tstsEl("a", { href: "about.html", className: "hover:text-white transition" }, "About Us")]),
-      tstsEl("li", {}, [tstsEl("a", { href: "host.html", className: "hover:text-white transition" }, "Host Dashboard")]),
+      tstsEl("li", {}, [tstsEl("a", { href: "host.html", className: "hover:text-white transition" }, "Become a Host")]),
       tstsEl("li", {}, [tstsEl("a", { href: "mailto:contact@thesharedtablestory.com", className: "hover:text-white transition" }, "Contact")])
     ])
   ]);

@@ -1269,7 +1269,7 @@ function renderHostVerificationSection(verificationData) {
     ? ("Admin note: " + hv.note)
     : (status === "verified"
       ? "Verified hosts can request event verification from each listing edit screen."
-      : "Email one government ID with address proof to " + data.adminEmail + " after submitting request.");
+      : "Submit a host verification request to begin review.");
 
   const requestBtn = El("button", {
     type: "button",
@@ -1281,7 +1281,7 @@ function renderHostVerificationSection(verificationData) {
     try {
       requestBtn.disabled = true;
       await requestHostVerification();
-      window.tstsNotify("Host verification request submitted. Email ID proof with address to " + data.adminEmail + ".", "success");
+      window.tstsNotify("Host verification request submitted.", "success");
       await loadHost();
     } catch (err) {
       requestBtn.disabled = false;
@@ -1349,11 +1349,7 @@ function renderHostVerificationSection(verificationData) {
         El("span", { textContent: "Verification policy version: " + (feePolicy.policyVersion || "Unavailable") }),
         El("span", { textContent: "Connected account: " + (stripeConnect.accountIdMasked || "Not connected") })
       ]),
-      El("div", { className: "flex flex-wrap items-center gap-2" }, [requestBtn, docSubmitButton, connectBtn, disconnectBtn]),
-      El("div", { className: "text-xs text-slate-500" }, [
-        El("p", { textContent: "Verification flow: request in dashboard → email one ID proof with address to " + data.adminEmail + " → admin review updates status." }),
-        El("p", { className: "mt-1", textContent: "Event verification requires host verification first. Guests do not pay extra verification charge." })
-      ])
+      El("div", { className: "flex flex-wrap items-center gap-2" }, [requestBtn, docSubmitButton, connectBtn, disconnectBtn])
     ])
   ]);
 }
@@ -1529,7 +1525,7 @@ function formatMetricValue(sourceStatus, rawValue) {
 function renderHostingSectionTabs(activeSection) {
   const El = window.tstsEl;
   const nav = El("nav", { className: "bg-white rounded-2xl border border-gray-100 p-2 shadow-sm" });
-  const row = El("div", { className: "grid grid-cols-1 md:grid-cols-5 gap-2" });
+  const row = El("div", { className: "flex flex-wrap items-center gap-2" });
   HOSTING_SECTION_KEYS.forEach(function (key) {
     const isActive = key === activeSection;
     row.appendChild(
@@ -1537,7 +1533,7 @@ function renderHostingSectionTabs(activeSection) {
         type: "button",
         className: (isActive
           ? "bg-gray-900 text-white border-gray-900"
-          : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50") + " px-3 py-2 rounded-lg border text-sm font-bold transition",
+          : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50") + " px-4 py-2 rounded-lg border text-sm font-bold transition",
         "data-action": "host-switch-section",
         "data-host-section": key,
         textContent: HOSTING_SECTION_LABELS[key] || key

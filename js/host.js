@@ -398,7 +398,7 @@
       if (hostStatus === "verified") {
         verifiedRequestMeta.textContent = "Current verification fee policy: " + verificationFeePercent.toFixed(1) + "% of guest total paid, deducted from host payout after approval.";
       } else {
-        verifiedRequestMeta.textContent = "Host verification required first. Request host verification from your Hosting dashboard and email one ID proof with address to admin@thesharedtablestory.com.";
+        verifiedRequestMeta.textContent = "Host verification is required before event verification.";
       }
     }
   }
@@ -430,7 +430,7 @@
       const status = normalizeVerifiedStatus(currentVerifiedStatus);
       if (status === "verified" || status === "pending") return;
       if (hostStatus !== "verified") {
-        showNotice("error", "Complete host verification first. Request from Hosting dashboard and email ID proof with address to admin@thesharedtablestory.com.");
+        showNotice("error", "Complete host verification in Hosting dashboard before requesting event verification.");
         return;
       }
 
