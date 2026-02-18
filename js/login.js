@@ -51,9 +51,35 @@ function safeRedirectTarget(rawTarget) {
     return "index.html";
   }
 
-  // Must be a simple relative path
-  if (t.startsWith("/")) return t.slice(1);
-  return t;
+  if (t.startsWith("/")) t = t.slice(1);
+
+  let parsed;
+  try {
+    parsed = new URL(t, window.location.origin + "/");
+  } catch (_) {
+    return "index.html";
+  }
+
+  if (parsed.origin !== window.location.origin) return "index.html";
+
+  const path = String(parsed.pathname || "").replace(/^\/+/, "");
+  const allowed = new Set([
+    "index.html",
+    "admin.html",
+    "profile.html",
+    "host.html",
+    "explore.html",
+    "feed.html",
+    "connections.html",
+    "bookmarks.html",
+    "my-bookings.html",
+    "experience.html",
+    "reset-password.html",
+    "login.html"
+  ]);
+  if (!allowed.has(path)) return "profile.html";
+
+  return path + String(parsed.search || "") + String(parsed.hash || "");
 }
 
 
@@ -145,22 +171,7 @@ async function handleLogin(e) {
         const redirect = params.get("redirect");
         const returnTo = params.get("returnTo");
         const rawTarget = redirect || returnTo || "index.html";
-        let target = safeRedirectTarget(rawTarget);
-        const allowed = new Set([
-            "index.html",
-            "admin.html",
-            "profile.html",
-            "host.html",
-            "explore.html",
-            "feed.html",
-            "connections.html",
-            "bookmarks.html",
-            "my-bookings.html",
-            "experience.html",
-            "reset-password.html",
-            "login.html"
-        ]);
-        if (!allowed.has(target)) target = "profile.html";
+        const target = safeRedirectTarget(rawTarget);
         window.location.href = target;
 
     } catch (err) {
@@ -235,8 +246,33 @@ async function handleSignup(e) {
 
 }
 
+async function redirectIfAlreadyAuthed() {
+    try {
+        if (!window.tstsGetSession) return false;
+        const sess = await window.tstsGetSession({ force: true });
+        if (!sess || !sess.ok || !sess.user) return false;
+
+        const user = sess.user || {};
+        const isAdmin = !!(user && (user.isAdmin === true || String(user.role || "").toLowerCase() === "admin"));
+        if (isAdmin) {
+            window.location.href = "admin.html";
+            return true;
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const rawTarget = params.get("redirect") || params.get("returnTo") || "index.html";
+        window.location.href = safeRedirectTarget(rawTarget);
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
 // --- 4. INIT ---
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    const redirected = await redirectIfAlreadyAuthed();
+    if (redirected) return;
+
     const tabLogin = document.getElementById("tab-login");
     const tabSignup = document.getElementById("tab-signup");
     const loginForm = document.getElementById("form-login");
