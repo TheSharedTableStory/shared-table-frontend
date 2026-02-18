@@ -7,11 +7,12 @@
     catch (_) { return null; }
   }
 
-  async function isAuthed() {
+  async function isAuthed(opts) {
+    const strict = !!(opts && opts.strict === true);
     try {
       if (!window.tstsGetSession) return false;
       let sess = await window.tstsGetSession({ force: false });
-      if (sess && sess.ok && sess.user) return true;
+      if (!strict && sess && sess.ok && sess.user) return true;
       // Reserve flow must re-probe auth to avoid stale cache/local-hint drift.
       sess = await window.tstsGetSession({ force: true });
       return !!(sess && sess.ok && sess.user);
@@ -876,7 +877,7 @@
 
         let res = await submitBookingOnce();
         if (res.status === 401) {
-          const sessionStillValid = await isAuthed();
+          const sessionStillValid = await isAuthed({ strict: true });
           if (sessionStillValid) {
             res = await submitBookingOnce();
           }
