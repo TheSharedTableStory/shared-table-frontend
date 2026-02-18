@@ -381,9 +381,13 @@
 
     const res = await af(`/api/experiences/${experienceId}`, { method: "GET" });
 
-    if (res.status === 401 || res.status === 403) {
+    if (res.status === 401) {
       try { if (window.clearAuth) window.clearAuth(); } catch (_) {}
       return redirectToLogin();
+    }
+    if (res.status === 403) {
+      showNotFound("This experience is currently unavailable.");
+      return;
     }
     if (!res.ok) {
       showNotFound("This experience is unavailable or no longer exists.");
@@ -868,9 +872,18 @@
           })
         });
 
-        if (res.status === 401 || res.status === 403) {
+        if (res.status === 401) {
           try { if (window.clearAuth) window.clearAuth(); } catch (_) {}
           return redirectToLogin();
+        }
+        if (res.status === 403) {
+          const denied = await res.json().catch(() => ({}));
+          const deniedMsg = (denied && denied.message)
+            ? String(denied.message)
+            : "You cannot book this experience.";
+          window.tstsNotify(deniedMsg, "error");
+          if (submitBtn) submitBtn.disabled = false;
+          return;
         }
 
         const data = await res.json().catch(() => ({}));
