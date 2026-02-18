@@ -856,19 +856,31 @@
           return;
         }
 
-        const res = await af(`/api/experiences/${experienceId}/book`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            bookingDate: bookingDate,
-            timeSlot: timeSlot,
-            numGuests: numGuests,
-            isPrivate: isPrivateBooking,
-            promoCode: promoCode,
-            policyVersionAccepted: policyVer,
-            termsVersionAccepted: TERMS_VERSION
-          })
-        });
+        const bookingPayload = {
+          bookingDate: bookingDate,
+          timeSlot: timeSlot,
+          numGuests: numGuests,
+          isPrivate: isPrivateBooking,
+          promoCode: promoCode,
+          policyVersionAccepted: policyVer,
+          termsVersionAccepted: TERMS_VERSION
+        };
+
+        async function submitBookingOnce() {
+          return af(`/api/experiences/${experienceId}/book`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(bookingPayload)
+          });
+        }
+
+        let res = await submitBookingOnce();
+        if (res.status === 401) {
+          const sessionStillValid = await isAuthed();
+          if (sessionStillValid) {
+            res = await submitBookingOnce();
+          }
+        }
 
         if (res.status === 401) {
           try { if (window.clearAuth) window.clearAuth(); } catch (_) {}
