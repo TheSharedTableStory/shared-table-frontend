@@ -33,6 +33,65 @@ const cancelReviewConfirmBtn = document.getElementById("cancel-review-confirm-bt
 let hostBookingsCache = []; // for modal lookup by booking id
 let guestBookingsCache = []; // for complaint modal lookup by booking id
 let activePolicySnapshot = null;
+const dashboardQueryParams = new URLSearchParams(window.location.search || "");
+const dashboardDeepLink = {
+  tab: String(dashboardQueryParams.get("tab") || "").trim().toLowerCase(),
+  section: String(dashboardQueryParams.get("section") || "").trim().toLowerCase(),
+  panel: String(dashboardQueryParams.get("panel") || "").trim().toLowerCase(),
+  requestId: String(dashboardQueryParams.get("requestId") || "").trim()
+};
+const HOSTING_SECTION_KEYS = Object.freeze(["overview", "listings", "bookings", "private-requests", "verification-payout"]);
+const HOSTING_SECTION_LABELS = Object.freeze({
+  overview: "Overview",
+  listings: "My Listings",
+  bookings: "Booking Requests",
+  "private-requests": "Private Requests",
+  "verification-payout": "Verification & Payout"
+});
+const hostDashboardState = {
+  section: "overview",
+  listings: { status: "idle", items: [], summary: null, warnings: [], message: "" },
+  bookings: { status: "idle", rows: [], message: "" },
+  privateRequests: { status: "idle", rows: [], message: "" },
+  verification: { status: "idle", data: null, message: "" }
+};
+
+function resolveDashboardTab(rawTab) {
+  const tab = String(rawTab || "").trim().toLowerCase();
+  if (tab === "hosting") return "hosting";
+  if (tab === "experiences" || tab === "trips" || tab === "") return "trips";
+  return "trips";
+}
+
+function resolveHostingSection(rawSection, panelHint) {
+  const section = String(rawSection || "").trim().toLowerCase();
+  if (HOSTING_SECTION_KEYS.includes(section)) return section;
+  const panel = String(panelHint || "").trim().toLowerCase();
+  if (panel === "private-request-actions") return "private-requests";
+  return "overview";
+}
+
+function canonicalTabParam(internalTab) {
+  return internalTab === "hosting" ? "hosting" : "experiences";
+}
+
+function syncDashboardTabQuery(internalTab, hostingSection) {
+  try {
+    const url = new URL(window.location.href);
+    const prevPath = url.pathname + (url.search || "") + (url.hash || "");
+    const nextTab = canonicalTabParam(internalTab);
+    url.searchParams.set("tab", nextTab);
+    if (internalTab === "hosting") {
+      url.searchParams.set("section", resolveHostingSection(hostingSection, dashboardDeepLink.panel));
+    } else {
+      url.searchParams.delete("section");
+    }
+    const query = url.searchParams.toString();
+    const nextPath = url.pathname + (query ? ("?" + query) : "") + (url.hash || "");
+    if (nextPath === prevPath) return;
+    window.history.replaceState({}, "", nextPath);
+  } catch (_) {}
+}
 
 function redirectToLogin() {
   const returnTo = encodeURIComponent(location.pathname + location.search);
@@ -346,6 +405,7 @@ function toggleTab(which) {
     tabHost.className = "border-orange-600 text-orange-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm";
     tabTrips.className = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm";
   }
+  syncDashboardTabQuery(which, hostDashboardState.section);
 }
 
 /* ====================== GUEST TRIPS ====================== */
@@ -359,30 +419,36 @@ async function loadTrips() {
     const data = await res.json().catch(() => null);
 
     if (!res.ok) {
-      setError((data && data.message) || "Failed to load trips.");
+      setError((data && data.message) || "Failed to load experiences.");
       return;
     }
+
+    const pendingConnections = await loadPendingConnectionRequests().catch(function () { return []; });
 
     if (!Array.isArray(data) || data.length === 0) {
       guestBookingsCache = [];
       const El = window.tstsEl;
       contentEl.textContent = "";
+      contentEl.appendChild(renderConnectionActionPanel(pendingConnections));
       contentEl.appendChild(
         El("div", { className: "text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm" }, [
           El("div", { className: "text-5xl mb-4", textContent: "🌏" }),
-          El("h3", { className: "text-xl font-bold text-gray-900 mb-2", textContent: "No trips yet" }),
+          El("h3", { className: "text-xl font-bold text-gray-900 mb-2", textContent: "No experiences yet" }),
           El("p", { className: "text-gray-500 mb-6", textContent: "You haven't booked any experiences yet." }),
           El("a", { href: "explore.html", className: "inline-block bg-orange-600 text-white px-8 py-3 rounded-full font-bold shadow hover:bg-orange-700 transition", textContent: "Find an Adventure" })
         ])
       );
+      focusDashboardDeepLinkPanel();
       return;
     }
 
     guestBookingsCache = data;
     contentEl.textContent = "";
+    contentEl.appendChild(renderConnectionActionPanel(pendingConnections));
     data.forEach(function(b) { contentEl.appendChild(renderTripCard(b)); });
+    focusDashboardDeepLinkPanel();
   } catch (_) {
-    setError("Failed to load trips.");
+    setError("Failed to load experiences.");
   }
 }
 
@@ -820,6 +886,242 @@ async function updateBookingVisibility(id, toFriends) {
   }
 }
 
+async function loadPendingConnectionRequests() {
+  const res = await window.authFetch("/api/social/requests", { method: "GET" });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) return [];
+  const data = (payload && payload.data) ? payload.data : payload;
+  return Array.isArray(data) ? data : [];
+}
+
+async function respondToConnectionRequest(requestId, action) {
+  const id = String(requestId || "").trim();
+  const step = String(action || "").trim().toLowerCase();
+  if (!id || (step !== "accept" && step !== "reject")) throw new Error("Invalid connection request action.");
+  const res = await window.authFetch("/api/social/requests/" + encodeURIComponent(id) + "/" + step, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(String((payload && payload.message) || "Could not update connection request."));
+  }
+}
+
+function renderConnectionActionPanel(connectionRequests) {
+  const El = window.tstsEl;
+  const rows = Array.isArray(connectionRequests) ? connectionRequests : [];
+  const section = El("section", { className: "space-y-4 mb-8", id: "user-connection-actions-panel" }, [
+    El("h2", { className: "text-xl font-bold text-gray-900", textContent: "Pending Connection Requests" })
+  ]);
+
+  if (rows.length === 0) {
+    section.appendChild(El("div", {
+      className: "bg-white p-4 rounded-xl border border-gray-100 text-sm text-gray-500",
+      textContent: "No pending connection requests."
+    }));
+    return section;
+  }
+
+  rows.forEach(function (row) {
+    const requestId = String((row && row._id) || "").trim();
+    const from = (row && row.from && typeof row.from === "object") ? row.from : {};
+    const name = String(from.name || "Member");
+    const handle = String(from.handle || "");
+    const profileUrl = String((from && from._id) || "").trim()
+      ? ("public-profile.html?userId=" + encodeURIComponent(String(from._id || "")))
+      : "connections.html";
+
+    section.appendChild(
+      El("div", { className: "bg-white p-4 rounded-xl border border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3" }, [
+        El("div", { className: "space-y-1" }, [
+          El("div", { className: "font-bold text-gray-900", textContent: name }),
+          El("div", { className: "text-xs text-gray-500", textContent: handle ? ("@" + handle) : "Connection request pending your response" })
+        ]),
+        El("div", { className: "flex flex-wrap items-center gap-2" }, [
+          El("button", {
+            type: "button",
+            className: "px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-bold hover:bg-black transition",
+            "data-action": "connection-request-action",
+            "data-request-id": requestId,
+            "data-request-status": "accept",
+            textContent: "Accept"
+          }),
+          El("button", {
+            type: "button",
+            className: "px-3 py-2 rounded-lg border border-red-200 text-red-700 text-xs font-bold hover:bg-red-50 transition",
+            "data-action": "connection-request-action",
+            "data-request-id": requestId,
+            "data-request-status": "reject",
+            textContent: "Reject"
+          }),
+          El("a", {
+            href: profileUrl,
+            className: "px-3 py-2 rounded-lg border border-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-50 transition",
+            textContent: "View Profile"
+          })
+        ])
+      ])
+    );
+  });
+
+  section.appendChild(
+    El("div", { className: "text-xs text-gray-500" }, [
+      El("a", { href: "connections.html", className: "text-orange-600 hover:underline", textContent: "Open full Connections page" })
+    ])
+  );
+  return section;
+}
+
+async function loadHostPrivateBookingRequests() {
+  const res = await window.authFetch("/api/host/private-booking-requests?status=pending&limit=100", { method: "GET" });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) return [];
+  const rows = Array.isArray(payload && payload.requests) ? payload.requests : [];
+  return rows;
+}
+
+async function updateHostPrivateBookingRequestStatus(requestId, status) {
+  const id = String(requestId || "").trim();
+  const next = String(status || "").trim().toLowerCase();
+  if (!id) throw new Error("Request id missing.");
+  const allowed = { contacted: true, approved: true, declined: true, closed: true };
+  if (!allowed[next]) throw new Error("Invalid status.");
+  const res = await window.authFetch("/api/host/private-booking-requests/" + encodeURIComponent(id) + "/status", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: next })
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(String((payload && payload.message) || "Could not update private request."));
+  }
+}
+
+function renderHostPrivateRequestActionsPanel(requests) {
+  const El = window.tstsEl;
+  const rows = Array.isArray(requests) ? requests : [];
+  const section = El("section", { className: "space-y-4 mb-8", id: "host-private-request-actions-panel" }, [
+    El("h2", { className: "text-xl font-bold text-gray-900", textContent: "Private Request Actions" })
+  ]);
+
+  if (rows.length === 0) {
+    section.appendChild(El("div", {
+      className: "bg-white p-4 rounded-xl border border-gray-100 text-sm text-gray-500",
+      textContent: "No pending private booking requests."
+    }));
+    return section;
+  }
+
+  rows.forEach(function (row) {
+    const requestId = String((row && row._id) || "");
+    const requesterName = String((row && row.requesterName) || "Guest");
+    const requesterEmail = String((row && row.requesterEmail) || "");
+    const dateText = String((row && row.preferredDate) || "Date TBA");
+    const timeText = String((row && row.preferredTime) || "Time TBA");
+    const guestText = Number.isFinite(Number(row && row.guests)) ? (String(Math.max(1, Number(row.guests))) + " guests") : "Guests not set";
+    const safeMailto = window.tstsSafeMailto ? window.tstsSafeMailto(requesterEmail) : "";
+    const rowId = "host-private-request-row-" + requestId;
+
+    section.appendChild(
+      El("div", { className: "bg-white p-4 rounded-xl border border-gray-100 space-y-3", id: rowId }, [
+        El("div", { className: "flex flex-col md:flex-row md:items-start md:justify-between gap-2" }, [
+          El("div", { className: "space-y-1" }, [
+            El("div", { className: "font-bold text-gray-900", textContent: requesterName + " • " + String((row && row.experienceTitle) || "Private experience request") }),
+            El("div", { className: "text-xs text-gray-500", textContent: dateText + " • " + timeText + " • " + guestText })
+          ]),
+          El("div", { className: "text-xs text-slate-500", textContent: "Status: " + String((row && row.status) || "pending") })
+        ]),
+        El("div", { className: "flex flex-wrap items-center gap-2" }, [
+          El("button", {
+            type: "button",
+            className: "px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-bold hover:bg-black transition",
+            "data-action": "host-private-request-status",
+            "data-request-id": requestId,
+            "data-request-status": "approved",
+            textContent: "Accept"
+          }),
+          El("button", {
+            type: "button",
+            className: "px-3 py-2 rounded-lg border border-red-200 text-red-700 text-xs font-bold hover:bg-red-50 transition",
+            "data-action": "host-private-request-status",
+            "data-request-id": requestId,
+            "data-request-status": "declined",
+            textContent: "Decline"
+          }),
+          El("button", {
+            type: "button",
+            className: "px-3 py-2 rounded-lg border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition",
+            "data-action": "host-private-request-status",
+            "data-request-id": requestId,
+            "data-request-status": "contacted",
+            textContent: "Marked Contacted"
+          }),
+          safeMailto
+            ? El("a", {
+              href: safeMailto,
+              className: "px-3 py-2 rounded-lg border border-blue-200 text-blue-700 text-xs font-bold hover:bg-blue-50 transition",
+              textContent: "Email Guest"
+            })
+            : El("span", { className: "text-xs text-slate-500", textContent: requesterEmail || "Guest email unavailable" })
+        ])
+      ])
+    );
+  });
+  return section;
+}
+
+async function handleHostPrivateRequestAction(requestId, nextStatus) {
+  const id = String(requestId || "").trim();
+  const status = String(nextStatus || "").trim().toLowerCase();
+  if (!id || !status) return;
+  try {
+    await updateHostPrivateBookingRequestStatus(id, status);
+    window.tstsNotify("Private request updated.", "success");
+    await loadHost();
+  } catch (err) {
+    window.tstsNotify(String((err && err.message) || "Failed to update private request."), "error");
+  }
+}
+
+async function handleConnectionRequestAction(requestId, action) {
+  const id = String(requestId || "").trim();
+  const next = String(action || "").trim().toLowerCase();
+  if (!id || !next) return;
+  try {
+    await respondToConnectionRequest(id, next);
+    window.tstsNotify(next === "accept" ? "Connection accepted." : "Connection rejected.", "success");
+    await loadTrips();
+  } catch (err) {
+    window.tstsNotify(String((err && err.message) || "Could not update connection request."), "error");
+  }
+}
+
+function focusDashboardDeepLinkPanel() {
+  const panel = String((dashboardDeepLink && dashboardDeepLink.panel) || "").trim().toLowerCase();
+  const requestId = String((dashboardDeepLink && dashboardDeepLink.requestId) || "").trim();
+  if (!panel) return;
+
+  let target = null;
+  if (panel === "private-request-actions") {
+    target = document.getElementById(requestId ? ("host-private-request-row-" + requestId) : "host-private-request-actions-panel");
+  } else if (panel === "connection-actions") {
+    target = document.getElementById("user-connection-actions-panel");
+  }
+  if (!target) return;
+
+  try {
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch (_) {
+    target.scrollIntoView();
+  }
+  target.classList.add("ring-2", "ring-amber-200");
+  setTimeout(function () {
+    try { target.classList.remove("ring-2", "ring-amber-200"); } catch (_) {}
+  }, 2200);
+}
+
 /* ====================== HOSTING DASHBOARD ====================== */
 
 function formatPriceLabel(priceRaw) {
@@ -838,10 +1140,228 @@ function getSessionUserId() {
     .catch(function () { return ""; });
 }
 
+function normalizeHostVerificationStatus(raw) {
+  const s = String(raw || "").trim().toLowerCase();
+  if (s === "requested") return "requested";
+  if (s === "under_review") return "under_review";
+  if (s === "verified") return "verified";
+  if (s === "rejected") return "rejected";
+  return "none";
+}
+
+function hostVerificationLabel(status) {
+  const s = normalizeHostVerificationStatus(status);
+  if (s === "requested") return "Requested";
+  if (s === "under_review") return "Under review";
+  if (s === "verified") return "Verified";
+  if (s === "rejected") return "Rejected";
+  return "Not requested";
+}
+
+function hostVerificationChipClass(status) {
+  const s = normalizeHostVerificationStatus(status);
+  if (s === "verified") return "bg-emerald-100 text-emerald-700";
+  if (s === "under_review") return "bg-blue-100 text-blue-700";
+  if (s === "requested") return "bg-amber-100 text-amber-700";
+  if (s === "rejected") return "bg-red-100 text-red-700";
+  return "bg-slate-100 text-slate-700";
+}
+
+function normalizeStripeConnectStatus(raw) {
+  const s = String(raw || "").trim().toLowerCase();
+  if (s === "connected") return "connected";
+  if (s === "pending") return "pending";
+  if (s === "error") return "error";
+  return "disconnected";
+}
+
+function parseHostVerificationPayload(payload) {
+  const root = (payload && typeof payload === "object") ? payload : {};
+  const data = (root.data && typeof root.data === "object") ? root.data : root;
+  const hostVerification = (data.hostVerification && typeof data.hostVerification === "object") ? data.hostVerification : {};
+  const feePolicy = (data.feePolicy && typeof data.feePolicy === "object") ? data.feePolicy : {};
+  const stripeConnect = (data.stripeConnectStandard && typeof data.stripeConnectStandard === "object") ? data.stripeConnectStandard : {};
+  const feePercentRaw = Number(feePolicy.feePercent);
+  const feePercent = Number.isFinite(feePercentRaw) ? Math.round(Math.max(0, Math.min(20, feePercentRaw)) * 10) / 10 : 5.0;
+  return {
+    hostVerification: {
+      status: normalizeHostVerificationStatus(hostVerification.status),
+      requestedAt: hostVerification.requestedAt || null,
+      reviewedAt: hostVerification.reviewedAt || null,
+      verifiedAt: hostVerification.verifiedAt || null,
+      rejectedAt: hostVerification.rejectedAt || null,
+      note: String(hostVerification.note || "")
+    },
+    feePolicy: {
+      feePercent: feePercent,
+      policyVersion: String(feePolicy.policyVersion || "")
+    },
+    stripeConnectStandard: {
+      status: normalizeStripeConnectStatus(stripeConnect.status),
+      connected: !!stripeConnect.connected,
+      accountIdMasked: String(stripeConnect.accountIdMasked || ""),
+      connectedAt: stripeConnect.connectedAt || null,
+      lastError: String(stripeConnect.lastError || "")
+    },
+    adminEmail: String(data.adminEmail || "admin@thesharedtablestory.com")
+  };
+}
+
+async function fetchHostVerificationState() {
+  const res = await window.authFetch("/api/host/verification/status", { method: "GET" });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(String((payload && payload.message) || "Could not load verification status."));
+  }
+  return parseHostVerificationPayload(payload);
+}
+
+async function requestHostVerification() {
+  const res = await window.authFetch("/api/host/verification/request", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(String((payload && payload.message) || "Host verification request failed."));
+  }
+}
+
+async function startStripeConnectStandard() {
+  const res = await window.authFetch("/api/stripe/connect/standard/start", { method: "GET" });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(String((payload && payload.message) || "Could not start Stripe onboarding."));
+  }
+  const data = (payload && payload.data && typeof payload.data === "object") ? payload.data : payload;
+  const url = String((data && data.url) || "").trim();
+  if (!url) throw new Error("Stripe onboarding URL missing.");
+  window.location.href = url;
+}
+
+async function disconnectStripeConnectStandard() {
+  const res = await window.authFetch("/api/stripe/connect/standard/disconnect", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(String((payload && payload.message) || "Could not disconnect Stripe account."));
+  }
+}
+
+function renderHostVerificationSection(verificationData) {
+  const El = window.tstsEl;
+  const data = verificationData || parseHostVerificationPayload({});
+  const hv = data.hostVerification || {};
+  const feePolicy = data.feePolicy || {};
+  const stripeConnect = data.stripeConnectStandard || {};
+  const status = normalizeHostVerificationStatus(hv.status);
+  const statusLabel = hostVerificationLabel(status);
+  const statusClass = hostVerificationChipClass(status);
+  const canRequest = status === "none" || status === "rejected";
+  const stripeStatus = normalizeStripeConnectStatus(stripeConnect.status);
+  const stripeConnected = !!stripeConnect.connected;
+
+  const noteLine = (status === "rejected" && hv.note)
+    ? ("Admin note: " + hv.note)
+    : (status === "verified"
+      ? "Verified hosts can request event verification from each listing edit screen."
+      : "Email one government ID with address proof to " + data.adminEmail + " after submitting request.");
+
+  const requestBtn = El("button", {
+    type: "button",
+    className: "inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold transition " + (canRequest ? "bg-gray-900 text-white hover:bg-black" : "bg-gray-200 text-gray-500 cursor-not-allowed"),
+    textContent: canRequest ? "Request host verification" : "Host verification submitted",
+    disabled: !canRequest
+  });
+  requestBtn.addEventListener("click", async function () {
+    try {
+      requestBtn.disabled = true;
+      await requestHostVerification();
+      window.tstsNotify("Host verification request submitted. Email ID proof with address to " + data.adminEmail + ".", "success");
+      await loadHost();
+    } catch (err) {
+      requestBtn.disabled = false;
+      window.tstsNotify(String((err && err.message) || "Host verification request failed."), "error");
+    }
+  });
+
+  const connectBtn = El("button", {
+    type: "button",
+    className: "inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold transition " + (stripeConnected ? "bg-emerald-100 text-emerald-700 cursor-not-allowed" : "border border-blue-200 text-blue-700 hover:bg-blue-50"),
+    textContent: stripeConnected ? "Stripe connected" : "Connect Stripe payouts",
+    disabled: stripeConnected
+  });
+  connectBtn.addEventListener("click", async function () {
+    try {
+      connectBtn.disabled = true;
+      await startStripeConnectStandard();
+    } catch (err) {
+      connectBtn.disabled = false;
+      window.tstsNotify(String((err && err.message) || "Could not start Stripe onboarding."), "error");
+    }
+  });
+
+  const disconnectBtn = El("button", {
+    type: "button",
+    className: "inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold border border-red-200 text-red-700 hover:bg-red-50 transition" + (stripeConnected ? "" : " hidden"),
+    textContent: "Disconnect Stripe"
+  });
+  disconnectBtn.addEventListener("click", async function () {
+    var confirmed = await window.tstsConfirm("Disconnect Stripe payout account?", { destructive: true, confirmText: "Disconnect" });
+    if (!confirmed) return;
+    try {
+      disconnectBtn.disabled = true;
+      await disconnectStripeConnectStandard();
+      window.tstsNotify("Stripe payout account disconnected.", "success");
+      await loadHost();
+    } catch (err) {
+      disconnectBtn.disabled = false;
+      window.tstsNotify(String((err && err.message) || "Could not disconnect Stripe account."), "error");
+    }
+  });
+
+  const docMailto = window.tstsSafeMailto ? window.tstsSafeMailto(data.adminEmail) : "";
+  const docSubmitButton = docMailto
+    ? El("a", {
+      href: docMailto,
+      className: "inline-flex items-center px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-bold hover:bg-slate-50 transition",
+      textContent: "Send ID proof by email"
+    })
+    : El("span", {
+      className: "inline-flex items-center px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-sm font-bold",
+      textContent: "Send ID proof to " + data.adminEmail
+    });
+
+  return El("section", { className: "space-y-4 mb-8" }, [
+    El("h2", { className: "text-xl font-bold text-gray-900", textContent: "Host Verification & Payout Setup" }),
+    El("div", { className: "bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4" }, [
+      El("div", { className: "flex flex-wrap items-center gap-2" }, [
+        El("span", { className: "px-3 py-1 text-xs font-bold rounded-full " + statusClass, textContent: "Host verification: " + statusLabel }),
+        El("span", { className: "px-3 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-700", textContent: "Event verification fee policy: " + feePolicy.feePercent.toFixed(1) + "%" }),
+        El("span", { className: "px-3 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-700", textContent: "Stripe payout: " + stripeStatus })
+      ]),
+      El("p", { className: "text-sm text-slate-600", textContent: noteLine }),
+      El("div", { className: "text-xs text-slate-500 grid grid-cols-1 md:grid-cols-2 gap-2" }, [
+        El("span", { textContent: "Verification policy version: " + (feePolicy.policyVersion || "Unavailable") }),
+        El("span", { textContent: "Connected account: " + (stripeConnect.accountIdMasked || "Not connected") })
+      ]),
+      El("div", { className: "flex flex-wrap items-center gap-2" }, [requestBtn, docSubmitButton, connectBtn, disconnectBtn]),
+      El("div", { className: "text-xs text-slate-500" }, [
+        El("p", { textContent: "Verification flow: request in dashboard → email one ID proof with address to " + data.adminEmail + " → admin review updates status." }),
+        El("p", { className: "mt-1", textContent: "Event verification requires host verification first. Guests do not pay extra verification charge." })
+      ])
+    ])
+  ]);
+}
+
 function renderHostListingsSection(listings, hostBookings) {
   const El = window.tstsEl;
   const wrap = El("section", { className: "space-y-4 mb-8" });
-  wrap.appendChild(El("h2", { className: "text-xl font-bold text-gray-900", textContent: "Your Listings" }));
+  wrap.appendChild(El("h2", { className: "text-xl font-bold text-gray-900", textContent: "My Listings" }));
 
   const countByExperienceId = new Map();
   (Array.isArray(hostBookings) ? hostBookings : []).forEach(function (b) {
@@ -918,13 +1438,23 @@ function renderHostBookingsSection(bookings) {
     const payoutState = stateLabel(b && b.payoutStatus);
     const paymentState = stateLabel(b && b.paymentStatus);
     const disputeActive = !!(b && b.dispute && b.dispute.active === true);
-    const hostPayoutCents = Number(
-      (b && b.payoutNetHostCents != null) ? b.payoutNetHostCents :
+    const payoutGrossCents = Number(
       (b && b.payoutGrossHostCents != null) ? b.payoutGrossHostCents :
       (b && b.pricingSnapshot && b.pricingSnapshot.hostPayoutCents != null) ? b.pricingSnapshot.hostPayoutCents :
       (b && b.feeBreakdown && b.feeBreakdown.hostPayoutCents != null) ? b.feeBreakdown.hostPayoutCents :
       (b && b.pricing && b.pricing.hostPayoutCents != null) ? b.pricing.hostPayoutCents :
       NaN
+    );
+    const payoutVerificationFeeCents = Number(
+      (b && b.payoutVerificationFeeCents != null) ? b.payoutVerificationFeeCents :
+      (b && b.eventVerificationFee && b.eventVerificationFee.amountCents != null) ? b.eventVerificationFee.amountCents :
+      (b && b.feeBreakdown && b.feeBreakdown.eventVerificationFeeCents != null) ? b.feeBreakdown.eventVerificationFeeCents :
+      0
+    );
+    const payoutRecoveryOffsetCents = Number((b && b.payoutRecoveryOffsetCents != null) ? b.payoutRecoveryOffsetCents : 0);
+    const payoutNetCents = Number(
+      (b && b.payoutNetHostCents != null) ? b.payoutNetHostCents :
+      (Number.isFinite(payoutGrossCents) ? Math.max(0, payoutGrossCents - Math.max(0, payoutVerificationFeeCents) - Math.max(0, payoutRecoveryOffsetCents)) : NaN)
     );
     const refundAmountCents = Number(b && b.refundDecision && b.refundDecision.amountCents);
 
@@ -955,7 +1485,10 @@ function renderHostBookingsSection(bookings) {
           ]),
           El("div", { className: "text-xs text-slate-500 mt-2 flex flex-col gap-1" }, [
             El("span", { textContent: "Policy: " + policyVersion + " • Effective: " + policyEffective }),
-            El("span", { textContent: "Host payout estimate: " + (Number.isFinite(hostPayoutCents) ? centsToMoney(hostPayoutCents) : "—") }),
+            El("span", { textContent: "Payout gross: " + (Number.isFinite(payoutGrossCents) ? centsToMoney(payoutGrossCents) : "—") }),
+            El("span", { textContent: "Verification deduction: -" + (Number.isFinite(payoutVerificationFeeCents) ? centsToMoney(Math.max(0, payoutVerificationFeeCents)) : "—") }),
+            El("span", { textContent: "Recovery offset: -" + (Number.isFinite(payoutRecoveryOffsetCents) ? centsToMoney(Math.max(0, payoutRecoveryOffsetCents)) : "—") }),
+            El("span", { className: "font-semibold text-slate-700", textContent: "Net payout: " + (Number.isFinite(payoutNetCents) ? centsToMoney(payoutNetCents) : "—") }),
             El("span", { textContent: "Refund amount: " + (Number.isFinite(refundAmountCents) ? centsToMoney(refundAmountCents) : "—") })
           ])
         ])
@@ -968,52 +1501,316 @@ function renderHostBookingsSection(bookings) {
   return wrap;
 }
 
-async function loadHost() {
+function computeListingsSummary(rows, fallbackSummary) {
+  const list = Array.isArray(rows) ? rows : [];
+  const fromApi = (fallbackSummary && typeof fallbackSummary === "object") ? fallbackSummary : {};
+  const totalListings = Number.isFinite(Number(fromApi.totalListings)) ? Number(fromApi.totalListings) : list.length;
+  const activeListings = Number.isFinite(Number(fromApi.activeListings))
+    ? Number(fromApi.activeListings)
+    : list.filter(function (row) { return row && row.isPaused !== true; }).length;
+  const pausedListings = Number.isFinite(Number(fromApi.pausedListings))
+    ? Number(fromApi.pausedListings)
+    : list.filter(function (row) { return row && row.isPaused === true; }).length;
+  const fallbackMatchedCount = Number.isFinite(Number(fromApi.fallbackMatchedCount)) ? Number(fromApi.fallbackMatchedCount) : 0;
+  return {
+    totalListings: Math.max(0, totalListings),
+    activeListings: Math.max(0, activeListings),
+    pausedListings: Math.max(0, pausedListings),
+    fallbackMatchedCount: Math.max(0, fallbackMatchedCount)
+  };
+}
+
+function formatMetricValue(sourceStatus, rawValue) {
+  if (sourceStatus !== "ready") return "Unavailable";
+  if (!Number.isFinite(Number(rawValue))) return "0";
+  return String(Math.max(0, Math.floor(Number(rawValue))));
+}
+
+function renderHostingSectionTabs(activeSection) {
+  const El = window.tstsEl;
+  const nav = El("nav", { className: "bg-white rounded-2xl border border-gray-100 p-2 shadow-sm" });
+  const row = El("div", { className: "grid grid-cols-1 md:grid-cols-5 gap-2" });
+  HOSTING_SECTION_KEYS.forEach(function (key) {
+    const isActive = key === activeSection;
+    row.appendChild(
+      El("button", {
+        type: "button",
+        className: (isActive
+          ? "bg-gray-900 text-white border-gray-900"
+          : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50") + " px-3 py-2 rounded-lg border text-sm font-bold transition",
+        "data-action": "host-switch-section",
+        "data-host-section": key,
+        textContent: HOSTING_SECTION_LABELS[key] || key
+      })
+    );
+  });
+  nav.appendChild(row);
+  return nav;
+}
+
+function renderHostSourceLoading(text) {
+  const El = window.tstsEl;
+  return El("div", { className: "bg-white p-6 rounded-2xl border border-gray-100 text-sm text-gray-500 flex items-center gap-2" }, [
+    El("i", { className: "fas fa-spinner fa-spin text-gray-400" }),
+    El("span", { textContent: text || "Loading..." })
+  ]);
+}
+
+function renderHostSourceError(title, message, retryLabel) {
+  const El = window.tstsEl;
+  return El("div", { className: "bg-white p-6 rounded-2xl border border-red-200 shadow-sm space-y-3" }, [
+    El("h3", { className: "text-lg font-bold text-red-700", textContent: title || "Section unavailable" }),
+    El("p", { className: "text-sm text-red-600", textContent: message || "This section could not be loaded. Please retry." }),
+    El("button", {
+      type: "button",
+      className: "inline-flex items-center px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition",
+      "data-action": "host-retry-load",
+      textContent: retryLabel || "Retry"
+    })
+  ]);
+}
+
+function renderHostOwnershipWarnings(warnings) {
+  const El = window.tstsEl;
+  const rows = Array.isArray(warnings) ? warnings : [];
+  const hasAmbiguousNameWarning = rows.some(function (w) {
+    return String(w && w.code || "").trim().toUpperCase() === "AMBIGUOUS_HOST_NAME";
+  });
+  if (!hasAmbiguousNameWarning) return El("div", { className: "hidden", textContent: "" });
+
+  const hintUrl = "profile.html?hostOwnership=ambiguous";
+  return El("div", { className: "bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900 flex flex-col md:flex-row md:items-center md:justify-between gap-3" }, [
+    El("div", { className: "space-y-1" }, [
+      El("p", { className: "font-bold", textContent: "Host ownership fallback is restricted." }),
+      El("p", { textContent: "Multiple active users share this display name. Set or verify your handle for deterministic admin listing attribution." })
+    ]),
+    El("a", {
+      href: hintUrl,
+      className: "inline-flex items-center px-3 py-2 rounded-lg border border-amber-300 text-amber-900 font-bold hover:bg-amber-100 transition",
+      textContent: "Open Profile Handle Settings"
+    })
+  ]);
+}
+
+function renderHostOverviewSection() {
+  const El = window.tstsEl;
+  const listingsState = hostDashboardState.listings || {};
+  const bookingsState = hostDashboardState.bookings || {};
+  const requestsState = hostDashboardState.privateRequests || {};
+  const verificationState = hostDashboardState.verification || {};
+  const summary = computeListingsSummary(listingsState.items, listingsState.summary);
+  const verificationStatus = (verificationState.status === "ready")
+    ? hostVerificationLabel(((verificationState.data || {}).hostVerification || {}).status)
+    : "Unavailable";
+
+  const cards = [
+    { label: "Total listings", value: formatMetricValue(listingsState.status, summary.totalListings) },
+    { label: "Active listings", value: formatMetricValue(listingsState.status, summary.activeListings) },
+    { label: "Paused listings", value: formatMetricValue(listingsState.status, summary.pausedListings) },
+    {
+      label: "Pending private requests",
+      value: formatMetricValue(requestsState.status, Array.isArray(requestsState.rows) ? requestsState.rows.length : 0)
+    },
+    {
+      label: "Host bookings count",
+      value: formatMetricValue(bookingsState.status, Array.isArray(bookingsState.rows) ? bookingsState.rows.length : 0)
+    },
+    { label: "Verification status", value: verificationStatus }
+  ];
+
+  const section = El("section", { className: "space-y-4" }, [
+    El("h2", { className: "text-xl font-bold text-gray-900", textContent: "Hosting Overview" })
+  ]);
+  const grid = El("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" });
+  cards.forEach(function (card) {
+    grid.appendChild(
+      El("div", { className: "bg-white rounded-xl border border-gray-100 p-4 shadow-sm" }, [
+        El("p", { className: "text-xs uppercase tracking-wide text-gray-500", textContent: card.label }),
+        El("p", { className: "text-2xl font-bold text-gray-900 mt-1", textContent: String(card.value || "0") })
+      ])
+    );
+  });
+  section.appendChild(grid);
+
+  const sourceRows = [
+    { label: "Listings", state: listingsState, retryLabel: "Retry Listings" },
+    { label: "Bookings", state: bookingsState, retryLabel: "Retry Bookings" },
+    { label: "Private Requests", state: requestsState, retryLabel: "Retry Private Requests" },
+    { label: "Verification", state: verificationState, retryLabel: "Retry Verification" }
+  ];
+  sourceRows.forEach(function (row) {
+    if (row.state && row.state.status === "error") {
+      section.appendChild(renderHostSourceError(row.label + " unavailable", row.state.message, row.retryLabel));
+    }
+  });
+
+  return section;
+}
+
+function renderHostingSectionContent() {
+  const section = hostDashboardState.section || "overview";
+  const listingsState = hostDashboardState.listings || {};
+  const bookingsState = hostDashboardState.bookings || {};
+  const requestsState = hostDashboardState.privateRequests || {};
+  const verificationState = hostDashboardState.verification || {};
+  const El = window.tstsEl;
+
+  if (section === "overview") return renderHostOverviewSection();
+
+  if (section === "listings") {
+    if (listingsState.status === "loading") return renderHostSourceLoading("Loading listings...");
+    if (listingsState.status === "error") return renderHostSourceError("Listings unavailable", listingsState.message, "Retry Listings");
+
+    const listingRows = Array.isArray(listingsState.items) ? listingsState.items : [];
+    if (listingRows.length === 0) {
+      return El("div", { className: "text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm" }, [
+        El("div", { className: "text-5xl mb-4", textContent: "🍳" }),
+        El("h3", { className: "text-xl font-bold text-gray-900 mb-2", textContent: "No listings yet" }),
+        El("p", { className: "text-gray-500 mb-6", textContent: "Create your first experience and it will appear here for editing." }),
+        El("a", { href: "host.html", className: "inline-block bg-gray-900 text-white px-8 py-3 rounded-full font-bold shadow hover:bg-black transition", textContent: "Create Listing" })
+      ]);
+    }
+    return renderHostListingsSection(listingRows, bookingsState.status === "ready" ? bookingsState.rows : []);
+  }
+
+  if (section === "bookings") {
+    if (bookingsState.status === "loading") return renderHostSourceLoading("Loading booking requests...");
+    if (bookingsState.status === "error") return renderHostSourceError("Bookings unavailable", bookingsState.message, "Retry Bookings");
+    return renderHostBookingsSection(bookingsState.rows);
+  }
+
+  if (section === "private-requests") {
+    if (requestsState.status === "loading") return renderHostSourceLoading("Loading private requests...");
+    if (requestsState.status === "error") return renderHostSourceError("Private requests unavailable", requestsState.message, "Retry Private Requests");
+    return renderHostPrivateRequestActionsPanel(requestsState.rows);
+  }
+
+  if (section === "verification-payout") {
+    if (verificationState.status === "loading") return renderHostSourceLoading("Loading verification and payout status...");
+    if (verificationState.status === "error") return renderHostSourceError("Verification and payout unavailable", verificationState.message, "Retry Verification");
+    return renderHostVerificationSection(verificationState.data);
+  }
+
+  return renderHostOverviewSection();
+}
+
+function renderHostingDashboard() {
+  if (!contentEl) return;
+  const El = window.tstsEl;
+  contentEl.textContent = "";
+  const wrap = El("div", { className: "space-y-4" }, [
+    renderHostingSectionTabs(hostDashboardState.section),
+    renderHostOwnershipWarnings(hostDashboardState.listings.warnings),
+    renderHostingSectionContent()
+  ]);
+  contentEl.appendChild(wrap);
+}
+
+function setHostingSection(nextSection) {
+  hostDashboardState.section = resolveHostingSection(nextSection, dashboardDeepLink.panel);
+  renderHostingDashboard();
+  syncDashboardTabQuery("hosting", hostDashboardState.section);
+  focusDashboardDeepLinkPanel();
+}
+
+async function fetchHostListingsSource() {
+  try {
+    const res = await window.authFetch("/api/host/experiences", { method: "GET" });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        status: "error",
+        items: [],
+        summary: null,
+        warnings: [],
+        message: String((payload && payload.message) || "Failed to load listings.")
+      };
+    }
+
+    const root = (payload && payload.data && typeof payload.data === "object") ? payload.data : payload;
+    const items = Array.isArray(root && root.items) ? root.items : [];
+    const summary = computeListingsSummary(items, root && root.summary);
+    const warnings = Array.isArray(root && root.warnings) ? root.warnings : [];
+    return {
+      status: "ready",
+      items: items,
+      summary: summary,
+      warnings: warnings,
+      message: ""
+    };
+  } catch (_) {
+    return { status: "error", items: [], summary: null, warnings: [], message: "Failed to load listings." };
+  }
+}
+
+async function fetchHostBookingsSource() {
+  try {
+    const res = await window.authFetch("/api/bookings/host-bookings", { method: "GET" });
+    const payload = await res.json().catch(() => []);
+    if (!res.ok) {
+      return { status: "error", rows: [], message: String((payload && payload.message) || "Failed to load booking requests.") };
+    }
+    const rows = Array.isArray(payload) ? payload : [];
+    return { status: "ready", rows: rows, message: "" };
+  } catch (_) {
+    return { status: "error", rows: [], message: "Failed to load booking requests." };
+  }
+}
+
+async function fetchHostPrivateRequestsSource() {
+  try {
+    const res = await window.authFetch("/api/host/private-booking-requests?status=pending&limit=100", { method: "GET" });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { status: "error", rows: [], message: String((payload && payload.message) || "Failed to load private requests.") };
+    }
+    const rows = Array.isArray(payload && payload.requests) ? payload.requests : [];
+    return { status: "ready", rows: rows, message: "" };
+  } catch (_) {
+    return { status: "error", rows: [], message: "Failed to load private requests." };
+  }
+}
+
+async function fetchHostVerificationSource() {
+  try {
+    const res = await window.authFetch("/api/host/verification/status", { method: "GET" });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { status: "error", data: null, message: String((payload && payload.message) || "Failed to load verification and payout status.") };
+    }
+    return { status: "ready", data: parseHostVerificationPayload(payload), message: "" };
+  } catch (_) {
+    return { status: "error", data: null, message: "Failed to load verification and payout status." };
+  }
+}
+
+async function loadHost(sectionOverride) {
   if (!(await requireAuthOrRedirect())) return;
-  setLoading();
+
+  hostDashboardState.section = resolveHostingSection(sectionOverride || hostDashboardState.section || dashboardDeepLink.section, dashboardDeepLink.panel);
+  hostDashboardState.listings = { status: "loading", items: [], summary: null, warnings: [], message: "" };
+  hostDashboardState.bookings = { status: "loading", rows: [], message: "" };
+  hostDashboardState.privateRequests = { status: "loading", rows: [], message: "" };
+  hostDashboardState.verification = { status: "loading", data: null, message: "" };
+  renderHostingDashboard();
+  syncDashboardTabQuery("hosting", hostDashboardState.section);
 
   try {
-    const hostId = await getSessionUserId();
-    if (!hostId) {
-      setError("Unable to load hosting profile.");
-      return;
-    }
-
-    const [bookingsRes, listingsRes] = await Promise.all([
-      window.authFetch("/api/bookings/host-bookings"),
-      window.authFetch("/api/experiences?hostId=" + encodeURIComponent(hostId) + "&limit=200", { method: "GET" })
+    const [listingsState, bookingsState, privateRequestsState, verificationState] = await Promise.all([
+      fetchHostListingsSource(),
+      fetchHostBookingsSource(),
+      fetchHostPrivateRequestsSource(),
+      fetchHostVerificationSource()
     ]);
 
-    const bookings = await bookingsRes.json().catch(() => []);
-    const listings = await listingsRes.json().catch(() => []);
+    hostDashboardState.listings = listingsState;
+    hostDashboardState.bookings = bookingsState;
+    hostDashboardState.privateRequests = privateRequestsState;
+    hostDashboardState.verification = verificationState;
+    hostBookingsCache = (bookingsState.status === "ready" && Array.isArray(bookingsState.rows)) ? bookingsState.rows : [];
 
-    if (!bookingsRes.ok && !listingsRes.ok) {
-      const msg = (bookings && bookings.message) || (listings && listings.message) || "Failed to load hosting data.";
-      setError(msg);
-      return;
-    }
-
-    hostBookingsCache = Array.isArray(bookings) ? bookings : [];
-    const listingRows = Array.isArray(listings) ? listings : [];
-
-    if (listingRows.length === 0 && hostBookingsCache.length === 0) {
-      const El = window.tstsEl;
-      contentEl.textContent = "";
-      contentEl.appendChild(
-        El("div", { className: "text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm" }, [
-          El("div", { className: "text-5xl mb-4", textContent: "🍳" }),
-          El("h3", { className: "text-xl font-bold text-gray-900 mb-2", textContent: "No listings yet" }),
-          El("p", { className: "text-gray-500 mb-6", textContent: "Create your first experience and it will appear here for editing." }),
-          El("a", { href: "host.html", className: "inline-block bg-gray-900 text-white px-8 py-3 rounded-full font-bold shadow hover:bg-black transition", textContent: "Create Listing" })
-        ])
-      );
-      return;
-    }
-
-    const El = window.tstsEl;
-    contentEl.textContent = "";
-    if (listingRows.length > 0) contentEl.appendChild(renderHostListingsSection(listingRows, hostBookingsCache));
-    contentEl.appendChild(renderHostBookingsSection(hostBookingsCache));
+    renderHostingDashboard();
+    focusDashboardDeepLinkPanel();
   } catch (_) {
     setError("Failed to load hosting data.");
   }
@@ -1076,7 +1873,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!(await requireAuthOrRedirect())) return;
 
   if (tabTrips) tabTrips.addEventListener("click", () => { toggleTab("trips"); loadTrips(); });
-  if (tabHost) tabHost.addEventListener("click", () => { toggleTab("hosting"); loadHost(); });
+  if (tabHost) tabHost.addEventListener("click", () => {
+    toggleTab("hosting");
+    loadHost(hostDashboardState.section || dashboardDeepLink.section || "overview");
+  });
 
   if (reviewForm) reviewForm.addEventListener("submit", submitReview);
   if (complaintForm) complaintForm.addEventListener("submit", submitComplaint);
@@ -1096,6 +1896,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     const bid = btn.getAttribute("data-booking-id") || "";
     const expId = btn.getAttribute("data-exp-id") || "";
     const toFriendsRaw = btn.getAttribute("data-to-friends");
+    const requestId = btn.getAttribute("data-request-id") || "";
+    const requestStatus = btn.getAttribute("data-request-status") || "";
+    const hostSection = btn.getAttribute("data-host-section") || "";
+
+    if (action === "host-switch-section") {
+      setHostingSection(hostSection);
+      return;
+    }
+    if (action === "host-retry-load") {
+      loadHost(hostDashboardState.section || "overview");
+      return;
+    }
 
     if (action === "cancel") openCancelReviewModalById(bid);
     if (action === "review") openReviewModal(bid, expId);
@@ -1104,6 +1916,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (action === "toggle-visibility") {
       const toFriends = String(toFriendsRaw || "").toLowerCase() === "true";
       updateBookingVisibility(bid, toFriends);
+    }
+    if (action === "host-private-request-status") {
+      handleHostPrivateRequestAction(requestId, requestStatus);
+    }
+    if (action === "connection-request-action") {
+      handleConnectionRequestAction(requestId, requestStatus);
     }
   });
 
@@ -1135,6 +1953,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Default load
   loadActivePolicySnapshot().catch(() => {});
-  toggleTab("trips");
-  loadTrips();
+  const initialTab = resolveDashboardTab(dashboardDeepLink.tab);
+  hostDashboardState.section = resolveHostingSection(dashboardDeepLink.section, dashboardDeepLink.panel);
+  toggleTab(initialTab);
+  if (initialTab === "hosting") loadHost(hostDashboardState.section);
+  else loadTrips();
 });

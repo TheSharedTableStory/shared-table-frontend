@@ -46,13 +46,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function renderProfile(profile) {
     const p = (profile && profile.user) ? profile.user : (profile || {});
+    const hostVerificationStatus = String((p && p.hostVerificationStatus) || "").trim().toLowerCase();
+    const hostVerified = !!(p && p.hostVerified === true) || hostVerificationStatus === "verified";
 
     hostNameEl.textContent = p.name || "";
     if (p.profilePic && hostPicEl) window.tstsSafeImg(hostPicEl, p.profilePic, "/assets/avatar-default.svg");
     if (p.bio) hostBioEl.textContent = p.bio;
 
     hostRatingEl.textContent = "New";
-    hostBadgeEl.classList.add('hidden');
+    if (hostBadgeEl) hostBadgeEl.classList.toggle('hidden', !hostVerified);
 
     loadingEl.classList.add('hidden');
     contentEl.classList.remove('hidden');
@@ -134,6 +136,11 @@ function createExperienceCard(exp) {
         tagsContainer.appendChild(El('span', { className: 'px-2 py-1 bg-black/60 text-white text-[10px] uppercase font-bold rounded', textContent: tag }));
     });
     var visibilityChip = El('span', { className: 'absolute top-3 left-3 inline-flex items-center rounded-full bg-blue-100/90 text-blue-700 px-2 py-1 text-[10px] font-bold', textContent: 'Visible to: Public' });
+    const verifiedStatus = String((exp && exp.verifiedStatus) || "").trim().toLowerCase();
+    var verifiedChip = null;
+    if (verifiedStatus === "verified") {
+        verifiedChip = El('span', { className: 'absolute top-3 left-3 mt-7 inline-flex items-center rounded-full bg-blue-100/90 text-blue-700 px-2 py-1 text-[10px] font-bold', textContent: 'Verified event' });
+    }
 
     var markerIcon = El('i', { className: 'fas fa-map-marker-alt text-orange-500' });
     var starIcon = El('i', { className: 'fas fa-star' });
@@ -150,6 +157,7 @@ function createExperienceCard(exp) {
         El('div', { className: 'relative h-48 w-full overflow-hidden bg-gray-100' }, [
             imgEl,
             visibilityChip,
+            verifiedChip || El('span', { className: 'hidden', textContent: '' }),
             El('div', { className: 'absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold shadow-sm', textContent: '$' + (exp.price || '') }),
             tagsContainer
         ]),

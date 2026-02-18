@@ -737,6 +737,7 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
   // Cache: prevents every page calling /api/auth/me multiple times during bootstrap.
   window.tstsGetSession = (function () {
     let inFlight = null;
+    let refreshInFlight = null;
     let cache = { ts: 0, ok: false, status: 0, user: null, csrfToken: "" };
     const TTL_MS = 8000;
 
@@ -745,6 +746,38 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
       const user = (unwrapped && unwrapped.user) ? unwrapped.user : ((payload && payload.user) ? payload.user : (unwrapped || null));
       const csrfToken = (unwrapped && unwrapped.csrfToken) ? unwrapped.csrfToken : ((payload && payload.csrfToken) ? payload.csrfToken : "");
       return { user, csrfToken };
+    }
+
+    function hasAuthHint() {
+      try {
+        const cookie = String(document.cookie || "");
+        return /(^|;\s*)tsts_auth_hint=1(?:;|$)/.test(cookie);
+      } catch (_) {}
+      return false;
+    }
+
+    async function refreshAccessTokenOnce() {
+      if (refreshInFlight) return refreshInFlight;
+      refreshInFlight = (async function () {
+        try {
+          if (!window.authFetch) return false;
+          const res = await window.authFetch("/api/auth/refresh", { method: "POST" });
+          if (!res || !res.ok) return false;
+          const payload = await res.json().catch(() => ({}));
+          const unwrapped = (window.tstsUnwrap ? window.tstsUnwrap(payload) : ((payload && payload.data !== undefined) ? payload.data : payload));
+          const csrfToken = String((unwrapped && unwrapped.csrfToken) || "");
+          if (csrfToken && window.setAuth) {
+            const existingUser = (window.getAuthUser && window.getAuthUser()) || null;
+            window.setAuth(csrfToken, existingUser && Object.keys(existingUser).length ? existingUser : null);
+          }
+          return true;
+        } catch (_) {
+          return false;
+        } finally {
+          refreshInFlight = null;
+        }
+      })();
+      return refreshInFlight;
     }
 
     return async function (opts) {
@@ -757,32 +790,59 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
 
       inFlight = (async function () {
         const out = { ts: Date.now(), ok: false, status: 0, user: null, csrfToken: "" };
+        const authHint = hasAuthHint();
         try {
           if (!window.authFetch) return out;
+          if (!force && !authHint) {
+            cache = out;
+            return cache;
+          }
 
-          const res = await window.authFetch("/api/auth/me", { method: "GET" });
+          let res = await window.authFetch("/api/auth/me", { method: "GET" });
           out.status = res ? res.status : 0;
 
+          if (res && res.ok) {
+            const payload = await res.json().catch(() => ({}));
+            const parsed = parseMe(payload);
+            out.ok = true;
+            out.user = parsed.user || null;
+            out.csrfToken = String(parsed.csrfToken || "");
+            try { if (window.setAuth) window.setAuth(out.csrfToken, out.user); } catch (_) {}
+            cache = out;
+            return cache;
+          }
+
           if (res && (res.status === 401 || res.status === 403)) {
+            const shouldTryRefresh = !!authHint;
+            const refreshed = shouldTryRefresh ? await refreshAccessTokenOnce() : false;
+            if (refreshed) {
+              res = await window.authFetch("/api/auth/me", { method: "GET" });
+              out.status = res ? res.status : 0;
+              if (res && res.ok) {
+                const retryPayload = await res.json().catch(() => ({}));
+                const retryParsed = parseMe(retryPayload);
+                out.ok = true;
+                out.user = retryParsed.user || null;
+                out.csrfToken = String(retryParsed.csrfToken || "");
+                try { if (window.setAuth) window.setAuth(out.csrfToken, out.user); } catch (_) {}
+                cache = out;
+                return cache;
+              }
+            }
             try { if (window.clearAuth) window.clearAuth(); } catch (_) {}
             cache = out;
             return cache;
           }
-          if (!res || !res.ok) {
-            cache = out;
+
+          // Avoid forced logout on transient rate-limit/network failures.
+          if (res && res.status === 429 && cache && cache.ok && cache.user) {
             return cache;
           }
-
-          const payload = await res.json().catch(() => ({}));
-          const parsed = parseMe(payload);
-          out.ok = true;
-          out.user = parsed.user || null;
-          out.csrfToken = String(parsed.csrfToken || "");
-          try { if (window.setAuth) window.setAuth(out.csrfToken, out.user); } catch (_) {}
 
           cache = out;
           return cache;
         } catch (_) {
+          if (cache && cache.ok && cache.user) return cache;
           cache = out;
           return cache;
         } finally {
@@ -860,7 +920,7 @@ function injectNavbar() {
   const navExplore = tstsEl("a", { href: "explore.html", className: "text-gray-600 hover:text-orange-600 font-medium transition" }, "Explore");
   const dealsIcon = tstsEl("i", { className: "fas fa-fire" });
   const navDeals = tstsEl("a", { href: "explore.html?filter=deals", className: "text-red-600 hover:text-red-700 font-bold transition flex items-center gap-1" }, [dealsIcon, " Deals"]);
-  const navHost = tstsEl("a", { href: "host.html", className: "text-gray-600 hover:text-orange-600 font-medium transition" }, "Become a Host");
+  const navHost = tstsEl("a", { href: "host.html", className: "text-gray-600 hover:text-orange-600 font-medium transition" }, "Host Dashboard");
   const authDesktop = tstsEl("div", { id: "auth-section-desktop" }, [
     tstsEl("a", { href: "login.html", className: "bg-gray-900 text-white px-5 py-2 rounded-full font-medium hover:bg-gray-800 transition" }, "Login")
   ]);
@@ -877,7 +937,7 @@ function injectNavbar() {
   const mobileExplore = tstsEl("a", { href: "explore.html", className: "text-gray-700 hover:text-orange-600 font-medium" }, "Explore");
   const mobileDealsIcon = tstsEl("i", { className: "fas fa-fire" });
   const mobileDeals = tstsEl("a", { href: "explore.html?filter=deals", className: "text-red-600 font-bold flex items-center gap-2" }, [mobileDealsIcon, " Deals"]);
-  const mobileHost = tstsEl("a", { href: "host.html", className: "text-gray-700 hover:text-orange-600 font-medium" }, "Become a Host");
+  const mobileHost = tstsEl("a", { href: "host.html", className: "text-gray-700 hover:text-orange-600 font-medium" }, "Host Dashboard");
   const authMobile = tstsEl("div", { id: "auth-section-mobile", className: "pt-4 border-t border-gray-100" }, [
     tstsEl("a", { href: "login.html", className: "block w-full text-center bg-gray-900 text-white px-5 py-3 rounded-lg font-medium" }, "Login / Sign Up")
   ]);
@@ -902,7 +962,7 @@ function injectFooter() {
     tstsEl("h4", { className: "font-bold mb-4" }, "Company"),
     tstsEl("ul", { className: "space-y-2 text-gray-400 text-sm" }, [
       tstsEl("li", {}, [tstsEl("a", { href: "about.html", className: "hover:text-white transition" }, "About Us")]),
-      tstsEl("li", {}, [tstsEl("a", { href: "host.html", className: "hover:text-white transition" }, "Become a Host")]),
+      tstsEl("li", {}, [tstsEl("a", { href: "host.html", className: "hover:text-white transition" }, "Host Dashboard")]),
       tstsEl("li", {}, [tstsEl("a", { href: "mailto:contact@thesharedtablestory.com", className: "hover:text-white transition" }, "Contact")])
     ])
   ]);
@@ -1065,16 +1125,10 @@ async function hydrateFooterPolicyMeta() {
 // Auth must work when frontend and backend are on different hosts (cookies not readable from JS).
 async function applyAuthStateToNav() {
   if (!window.tstsGetSession) return;
-  // Avoid noisy /api/auth/me 401s on public pages: only probe session when we have a stored user hint.
-  // Cookie auth remains the authority; this is just a guardrail for console cleanliness + perf.
-  try {
-    if (!localStorage.getItem("tsts_user")) return;
-  } catch (_) {
-    return;
-  }
   const sess = await window.tstsGetSession({ force: false });
   if (!sess || !sess.ok || !sess.user) return;
   const user = sess.user || {};
+  const isAdminUser = !!(user && (user.isAdmin === true || String(user.role || "").toLowerCase() === "admin"));
 
   // Desktop auth menu - click-toggle dropdown
   const desktopAuth = document.getElementById("auth-section-desktop");
@@ -1092,6 +1146,7 @@ async function applyAuthStateToNav() {
       { href: "connections.html", text: "Connections" },
       { href: "settings-data.html", text: "Data & Privacy" }
     ];
+    if (isAdminUser) menuLinks.push({ href: "admin.html", text: "Admin Dashboard" });
     const dropdownItems = menuLinks.map(function(lnk) {
       return tstsEl("a", { href: lnk.href, className: "block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition" }, lnk.text);
     });
@@ -1116,6 +1171,7 @@ async function applyAuthStateToNav() {
       { href: "profile.html", text: "My Profile" },
       { href: "settings-data.html", text: "Data & Privacy" }
     ];
+    if (isAdminUser) mobileLinks.push({ href: "admin.html", text: "Admin Dashboard" });
     mobileLinks.forEach(function(lnk) {
       mobileAuth.appendChild(tstsEl("a", { href: lnk.href, className: "block text-gray-700 hover:text-orange-600 font-medium py-2" }, lnk.text));
     });
@@ -1247,6 +1303,10 @@ window.tstsRequireAuth = function (opts) {
     return window.tstsGetSession({ force: true })
       .then(function (sess) {
         if (sess && sess.ok && sess.user) return true;
+        if (sess && Number(sess.status) === 429) {
+          try { if (window.tstsNotify) window.tstsNotify("Session check is temporarily rate-limited. Please retry.", "warning"); } catch (_) {}
+          return false;
+        }
         go();
         return false;
       })

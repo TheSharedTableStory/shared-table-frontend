@@ -65,6 +65,68 @@ async function loadUsers() {
   return res.json();
 }
 
+async function loadHostVerifications(status) {
+  var p = new URLSearchParams();
+  p.set("status", String(status || "all"));
+  p.set("limit", "150");
+  const res = await adminFetch("/api/admin/verifications/hosts?" + p.toString(), { method: "GET" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to load host verifications");
+  }
+  return data;
+}
+
+async function updateHostVerificationStatus(userId, status, note) {
+  const res = await adminFetch("/api/admin/verifications/hosts/" + encodeURIComponent(userId) + "/status", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      status: String(status || "").trim(),
+      note: String(note || "").trim()
+    })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to update host verification");
+  }
+  return data;
+}
+
+async function loadEventVerifications(status) {
+  var p = new URLSearchParams();
+  p.set("status", String(status || "all"));
+  p.set("limit", "150");
+  const res = await adminFetch("/api/admin/verifications/events?" + p.toString(), { method: "GET" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to load event verifications");
+  }
+  return data;
+}
+
+async function loadVerificationFeePolicy() {
+  const res = await adminFetch("/api/admin/verification-fee-policy", { method: "GET" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to load verification fee policy");
+  }
+  return data;
+}
+
+async function saveVerificationFeePolicy(feePercent) {
+  const res = await adminFetch("/api/admin/verification-fee-policy", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ feePercent: feePercent })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to save verification fee policy");
+  }
+  return data;
+}
+
 function buildAuditQueryString(filters) {
   var f = (filters && typeof filters === "object") ? filters : {};
   var p = new URLSearchParams();
@@ -208,6 +270,45 @@ async function updatePrivateBookingRequestStatus(id, payload) {
     throw new Error((data && data.message) ? data.message : "Failed to update private booking request");
   }
   return data.request || null;
+}
+
+async function loadAdminActionItems(status) {
+  var p = new URLSearchParams();
+  p.set("status", String(status || "pending"));
+  p.set("ownerType", "admin");
+  p.set("limit", "200");
+  const res = await adminFetch("/api/admin/action-items?" + p.toString(), { method: "GET" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to load action items");
+  }
+  return data;
+}
+
+async function acknowledgeAdminActionItem(id) {
+  const res = await adminFetch("/api/admin/action-items/" + encodeURIComponent(id) + "/ack", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to acknowledge action item");
+  }
+  return data;
+}
+
+async function completeAdminActionItem(id) {
+  const res = await adminFetch("/api/admin/action-items/" + encodeURIComponent(id) + "/complete", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to complete action item");
+  }
+  return data;
 }
 
 async function refundBookingPartial(id, payload) {
@@ -367,6 +468,15 @@ function normalizeVerifiedStatus(v) {
   const s = String(v || "").trim().toLowerCase();
   if (s === "verified") return "verified";
   if (s === "pending") return "pending";
+  if (s === "rejected") return "rejected";
+  return "none";
+}
+
+function normalizeHostVerificationStatus(v) {
+  const s = String(v || "").trim().toLowerCase();
+  if (s === "requested") return "requested";
+  if (s === "under_review") return "under_review";
+  if (s === "verified") return "verified";
   if (s === "rejected") return "rejected";
   return "none";
 }
@@ -586,6 +696,153 @@ function renderExperiences(exps) {
         El("div", { className: "text-xs mt-1 " + (verifiedStatus === "verified" ? "text-blue-700" : verifiedStatus === "pending" ? "text-amber-700" : "text-slate-500"), textContent: verifiedText })
       ]),
       El("td", { className: "px-6 py-4 text-sm text-right" }, actions)
+    ]));
+  });
+}
+
+function renderVerificationPolicy(payload) {
+  var root = (payload && typeof payload === "object") ? payload : {};
+  var data = (root.data && typeof root.data === "object") ? root.data : root;
+  var policy = (data.policy && typeof data.policy === "object") ? data.policy : {};
+  var feePercentRaw = Number(policy.feePercent);
+  var feePercent = Number.isFinite(feePercentRaw) ? Math.round(Math.max(0, Math.min(20, feePercentRaw)) * 10) / 10 : 0;
+
+  var input = $("verification-fee-percent");
+  if (input) input.value = feePercent.toFixed(1);
+
+  var meta = $("verification-policy-meta");
+  if (meta) {
+    var version = String(policy.policyVersion || "Unavailable");
+    var effective = formatDateValue(policy.effectiveFrom);
+    meta.textContent = "Version: " + version + " • Effective: " + effective + " • Active fee: " + feePercent.toFixed(1) + "%";
+  }
+}
+
+function renderHostVerifications(payload) {
+  const El = window.tstsEl;
+  const tbody = $("host-verifications-table-body");
+  if (!tbody) return;
+  tbody.textContent = "";
+
+  var root = (payload && typeof payload === "object") ? payload : {};
+  var data = (root.data && typeof root.data === "object") ? root.data : root;
+  var list = Array.isArray(data.items) ? data.items : [];
+
+  if (list.length === 0) {
+    tbody.appendChild(El("tr", {}, [
+      El("td", { className: "px-6 py-6 text-center text-sm text-slate-500", colSpan: "4", textContent: "No host verification requests." })
+    ]));
+    return;
+  }
+
+  list.forEach(function(item) {
+    var userId = String((item && item.userId) || "");
+    var hostName = String((item && item.name) || "Host");
+    var email = String((item && item.email) || "");
+    var mobile = String((item && item.mobile) || "—");
+    var listingCount = Number((item && item.listingCount) || 0);
+    var hv = (item && item.hostVerification && typeof item.hostVerification === "object") ? item.hostVerification : {};
+    var status = normalizeHostVerificationStatus(hv.status);
+    var statusClass = status === "verified"
+      ? "text-emerald-700"
+      : (status === "under_review"
+        ? "text-blue-700"
+        : (status === "requested" ? "text-amber-700" : (status === "rejected" ? "text-red-700" : "text-slate-500")));
+    var statusText = status.replace(/_/g, " ");
+    var statusDate = hv.verifiedAt || hv.rejectedAt || hv.reviewedAt || hv.requestedAt;
+
+    var actions = [];
+    function mkBtn(text, cls, cb) {
+      var btn = El("button", { className: cls, textContent: text });
+      btn.addEventListener("click", cb);
+      return btn;
+    }
+    if (status === "requested") {
+      actions.push(mkBtn("Under review", "px-2 py-1 text-xs font-bold rounded border border-slate-200 text-slate-700 hover:bg-slate-50", function() { handleHostVerificationTransition(userId, "under_review"); }));
+      actions.push(mkBtn("Verify", "px-2 py-1 text-xs font-bold rounded border border-emerald-200 text-emerald-700 hover:bg-emerald-50", function() { handleHostVerificationTransition(userId, "verified"); }));
+      actions.push(mkBtn("Reject", "px-2 py-1 text-xs font-bold rounded border border-red-200 text-red-700 hover:bg-red-50", function() { handleHostVerificationTransition(userId, "rejected"); }));
+    } else if (status === "under_review") {
+      actions.push(mkBtn("Verify", "px-2 py-1 text-xs font-bold rounded border border-emerald-200 text-emerald-700 hover:bg-emerald-50", function() { handleHostVerificationTransition(userId, "verified"); }));
+      actions.push(mkBtn("Reject", "px-2 py-1 text-xs font-bold rounded border border-red-200 text-red-700 hover:bg-red-50", function() { handleHostVerificationTransition(userId, "rejected"); }));
+    } else if (status === "rejected") {
+      actions.push(mkBtn("Reopen", "px-2 py-1 text-xs font-bold rounded border border-slate-200 text-slate-700 hover:bg-slate-50", function() { handleHostVerificationTransition(userId, "requested"); }));
+    } else {
+      actions.push(El("span", { className: "text-xs text-slate-400", textContent: "—" }));
+    }
+
+    tbody.appendChild(El("tr", { className: "border-t border-slate-100 align-top" }, [
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { className: "font-semibold text-slate-800", textContent: hostName }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: email || "—" }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Mobile: " + mobile })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm" }, [
+        El("div", { className: "font-semibold " + statusClass, textContent: statusText }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Updated: " + formatDateValue(statusDate) }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: String((hv && hv.note) ? ("Note: " + hv.note) : "") })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-slate-600 font-semibold", textContent: String(listingCount) }),
+      El("td", { className: "px-6 py-4 text-sm" }, [
+        El("div", { className: "flex flex-wrap gap-2" }, actions)
+      ])
+    ]));
+  });
+}
+
+function renderEventVerifications(payload) {
+  const El = window.tstsEl;
+  const tbody = $("event-verifications-table-body");
+  if (!tbody) return;
+  tbody.textContent = "";
+
+  var root = (payload && typeof payload === "object") ? payload : {};
+  var data = (root.data && typeof root.data === "object") ? root.data : root;
+  var list = Array.isArray(data.items) ? data.items : [];
+
+  if (list.length === 0) {
+    tbody.appendChild(El("tr", {}, [
+      El("td", { className: "px-6 py-6 text-center text-sm text-slate-500", colSpan: "5", textContent: "No event verification records." })
+    ]));
+    return;
+  }
+
+  list.forEach(function(item) {
+    var experienceId = String((item && item.experienceId) || "");
+    var title = String((item && item.title) || "Experience");
+    var city = String((item && item.city) || "");
+    var hostName = String((item && item.hostName) || "Host");
+    var hostVerificationStatus = String((item && item.hostVerificationStatus) || "none");
+    var verifiedStatus = normalizeVerifiedStatus(item && item.verifiedStatus);
+    var snapshot = (item && item.snapshot && typeof item.snapshot === "object") ? item.snapshot : null;
+    var feeText = snapshot
+      ? (Number(snapshot.feePercent || 0).toFixed(1) + "% (" + String(snapshot.policyVersion || "no-version") + ")")
+      : "Snapshot missing";
+
+    var actions = [];
+    if (verifiedStatus === "pending") {
+      var approveBtn = El("button", { className: "px-2 py-1 text-xs font-bold rounded border border-blue-200 text-blue-700 hover:bg-blue-50", textContent: "Approve" });
+      approveBtn.addEventListener("click", function() { handleApproveVerifiedExperience(experienceId); });
+      var rejectBtn = El("button", { className: "px-2 py-1 text-xs font-bold rounded border border-amber-200 text-amber-700 hover:bg-amber-50", textContent: "Reject" });
+      rejectBtn.addEventListener("click", function() { handleRejectVerifiedExperience(experienceId); });
+      actions.push(approveBtn, rejectBtn);
+    } else {
+      actions.push(El("span", { className: "text-xs text-slate-400", textContent: "—" }));
+    }
+
+    tbody.appendChild(El("tr", { className: "border-t border-slate-100 align-top" }, [
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { className: "font-semibold text-slate-800", textContent: title }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: city || "—" })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { className: "font-semibold text-slate-800", textContent: hostName }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Host verification: " + hostVerificationStatus.replace(/_/g, " ") })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700", textContent: feeText }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: verifiedStatus.replace(/_/g, " ") }),
+      El("td", { className: "px-6 py-4 text-sm" }, [
+        El("div", { className: "flex flex-wrap gap-2" }, actions)
+      ])
     ]));
   });
 }
@@ -885,6 +1142,122 @@ function renderPrivateRequests(requests) {
   });
 }
 
+function renderActionItems(payload) {
+  const El = window.tstsEl;
+  const tbody = $("action-items-table-body");
+  if (!tbody) return;
+  tbody.textContent = "";
+
+  var root = (payload && typeof payload === "object") ? payload : {};
+  var data = (root.data && typeof root.data === "object") ? root.data : root;
+  var list = Array.isArray(data.items) ? data.items : [];
+
+  if (list.length === 0) {
+    tbody.appendChild(El("tr", {}, [
+      El("td", { className: "px-6 py-6 text-center text-sm text-slate-500", colSpan: "6", textContent: "No action items found." })
+    ]));
+    return;
+  }
+
+  list.forEach(function (item) {
+    var id = String((item && item.id) || "");
+    var title = String((item && item.title) || (item && item.actionType) || "Pending action");
+    var ownerType = String((item && item.ownerType) || "admin");
+    var priority = String((item && item.priority) || "normal");
+    var status = String((item && item.status) || "pending");
+    var reminderAt = formatDateValue(item && item.nextReminderAt);
+    var reminderCount = Number((item && item.reminderCount) || 0);
+    var dashboardUrl = String((item && item.dashboardUrl) || "");
+
+    var priorityClass = priority === "critical"
+      ? "bg-red-100 text-red-700"
+      : (priority === "time_sensitive" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-700");
+    var statusClass = status === "completed"
+      ? "bg-emerald-100 text-emerald-700"
+      : (status === "acknowledged" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700");
+
+    var actionButtons = [];
+    if (status !== "acknowledged" && status !== "completed") {
+      var ackBtn = El("button", {
+        className: "px-2 py-1 text-xs font-bold rounded border border-slate-200 text-slate-700 hover:bg-slate-50",
+        textContent: "Ack"
+      });
+      ackBtn.addEventListener("click", function () { handleActionItemAck(id); });
+      actionButtons.push(ackBtn);
+    }
+    if (status !== "completed") {
+      var completeBtn = El("button", {
+        className: "px-2 py-1 text-xs font-bold rounded border border-emerald-200 text-emerald-700 hover:bg-emerald-50",
+        textContent: "Complete"
+      });
+      completeBtn.addEventListener("click", function () { handleActionItemComplete(id); });
+      actionButtons.push(completeBtn);
+    }
+
+    if (dashboardUrl) {
+      var openBtn = El("a", {
+        href: dashboardUrl,
+        className: "px-2 py-1 text-xs font-bold rounded border border-blue-200 text-blue-700 hover:bg-blue-50",
+        textContent: "Open",
+        target: "_self",
+        rel: "noopener"
+      });
+      actionButtons.push(openBtn);
+    }
+    if (actionButtons.length === 0) {
+      actionButtons.push(El("span", { className: "text-xs text-slate-400", textContent: "—" }));
+    }
+
+    var rowId = id ? ("action-item-row-" + id) : "";
+    var rowAttrs = { className: "border-t border-slate-100 align-top" };
+    if (rowId) rowAttrs.id = rowId;
+    tbody.appendChild(El("tr", rowAttrs, [
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { className: "font-semibold text-slate-800", textContent: title }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: String((item && item.actionKey) || "") })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700", textContent: ownerType }),
+      El("td", { className: "px-6 py-4 text-sm" }, [
+        El("span", { className: "px-2 py-1 text-xs font-bold rounded " + priorityClass, textContent: priority.replace(/_/g, " ") })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm" }, [
+        El("span", { className: "px-2 py-1 text-xs font-bold rounded " + statusClass, textContent: status.replace(/_/g, " ") })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-slate-600" }, [
+        El("div", { textContent: reminderAt }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Reminders sent: " + String(reminderCount) })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm" }, [
+        El("div", { className: "flex flex-wrap gap-2" }, actionButtons)
+      ])
+    ]));
+  });
+}
+
+function focusActionItemFromQuery() {
+  var params = new URLSearchParams(window.location.search || "");
+  var actionId = String(params.get("actionId") || "").trim();
+  if (!actionId) return;
+  var row = document.getElementById("action-item-row-" + actionId);
+  if (!row) return;
+  try {
+    row.scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch (_) {
+    row.scrollIntoView();
+  }
+  row.classList.add("bg-amber-50");
+  setTimeout(function () {
+    try { row.classList.remove("bg-amber-50"); } catch (_) {}
+  }, 2200);
+}
+
+async function refreshActionItemsView() {
+  var status = String(($("action-items-status-filter") && $("action-items-status-filter").value) || "pending").trim().toLowerCase();
+  var data = await loadAdminActionItems(status);
+  renderActionItems(data);
+  focusActionItemFromQuery();
+}
+
 function collectAuditFilters() {
   var method = String(($("audit-filter-method") && $("audit-filter-method").value) || "").trim().toUpperCase();
   var okRaw = String(($("audit-filter-ok") && $("audit-filter-ok").value) || "").trim().toLowerCase();
@@ -918,6 +1291,63 @@ async function refreshAuditLogs() {
 async function refreshAdminInvites() {
   const data = await loadAdminInvites("all");
   renderAdminInvites((data && data.items) || []);
+}
+
+async function refreshVerificationViews() {
+  const results = await Promise.all([
+    loadVerificationFeePolicy().catch(() => null),
+    loadHostVerifications("all").catch(() => null),
+    loadEventVerifications("all").catch(() => null)
+  ]);
+  if (results[0]) renderVerificationPolicy(results[0]);
+  if (results[1]) renderHostVerifications(results[1]);
+  if (results[2]) renderEventVerifications(results[2]);
+}
+
+async function handleHostVerificationTransition(userId, nextStatus) {
+  var target = String(nextStatus || "").trim().toLowerCase();
+  if (!userId || !target) return;
+  var note = "";
+  if (target === "rejected") {
+    note = await window.tstsPrompt("Reason for rejection (required)", "", { minLength: 5, placeholder: "Explain why this verification is rejected." });
+    note = String(note || "").trim();
+    if (!note) return;
+  } else if (target === "verified") {
+    var confirmed = await window.tstsConfirm("Mark this host as verified?", { confirmText: "Verify" });
+    if (!confirmed) return;
+  } else if (target === "under_review") {
+    note = await window.tstsPrompt("Optional review note", "", { minLength: 0, placeholder: "Optional internal note..." });
+    note = String(note || "").trim();
+  }
+
+  try {
+    await updateHostVerificationStatus(userId, target, note);
+    window.tstsNotify("Host verification status updated.", "success");
+    await refreshVerificationViews();
+  } catch (err) {
+    window.tstsNotify((err && err.message) ? err.message : "Failed to update host verification.", "error");
+  }
+}
+
+async function handleSaveVerificationPolicy() {
+  var input = $("verification-fee-percent");
+  var valueRaw = Number((input && input.value) || NaN);
+  if (!Number.isFinite(valueRaw)) {
+    window.tstsNotify("Enter a valid fee percent.", "error");
+    return;
+  }
+  if (valueRaw < 0 || valueRaw > 20) {
+    window.tstsNotify("Fee percent must be between 0.0 and 20.0.", "error");
+    return;
+  }
+  var rounded = Math.round(valueRaw * 10) / 10;
+  try {
+    await saveVerificationFeePolicy(rounded);
+    window.tstsNotify("Verification fee policy updated.", "success");
+    await refreshVerificationViews();
+  } catch (err) {
+    window.tstsNotify((err && err.message) ? err.message : "Failed to update verification fee policy.", "error");
+  }
 }
 
 // Local action handlers (no window.* exposure)
@@ -1024,6 +1454,28 @@ async function handlePrivateRequestStatus(id, status) {
     window.tstsNotify(e.message || "Private request update failed", "error");
   }
 }
+async function handleActionItemAck(id) {
+  if (!id) return;
+  try {
+    await acknowledgeAdminActionItem(id);
+    window.tstsNotify("Action item acknowledged.", "success");
+    await refreshActionItemsView();
+  } catch (e) {
+    window.tstsNotify(e.message || "Failed to acknowledge action item.", "error");
+  }
+}
+async function handleActionItemComplete(id) {
+  if (!id) return;
+  var confirmed = await window.tstsConfirm("Mark this action item as completed?", { confirmText: "Complete" });
+  if (!confirmed) return;
+  try {
+    await completeAdminActionItem(id);
+    window.tstsNotify("Action item completed.", "success");
+    await refreshActionItemsView();
+  } catch (e) {
+    window.tstsNotify(e.message || "Failed to complete action item.", "error");
+  }
+}
 async function handleInviteAdminSubmit(e) {
   if (e && typeof e.preventDefault === "function") e.preventDefault();
   var email = String(($("admin-invite-email") && $("admin-invite-email").value) || "").trim();
@@ -1128,7 +1580,7 @@ async function handleDeactivateCoupon(code) {
 
 // Tab switching functionality (local, no window.* exposure)
 function switchTab(tabName) {
-  const views = ['dashboard', 'listings', 'users', 'coupons', 'moderation', 'private-requests', 'audit'];
+  const views = ['dashboard', 'listings', 'verification', 'action-items', 'users', 'coupons', 'moderation', 'private-requests', 'audit'];
   const activeClass = "border-tsts-clay text-tsts-clay border-b-2 py-4 px-1 font-bold text-sm";
   const inactiveClass = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm";
 
@@ -1155,6 +1607,16 @@ function switchTab(tabName) {
   if (tabName === 'listings') {
     loadExperiences().then(renderExperiences).catch(() => renderExperiences([]));
   }
+  if (tabName === 'verification') {
+    refreshVerificationViews().catch(function () {
+      renderVerificationPolicy({ data: { policy: { feePercent: 0, policyVersion: "Unavailable", effectiveFrom: null } } });
+      renderHostVerifications({ data: { items: [] } });
+      renderEventVerifications({ data: { items: [] } });
+    });
+  }
+  if (tabName === 'action-items') {
+    refreshActionItemsView().catch(() => renderActionItems({ data: { items: [] } }));
+  }
   if (tabName === 'coupons') {
     loadCoupons().then(renderCoupons).catch(() => renderCoupons([]));
   }
@@ -1178,6 +1640,23 @@ function switchTab(tabName) {
   }
 };
 
+function resolveInitialAdminTab() {
+  var params = new URLSearchParams(window.location.search || "");
+  var requested = String(params.get("tab") || "dashboard").trim().toLowerCase();
+  var allowed = {
+    "dashboard": true,
+    "listings": true,
+    "verification": true,
+    "action-items": true,
+    "users": true,
+    "coupons": true,
+    "moderation": true,
+    "private-requests": true,
+    "audit": true
+  };
+  return allowed[requested] ? requested : "dashboard";
+}
+
 let __adminWired = false;
 
 function wireAdminEvents() {
@@ -1186,12 +1665,20 @@ function wireAdminEvents() {
 
   const tabDashboard = $("tab-dashboard");
   const tabListings = $("tab-listings");
+  const tabVerification = $("tab-verification");
+  const tabActionItems = $("tab-action-items");
   const tabUsers = $("tab-users");
   const tabCoupons = $("tab-coupons");
   const tabModeration = $("tab-moderation");
   const tabPrivateRequests = $("tab-private-requests");
   const tabAudit = $("tab-audit");
   const refreshListings = $("btn-refresh-listings");
+  const refreshVerificationPolicy = $("btn-refresh-verification-policy");
+  const saveVerificationPolicyBtn = $("btn-save-verification-policy");
+  const refreshHostVerifications = $("btn-refresh-host-verifications");
+  const refreshEventVerifications = $("btn-refresh-event-verifications");
+  const refreshActionItems = $("btn-refresh-action-items");
+  const actionItemsStatusFilter = $("action-items-status-filter");
   const refreshUsers = $("btn-refresh-users");
   const refreshCoupons = $("btn-refresh-coupons");
   const refreshReports = $("btn-refresh-reports");
@@ -1206,12 +1693,20 @@ function wireAdminEvents() {
 
   if (tabDashboard) tabDashboard.addEventListener("click", () => switchTab("dashboard"));
   if (tabListings) tabListings.addEventListener("click", () => switchTab("listings"));
+  if (tabVerification) tabVerification.addEventListener("click", () => switchTab("verification"));
+  if (tabActionItems) tabActionItems.addEventListener("click", () => switchTab("action-items"));
   if (tabUsers) tabUsers.addEventListener("click", () => switchTab("users"));
   if (tabCoupons) tabCoupons.addEventListener("click", () => switchTab("coupons"));
   if (tabModeration) tabModeration.addEventListener("click", () => switchTab("moderation"));
   if (tabPrivateRequests) tabPrivateRequests.addEventListener("click", () => switchTab("private-requests"));
   if (tabAudit) tabAudit.addEventListener("click", () => switchTab("audit"));
   if (refreshListings) refreshListings.addEventListener("click", () => loadExperiences().then(renderExperiences).catch(() => renderExperiences([])));
+  if (refreshVerificationPolicy) refreshVerificationPolicy.addEventListener("click", () => refreshVerificationViews().catch(() => {}));
+  if (saveVerificationPolicyBtn) saveVerificationPolicyBtn.addEventListener("click", () => handleSaveVerificationPolicy());
+  if (refreshHostVerifications) refreshHostVerifications.addEventListener("click", () => loadHostVerifications("all").then(renderHostVerifications).catch(() => renderHostVerifications({ data: { items: [] } })));
+  if (refreshEventVerifications) refreshEventVerifications.addEventListener("click", () => loadEventVerifications("all").then(renderEventVerifications).catch(() => renderEventVerifications({ data: { items: [] } })));
+  if (refreshActionItems) refreshActionItems.addEventListener("click", () => refreshActionItemsView().catch(() => renderActionItems({ data: { items: [] } })));
+  if (actionItemsStatusFilter) actionItemsStatusFilter.addEventListener("change", () => refreshActionItemsView().catch(() => renderActionItems({ data: { items: [] } })));
   if (refreshUsers) refreshUsers.addEventListener("click", () => loadUsers().then(renderUsers).catch(() => renderUsers([])));
   if (refreshCoupons) refreshCoupons.addEventListener("click", () => loadCoupons().then(renderCoupons).catch(() => renderCoupons([])));
   if (refreshReports) refreshReports.addEventListener("click", () => loadReports().then(renderReports).catch(() => renderReports([])));
@@ -1232,7 +1727,7 @@ async function boot() {
 
   // basic skeleton if containers exist
   try {
-    const [stats, bookings, exps, users, promos, reports, privateRequests, auditData, inviteData] = await Promise.all([
+    const [stats, bookings, exps, users, promos, reports, privateRequests, auditData, inviteData, verificationPolicy, hostVerifications, eventVerifications, actionItems] = await Promise.all([
       loadStats().catch(() => ({})),
       loadBookings().catch(() => ([])),
       loadExperiences().catch(() => ([])),
@@ -1241,7 +1736,11 @@ async function boot() {
       loadReports().catch(() => ([])),
       loadPrivateBookingRequests().catch(() => ([])),
       loadAuditLogs({ limit: 100, skip: 0 }).catch(() => ({ total: 0, items: [] })),
-      loadAdminInvites("all").catch(() => ({ items: [] }))
+      loadAdminInvites("all").catch(() => ({ items: [] })),
+      loadVerificationFeePolicy().catch(() => ({ data: { policy: { feePercent: 0, policyVersion: "Unavailable", effectiveFrom: null } } })),
+      loadHostVerifications("all").catch(() => ({ data: { items: [] } })),
+      loadEventVerifications("all").catch(() => ({ data: { items: [] } })),
+      loadAdminActionItems("pending").catch(() => ({ data: { items: [] } }))
     ]);
 
     renderStats(stats);
@@ -1254,6 +1753,11 @@ async function boot() {
     if ($("audit-total-count")) $("audit-total-count").textContent = String((auditData && auditData.total) || 0);
     renderAuditLogs((auditData && auditData.items) || []);
     renderAdminInvites((inviteData && inviteData.items) || []);
+    renderVerificationPolicy(verificationPolicy);
+    renderHostVerifications(hostVerifications);
+    renderEventVerifications(eventVerifications);
+    renderActionItems(actionItems);
+    switchTab(resolveInitialAdminTab());
   } catch (e) {
     window.tstsNotify("Admin load failed.", "error");
   }

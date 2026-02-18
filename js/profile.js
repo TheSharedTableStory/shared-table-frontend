@@ -7,6 +7,7 @@
   const handleInput = document.getElementById("handle");
   const allowHandleSearchToggle = document.getElementById("allow-handle-search");
   const shareToFriendsToggle = document.getElementById("share-to-friends");
+  const hostOwnershipWarning = document.getElementById("host-ownership-warning");
 
   const profilePicInput = document.getElementById("file-upload");
   const profilePicPreview = document.getElementById("profile-pic-preview");
@@ -57,6 +58,18 @@
   }
   function setStoredUser(u) {
     try { localStorage.setItem("tsts_user", JSON.stringify(u || {})); } catch (_) {}
+  }
+
+  function applyHostOwnershipHintFromQuery() {
+    if (!hostOwnershipWarning) return;
+    try {
+      const params = new URLSearchParams(window.location.search || "");
+      const value = String(params.get("hostOwnership") || "").trim().toLowerCase();
+      const shouldShow = (value === "ambiguous" || value === "ambiguous_host_name" || value === "needs-handle");
+      hostOwnershipWarning.classList.toggle("hidden", !shouldShow);
+    } catch (_) {
+      hostOwnershipWarning.classList.add("hidden");
+    }
   }
 
   async function loadMe() {
@@ -249,5 +262,6 @@
     });
   }
 
+  applyHostOwnershipHintFromQuery();
   loadMe();
 })();

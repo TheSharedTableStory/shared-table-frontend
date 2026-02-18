@@ -39,6 +39,12 @@
             <button id="tab-listings" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
                 Manage Experiences
             </button>
+            <button id="tab-verification" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
+                Verification
+            </button>
+            <button id="tab-action-items" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
+                Action Items
+            </button>
             <button id="tab-users" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
                 Manage Users
             </button>
@@ -103,6 +109,81 @@
                   <tr><th class="px-6 py-3">Image</th><th class="px-6 py-3">Title</th><th class="px-6 py-3">Host</th><th class="px-6 py-3">Price</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Actions</th></tr>
                 </thead>
                 <tbody id="listings-table-body" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </section>
+      </div>
+
+      <div id="view-verification" class="hidden space-y-8">
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+            <div class="flex items-center justify-between gap-4 mb-4">
+              <h2 class="font-bold text-lg text-tsts-ink">Verification Fee Policy</h2>
+              <button id="btn-refresh-verification-policy" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh Policy</button>
+            </div>
+            <div class="grid gap-4 md:grid-cols-[240px_auto] items-end">
+              <div>
+                <label for="verification-fee-percent" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Fee Percent (0.0 to 20.0)</label>
+                <input id="verification-fee-percent" type="number" min="0" max="20" step="0.1" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button id="btn-save-verification-policy" type="button" class="inline-flex items-center justify-center rounded-xl bg-tsts-clay px-4 py-2 text-sm font-bold text-white hover:opacity-90">Save Policy</button>
+                <span id="verification-policy-meta" class="text-xs text-slate-500">Policy metadata unavailable.</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <div class="font-bold text-lg">Host Verification Queue</div>
+                <button id="btn-refresh-host-verifications" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh Hosts</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-left text-sm">
+                <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                  <tr><th class="px-6 py-3">Host</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Listings</th><th class="px-6 py-3">Actions</th></tr>
+                </thead>
+                <tbody id="host-verifications-table-body" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <div class="font-bold text-lg">Event Verification Queue</div>
+                <button id="btn-refresh-event-verifications" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh Events</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-left text-sm">
+                <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                  <tr><th class="px-6 py-3">Experience</th><th class="px-6 py-3">Host</th><th class="px-6 py-3">Snapshot Fee</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Actions</th></tr>
+                </thead>
+                <tbody id="event-verifications-table-body" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </section>
+      </div>
+
+      <div id="view-action-items" class="hidden space-y-8">
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-3">
+                <div class="font-bold text-lg">Admin Action Items</div>
+                <div class="flex items-center gap-2">
+                  <label for="action-items-status-filter" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</label>
+                  <select id="action-items-status-filter" class="rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                    <option value="pending">Pending</option>
+                    <option value="acknowledged">Acknowledged</option>
+                    <option value="completed">Completed</option>
+                    <option value="all">All</option>
+                  </select>
+                  <button id="btn-refresh-action-items" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-left text-sm">
+                <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                  <tr><th class="px-6 py-3">Action</th><th class="px-6 py-3">Owner</th><th class="px-6 py-3">Priority</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Reminder</th><th class="px-6 py-3">Actions</th></tr>
+                </thead>
+                <tbody id="action-items-table-body" class="divide-y divide-slate-100"></tbody>
               </table>
             </div>
           </section>
@@ -343,7 +424,7 @@
   <footer id="footer-placeholder"></footer>
 
   <script src="js/runtime-config.js?v=20260216"></script>
-  <script src="js/common.js?v=20260216"></script>
-  <script src="js/admin.js?v=20260219"></script>
+  <script src="js/common.js?v=20260218a"></script>
+  <script src="js/admin.js?v=20260218a"></script>
 </body>
 </html>

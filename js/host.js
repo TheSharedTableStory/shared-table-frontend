@@ -29,8 +29,9 @@
 	  const privateCapacityInput = document.getElementById("privateCapacity");
 	  const privateIncludedGuestsInput = document.getElementById("privateIncludedGuests");
 	  const privateExtraGuestPriceInput = document.getElementById("privateExtraGuestPrice");
-	  const verifiedOptInInput = document.getElementById("verifiedOptIn");
+	  const verifiedRequestBtn = document.getElementById("verified-request-btn");
 	  const verifiedStatusHint = document.getElementById("verified-status-hint");
+	  const verifiedRequestMeta = document.getElementById("verified-request-meta");
 	  const imageInput = document.getElementById("imageInput");
 	  const uploadPreview = document.getElementById("upload-preview");
 	  const uploadPlaceholder = document.getElementById("upload-placeholder");
@@ -50,6 +51,10 @@
   let editId = null;
   let existingImageUrl = null;
   let currentVerifiedStatus = "none";
+  let hostVerificationStatus = "none";
+  let pendingEventVerificationRequest = false;
+  let verificationFeePercent = 5.0;
+  let verificationPolicyVersion = "";
   let activePolicySnapshot = null;
   const PLATFORM_FEE_RATE = 0.05;
   const PLATFORM_FEE_BPS = 500;
@@ -165,6 +170,23 @@
     return n;
   }
 
+  function normalizeHostVerificationStatus(v) {
+    const s = String(v || "").trim().toLowerCase();
+    if (s === "requested") return "requested";
+    if (s === "under_review") return "under_review";
+    if (s === "verified") return "verified";
+    if (s === "rejected") return "rejected";
+    return "none";
+  }
+
+  function resolveVerificationFeePercent(v, fallback) {
+    const fb = Number.isFinite(Number(fallback)) ? Number(fallback) : 5.0;
+    const n = Number(v);
+    if (!Number.isFinite(n)) return Math.round(fb * 10) / 10;
+    const clamped = Math.max(0, Math.min(20, n));
+    return Math.round(clamped * 10) / 10;
+  }
+
   function resolvePolicyVersion() {
     const v = activePolicySnapshot && activePolicySnapshot.version ? String(activePolicySnapshot.version) : "";
     return v || "Unavailable";
@@ -214,21 +236,24 @@
 
   function resolveVerifiedImpact(publicPrice) {
     if (!(Number.isFinite(publicPrice) && publicPrice > 0)) {
-      return "Enter a public price to see verified fee impact.";
+      return "Enter a public price to see estimated verification deduction.";
     }
-    const fee = Number((publicPrice * 0.05).toFixed(2));
+    const fee = Number((publicPrice * (verificationFeePercent / 100)).toFixed(2));
     const status = normalizeVerifiedStatus(currentVerifiedStatus);
+    const hostStatus = normalizeHostVerificationStatus(hostVerificationStatus);
     if (status === "verified") {
-      return "Verified active: guest checkout includes about +" + formatMoney(fee) + " (5%).";
+      return "Verified active: estimated -" + formatMoney(fee) + " per guest from host payout (" + verificationFeePercent.toFixed(1) + "%).";
     }
     if (status === "pending") {
-      return "Verification pending: fee applies only after approval. Estimated +" + formatMoney(fee) + ".";
+      return "Verification pending: if approved, estimated -" + formatMoney(fee) + " per guest from host payout.";
     }
-    const requestedNow = !!(verifiedOptInInput && verifiedOptInInput.checked);
-    if (requestedNow) {
-      return "Verification requested: if approved, guest checkout adds about +" + formatMoney(fee) + " (5%).";
+    if (pendingEventVerificationRequest) {
+      return "Verification request queued: if approved, estimated -" + formatMoney(fee) + " per guest from host payout.";
     }
-    return "No verified fee until a verification request is approved.";
+    if (hostStatus !== "verified") {
+      return "Host verification is required before requesting event verification.";
+    }
+    return "No verification deduction until your event verification request is approved.";
   }
 
   function syncPricingTransparency() {
@@ -250,11 +275,12 @@
       pricingPrivateSummaryEl.textContent = resolvePrivateSummary();
     }
     if (pricingHostChargeNoteEl) {
-      pricingHostChargeNoteEl.textContent = "Estimated payout shown above is after platform fee, before host-funded discounts or recovery offsets. No upfront host charge is applied when publishing.";
+      pricingHostChargeNoteEl.textContent = "Estimated payout shown above is after platform fee. Verified-event deduction (if approved) and recovery offsets are host-side payout deductions. No guest surcharge is applied for verification.";
     }
     if (pricingPolicyReferenceEl) {
       const ver = resolvePolicyVersion();
-      pricingPolicyReferenceEl.textContent = "Policy reference: " + ver + ". Refund/cancellation rules are snapshotted per booking.";
+      const feeVer = verificationPolicyVersion ? String(verificationPolicyVersion) : "Unavailable";
+      pricingPolicyReferenceEl.textContent = "Policy reference: " + ver + " (booking policy) • " + feeVer + " (verification fee policy " + verificationFeePercent.toFixed(1) + "%).";
     }
   }
 
@@ -272,6 +298,33 @@
     } catch (_) {
       activePolicySnapshot = null;
     }
+    syncPricingTransparency();
+  }
+
+  async function loadHostVerificationStatus() {
+    try {
+      const res = await window.authFetch("/api/host/verification/status", { method: "GET" });
+      if (!res || !res.ok) {
+        hostVerificationStatus = "none";
+        verificationFeePercent = 5.0;
+        verificationPolicyVersion = "";
+        syncVerifiedUi();
+        syncPricingTransparency();
+        return;
+      }
+      const payload = await res.json().catch(() => ({}));
+      const data = (payload && payload.data && typeof payload.data === "object") ? payload.data : payload;
+      const hostVerification = (data && data.hostVerification && typeof data.hostVerification === "object") ? data.hostVerification : {};
+      const feePolicy = (data && data.feePolicy && typeof data.feePolicy === "object") ? data.feePolicy : {};
+      hostVerificationStatus = normalizeHostVerificationStatus(hostVerification.status);
+      verificationFeePercent = resolveVerificationFeePercent(feePolicy.feePercent, 5.0);
+      verificationPolicyVersion = String(feePolicy.policyVersion || "");
+    } catch (_) {
+      hostVerificationStatus = "none";
+      verificationFeePercent = 5.0;
+      verificationPolicyVersion = "";
+    }
+    syncVerifiedUi();
     syncPricingTransparency();
   }
 
@@ -298,32 +351,104 @@
 
   function syncVerifiedUi() {
     const status = normalizeVerifiedStatus(currentVerifiedStatus);
-    if (verifiedOptInInput) {
+    const hostStatus = normalizeHostVerificationStatus(hostVerificationStatus);
+    const hostCanRequest = hostStatus === "verified";
+
+    if (verifiedRequestBtn) {
+      verifiedRequestBtn.classList.remove("opacity-60", "cursor-not-allowed");
       if (status === "verified") {
-        verifiedOptInInput.checked = true;
-        verifiedOptInInput.disabled = true;
+        verifiedRequestBtn.disabled = true;
+        verifiedRequestBtn.textContent = "Event verified";
+        verifiedRequestBtn.classList.add("opacity-60", "cursor-not-allowed");
       } else if (status === "pending") {
-        verifiedOptInInput.checked = true;
-        verifiedOptInInput.disabled = true;
+        verifiedRequestBtn.disabled = true;
+        verifiedRequestBtn.textContent = "Verification pending";
+        verifiedRequestBtn.classList.add("opacity-60", "cursor-not-allowed");
+      } else if (!hostCanRequest) {
+        verifiedRequestBtn.disabled = true;
+        verifiedRequestBtn.textContent = "Host verification required";
+        verifiedRequestBtn.classList.add("opacity-60", "cursor-not-allowed");
+      } else if (pendingEventVerificationRequest) {
+        verifiedRequestBtn.disabled = false;
+        verifiedRequestBtn.textContent = "Verification request queued";
       } else {
-        verifiedOptInInput.disabled = false;
+        verifiedRequestBtn.disabled = false;
+        verifiedRequestBtn.textContent = "Request event verification";
       }
     }
 
-    if (!verifiedStatusHint) return;
-    if (status === "verified") {
-      verifiedStatusHint.textContent = "Verified and locked. This experience includes the 5% verification fee.";
-      return;
+    if (verifiedStatusHint) {
+      if (status === "verified") {
+        verifiedStatusHint.textContent = "Verified and locked. Approved bookings apply the snapshotted verification deduction to host payout.";
+      } else if (status === "pending") {
+        verifiedStatusHint.textContent = "Verification request pending admin review.";
+      } else if (status === "rejected") {
+        verifiedStatusHint.textContent = hostCanRequest
+          ? "Previous verification request was rejected. You can request verification again."
+          : "Previous verification request was rejected. Complete host verification before requesting again.";
+      } else if (!hostCanRequest) {
+        verifiedStatusHint.textContent = "Host verification is required before event verification request.";
+      } else if (pendingEventVerificationRequest) {
+        verifiedStatusHint.textContent = "Event verification request will be submitted after listing save.";
+      } else {
+        verifiedStatusHint.textContent = "Request event verification to send this listing for admin review.";
+      }
     }
-    if (status === "pending") {
-      verifiedStatusHint.textContent = "Verification request pending admin review.";
-      return;
+    if (verifiedRequestMeta) {
+      if (hostStatus === "verified") {
+        verifiedRequestMeta.textContent = "Current verification fee policy: " + verificationFeePercent.toFixed(1) + "% of guest total paid, deducted from host payout after approval.";
+      } else {
+        verifiedRequestMeta.textContent = "Host verification required first. Request host verification from your Hosting dashboard and email one ID proof with address to admin@thesharedtablestory.com.";
+      }
     }
-    if (status === "rejected") {
-      verifiedStatusHint.textContent = "Previous verification request was rejected. You can request verification again.";
-      return;
+  }
+
+  async function requestEventVerification(experienceId) {
+    const id = String(experienceId || "").trim();
+    if (!id) throw new Error("Experience id missing");
+
+    const vr = await window.authFetch("/api/host/experiences/" + encodeURIComponent(id) + "/verified-opt-in", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({})
+    });
+    const vrPayload = await vr.json().catch(() => ({}));
+    if (!vr.ok) {
+      throw new Error(String((vrPayload && vrPayload.message) || "Verification request failed."));
     }
-    verifiedStatusHint.textContent = "Not verified yet. Enable the toggle to submit this experience for admin verification.";
+    const updated = (vrPayload && vrPayload.experience) ? vrPayload.experience : vrPayload;
+    currentVerifiedStatus = normalizeVerifiedStatus(updated && updated.verifiedStatus);
+    pendingEventVerificationRequest = false;
+    syncVerifiedUi();
+    syncPricingTransparency();
+  }
+
+  if (verifiedRequestBtn) {
+    verifiedRequestBtn.addEventListener("click", async function () {
+      hideNotice();
+      const hostStatus = normalizeHostVerificationStatus(hostVerificationStatus);
+      const status = normalizeVerifiedStatus(currentVerifiedStatus);
+      if (status === "verified" || status === "pending") return;
+      if (hostStatus !== "verified") {
+        showNotice("error", "Complete host verification first. Request from Hosting dashboard and email ID proof with address to admin@thesharedtablestory.com.");
+        return;
+      }
+
+      if (isEditing && editId) {
+        try {
+          await requestEventVerification(editId);
+          showNotice("success", "Event verification request submitted.");
+        } catch (err) {
+          showNotice("error", String((err && err.message) || "Verification request failed."));
+        }
+        return;
+      }
+
+      pendingEventVerificationRequest = true;
+      syncVerifiedUi();
+      syncPricingTransparency();
+      showNotice("info", "Event verification will be requested after listing is saved.");
+    });
   }
 
   function setPreview(url) {
@@ -508,9 +633,7 @@
         privateExtraGuestPriceInput.value = (extra != null && extra >= 0) ? String(extra) : "";
       }
       currentVerifiedStatus = normalizeVerifiedStatus(exp.verifiedStatus);
-      if (verifiedOptInInput) {
-        verifiedOptInInput.checked = currentVerifiedStatus === "verified" || currentVerifiedStatus === "pending";
-      }
+      pendingEventVerificationRequest = false;
       syncPrivateConfigUi();
       syncVerifiedUi();
       setSelectedTags(exp.tags);
@@ -549,13 +672,6 @@
     privateEnabledInput.addEventListener("change", function () {
       hideNotice();
       syncPrivateConfigUi();
-      syncPricingTransparency();
-    });
-  }
-  if (verifiedOptInInput) {
-    verifiedOptInInput.addEventListener("change", function () {
-      hideNotice();
-      syncVerifiedUi();
       syncPricingTransparency();
     });
   }
@@ -705,27 +821,20 @@
 
         const savedExp = (payload && payload.experience) ? payload.experience : ((payload && payload.data) ? payload.data : payload);
         const savedExperienceId = String((savedExp && (savedExp._id || savedExp.id)) || editId || "").trim();
-        const wantsVerified = !!(verifiedOptInInput && verifiedOptInInput.checked);
+        const wantsVerified = !!pendingEventVerificationRequest;
         if (
           wantsVerified &&
           savedExperienceId &&
           currentVerifiedStatus !== "verified" &&
-          currentVerifiedStatus !== "pending"
+          currentVerifiedStatus !== "pending" &&
+          normalizeHostVerificationStatus(hostVerificationStatus) === "verified"
         ) {
-          const vr = await window.authFetch("/api/host/experiences/" + encodeURIComponent(savedExperienceId) + "/verified-opt-in", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({})
-          });
-          const vrPayload = await vr.json().catch(() => ({}));
-          if (!vr.ok) {
-            showNotice("error", String((vrPayload && vrPayload.message) || "Experience saved, but verification request failed."));
+          try {
+            await requestEventVerification(savedExperienceId);
+          } catch (err) {
+            showNotice("error", "Experience saved, but verification request failed: " + String((err && err.message) || "Unknown error"));
             return;
           }
-          const updated = (vrPayload && vrPayload.experience) ? vrPayload.experience : vrPayload;
-          currentVerifiedStatus = normalizeVerifiedStatus(updated && updated.verifiedStatus);
-          syncVerifiedUi();
-          syncPricingTransparency();
         }
 
         showNotice("success", isEditing ? "Experience updated." : "Experience created.");
@@ -747,6 +856,7 @@
       return;
     }
     await loadEditMode();
+    await loadHostVerificationStatus();
     await loadActivePolicySnapshot();
     syncPricingTransparency();
     unmaskAuthGate();
