@@ -815,8 +815,6 @@
     bookingForm.addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      if (!(await isAuthed())) return redirectToLogin();
-
       if (termsBox && !termsBox.checked) {
         window.tstsNotify("Please accept the cancellation policy.", "warning");
         return;
