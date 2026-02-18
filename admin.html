@@ -85,7 +85,7 @@
 
           <section id="lifecycle-summary-section" class="hidden">
             <h2 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">Listings by Status</h2>
-            <div class="grid gap-3 grid-cols-2 sm:grid-cols-5 mb-5" id="exp-status-cards"></div>
+            <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 mb-5" id="exp-status-cards"></div>
             <h2 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">Bookings by Status</h2>
             <div class="grid gap-3 grid-cols-2 sm:grid-cols-4" id="booking-status-cards"></div>
           </section>
@@ -113,9 +113,7 @@
               </div>
               <div class="flex gap-2 flex-wrap" id="listings-filter-tabs">
                 <button data-filter="all" class="listing-filter-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-900 text-white">All</button>
-                <button data-filter="PENDING_REVIEW" class="listing-filter-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-white border border-amber-300 text-amber-700 hover:bg-amber-50">Pending Review <span id="pending-review-count" class="hidden ml-1 inline-block rounded-full bg-amber-600 text-white text-[10px] px-1.5 py-0.5">0</span></button>
                 <button data-filter="ACTIVE" class="listing-filter-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Active</button>
-                <button data-filter="DRAFT" class="listing-filter-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Draft</button>
                 <button data-filter="PAUSED" class="listing-filter-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Paused</button>
                 <button data-filter="DELETED_SOFT" class="listing-filter-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Deleted</button>
               </div>

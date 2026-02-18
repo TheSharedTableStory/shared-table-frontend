@@ -487,8 +487,8 @@
         const viewerId = String((sess && sess.user && (sess.user._id || sess.user.id)) || "").trim();
         if (viewerId && viewerId === String(exp.hostId).trim()) {
           const statusMessages = {
-            DRAFT: "This listing is a draft and is not visible to guests. Submit it for review when ready.",
-            PENDING_REVIEW: "This listing is awaiting admin review and is not yet visible to guests.",
+            DRAFT: "This listing is temporarily unavailable to guests.",
+            PENDING_REVIEW: "This listing is temporarily unavailable to guests.",
             PAUSED: "This listing is currently paused and not visible to guests."
           };
           const msg = statusMessages[exp.status] || ("This listing is " + exp.status + " and not visible to guests.");

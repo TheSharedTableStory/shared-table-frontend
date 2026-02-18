@@ -50,27 +50,6 @@ async function mustBeAdmin() {
 var currentListingsFilter = "all";
 var allExperiencesCache = [];
 
-async function handleLifecycleAction(id, action) {
-  var reason = "";
-  if (action === "reject" || action === "force-pause" || action === "force-delete") {
-    reason = (window.prompt("Reason for " + action + " (required):") || "").trim();
-    if (!reason) { alert("A reason is required."); return; }
-  }
-  try {
-    var res = await adminFetch("/api/admin/experiences/" + encodeURIComponent(id) + "/lifecycle", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: action, reason: reason })
-    });
-    var payload = await res.json().catch(function () { return {}; });
-    if (!res.ok) { alert(String((payload && payload.message) || "Action failed.")); return; }
-    alert("Done: listing status updated.");
-    loadExperiences();
-  } catch (_) {
-    alert("Action failed. Please try again.");
-  }
-}
-
 async function loadDashboardSummary() {
   const res = await adminFetch("/api/admin/dashboard-summary", { method: "GET" });
   if (!res.ok) throw new Error("dashboard-summary");
@@ -88,8 +67,6 @@ function renderDashboardSummary(data) {
   var bookingByStatus = (data && data.bookingByStatus) || {};
 
   var expDefs = [
-    { key: "PENDING_REVIEW", label: "Pending Review", color: "text-amber-700", bg: "bg-amber-50 border-amber-200" },
-    { key: "DRAFT", label: "Draft", color: "text-gray-600", bg: "bg-gray-50 border-gray-200" },
     { key: "ACTIVE", label: "Active", color: "text-green-700", bg: "bg-green-50 border-green-200" },
     { key: "PAUSED", label: "Paused", color: "text-orange-600", bg: "bg-orange-50 border-orange-200" },
     { key: "DELETED_SOFT", label: "Deleted", color: "text-red-600", bg: "bg-red-50 border-red-200" }
@@ -715,14 +692,6 @@ function renderExperiences(exps) {
 
   allExperiencesCache = Array.isArray(exps) ? exps : [];
 
-  // Update pending review count badge
-  var pendingCount = allExperiencesCache.filter(function(e) { return (e.status || "") === "PENDING_REVIEW"; }).length;
-  var countBadge = document.getElementById("pending-review-count");
-  if (countBadge) {
-    if (pendingCount > 0) { countBadge.textContent = String(pendingCount); countBadge.classList.remove("hidden"); }
-    else { countBadge.classList.add("hidden"); }
-  }
-
   // Apply active filter
   var list = currentListingsFilter === "all"
     ? allExperiencesCache
@@ -758,15 +727,6 @@ function renderExperiences(exps) {
     if (window.tstsSafeImg) { window.tstsSafeImg(imgEl, imgUrl, "/assets/experience-default.jpg"); } else { imgEl.src = imgUrl; }
 
     var actions = [];
-
-    // Lifecycle actions for PENDING_REVIEW
-    if (statusValue === "PENDING_REVIEW") {
-      var approveBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-green-300 text-green-700 hover:bg-green-50", textContent: "Approve Listing" });
-      approveBtn.addEventListener("click", function() { handleLifecycleAction(id, "approve"); });
-      var rejectBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-red-200 text-red-600 hover:bg-red-50", textContent: "Reject Listing" });
-      rejectBtn.addEventListener("click", function() { handleLifecycleAction(id, "reject"); });
-      actions.push(approveBtn, El("span", { textContent: " " }), rejectBtn);
-    }
 
     // Toggle pause/resume via legacy admin toggle (for ACTIVE/PAUSED)
     if (statusValue === "ACTIVE" || statusValue === "PAUSED") {
