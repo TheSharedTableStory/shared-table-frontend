@@ -98,7 +98,7 @@
 
   function moneyNumberString(n) {
     const num = Number(n || 0);
-    return Number.isFinite(num) ? num.toFixed(2) : "0.00";
+    return "$" + (Number.isFinite(num) ? num.toFixed(2) : "0.00");
   }
 
   function toFiniteNumber(v) {
@@ -251,7 +251,7 @@
     const isPrivate = bookingMode === "private" && privateBookingEnabled;
     if (!isPrivate) {
       expPriceValueEl.textContent = moneyNumberString(sharedUnitPrice);
-      if (expPriceSuffixEl) expPriceSuffixEl.textContent = " per guest";
+      if (expPriceSuffixEl) expPriceSuffixEl.textContent = " AUD per guest (pre-tax)";
       return;
     }
 
@@ -263,7 +263,7 @@
     const total = base + (extras * extra);
 
     expPriceValueEl.textContent = moneyNumberString(total);
-    if (expPriceSuffixEl) expPriceSuffixEl.textContent = " private total";
+    if (expPriceSuffixEl) expPriceSuffixEl.textContent = " AUD private total";
   }
 
   function setBookingMode(nextMode) {

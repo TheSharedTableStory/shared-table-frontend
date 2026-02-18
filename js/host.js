@@ -37,9 +37,11 @@
 	  const submitBtn = document.getElementById("submit-btn");
       const tagLimitHint = document.getElementById("tag-limit-hint");
   const pricingPublicPerGuestEl = document.getElementById("pricing-public-per-guest");
+  const pricingPlatformFeePerGuestEl = document.getElementById("pricing-platform-fee-per-guest");
   const pricingHostPayoutEstimateEl = document.getElementById("pricing-host-payout-estimate");
   const pricingVerifiedImpactEl = document.getElementById("pricing-verified-impact");
   const pricingPrivateSummaryEl = document.getElementById("pricing-private-summary");
+  const pricingHostChargeNoteEl = document.getElementById("pricing-host-charge-note");
   const pricingPolicyReferenceEl = document.getElementById("pricing-policy-reference");
 
   const CLOUDINARY_URL = (window.CLOUDINARY_URL || "");
@@ -49,6 +51,8 @@
   let existingImageUrl = null;
   let currentVerifiedStatus = "none";
   let activePolicySnapshot = null;
+  const PLATFORM_FEE_RATE = 0.05;
+  const PLATFORM_FEE_BPS = 500;
 
   function ensureInlineNotice() {
     let el = document.getElementById("host-inline-notice");
@@ -136,10 +140,22 @@
     return Number.isFinite(n) ? n : null;
   }
 
-  function formatMoney(raw) {
+  function toCents(raw) {
     const n = Number(raw);
-    if (!Number.isFinite(n)) return "—";
-    return "$" + n.toFixed(2) + " AUD";
+    if (!Number.isFinite(n)) return null;
+    return Math.round(n * 100);
+  }
+
+  function formatMoneyFromCents(centsRaw) {
+    const cents = Number(centsRaw);
+    if (!Number.isFinite(cents)) return "—";
+    return "$" + (cents / 100).toFixed(2) + " AUD";
+  }
+
+  function formatMoney(raw) {
+    const cents = toCents(raw);
+    if (cents == null) return "—";
+    return formatMoneyFromCents(cents);
   }
 
   function percentLikeToPct(v, fallback) {
@@ -154,9 +170,29 @@
     return v || "Unavailable";
   }
 
+  function computePublicPricingBreakdown(priceRaw) {
+    const guestPriceCents = toCents(priceRaw);
+    if (!(Number.isFinite(guestPriceCents) && guestPriceCents > 0)) return null;
+    const platformFeeCents = Math.max(0, Math.round(Number(guestPriceCents) * PLATFORM_FEE_RATE));
+    const hostPayoutCents = Math.max(0, Number(guestPriceCents) - platformFeeCents);
+    return {
+      guestPriceCents: Number(guestPriceCents),
+      platformFeeBps: PLATFORM_FEE_BPS,
+      platformFeeCents: Number(platformFeeCents),
+      hostPayoutCents: Number(hostPayoutCents),
+    };
+  }
+
   function resolveHostPayoutEstimate(price) {
-    if (!Number.isFinite(price) || price <= 0) return "—";
-    return formatMoney(price) + " (before host-funded discounts or recovery offsets)";
+    const b = computePublicPricingBreakdown(price);
+    if (!b) return "—";
+    return formatMoneyFromCents(b.hostPayoutCents) + " (after platform fee, before host-funded discounts or recovery offsets)";
+  }
+
+  function resolvePlatformFeeEstimate(price) {
+    const b = computePublicPricingBreakdown(price);
+    if (!b) return "—";
+    return "-" + formatMoneyFromCents(b.platformFeeCents) + " (" + String(PLATFORM_FEE_BPS / 100) + "% of public price)";
   }
 
   function resolvePrivateSummary() {
@@ -197,8 +233,12 @@
 
   function syncPricingTransparency() {
     const publicPrice = priceInput ? safeNum(priceInput.value) : null;
+    const pricingBreakdown = computePublicPricingBreakdown(publicPrice);
     if (pricingPublicPerGuestEl) {
-      pricingPublicPerGuestEl.textContent = (publicPrice != null && publicPrice > 0) ? formatMoney(publicPrice) : "Set a valid public price";
+      pricingPublicPerGuestEl.textContent = pricingBreakdown ? formatMoneyFromCents(pricingBreakdown.guestPriceCents) : "Set a valid public price";
+    }
+    if (pricingPlatformFeePerGuestEl) {
+      pricingPlatformFeePerGuestEl.textContent = resolvePlatformFeeEstimate(publicPrice);
     }
     if (pricingHostPayoutEstimateEl) {
       pricingHostPayoutEstimateEl.textContent = resolveHostPayoutEstimate(publicPrice);
@@ -208,6 +248,9 @@
     }
     if (pricingPrivateSummaryEl) {
       pricingPrivateSummaryEl.textContent = resolvePrivateSummary();
+    }
+    if (pricingHostChargeNoteEl) {
+      pricingHostChargeNoteEl.textContent = "Estimated payout shown above is after platform fee, before host-funded discounts or recovery offsets. No upfront host charge is applied when publishing.";
     }
     if (pricingPolicyReferenceEl) {
       const ver = resolvePolicyVersion();
