@@ -30,12 +30,7 @@ async function handleForgotPassword(e) {
         const msg = (data && data.message) ? String(data.message) : "If an account exists, you will receive instructions.";
 
         // Always show privacy-safe message; backend is intentionally non-enumerating.
-        const next = "reset-password.html?email=" + encodeURIComponent(email);
-        showModal(
-            "Reset Password",
-            msg + "\n\nThen open: " + next,
-            "success"
-        );
+        showModal("Reset Password", msg, "success");
     } catch (_) {
         showModal("Reset Password", "Could not reach the server. Please try again.", "error");
     }

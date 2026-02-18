@@ -1,7 +1,5 @@
 (function () {
   const form = document.getElementById("reset-form");
-  const emailEl = document.getElementById("email");
-  const tokenEl = document.getElementById("token");
   const newPasswordEl = document.getElementById("newPassword");
   const confirmPasswordEl = document.getElementById("confirmPassword");
   const submitBtn = document.getElementById("submit-btn");
@@ -89,7 +87,6 @@ function fillFromUrl() {
     const p = parseUrlParams();
     urlEmail = p.email ? String(p.email) : "";
     urlToken = p.token ? String(p.token) : "";
-    if (urlEmail && emailEl) emailEl.value = String(urlEmail);
     if (!urlToken) {
       setAlert("error", "This reset link is incomplete or expired. Please request a new password reset link and try again.");
       setSubmitEnabled(false);
@@ -103,12 +100,12 @@ function fillFromUrl() {
   async function submit(e) {
     e.preventDefault();
 
-    const email = (emailEl && emailEl.value) ? String(emailEl.value).trim() : "";
-    const token = (tokenEl && tokenEl.value) ? String(tokenEl.value).trim() : (urlToken ? String(urlToken).trim() : "");
+    const email = urlEmail ? String(urlEmail).trim().toLowerCase() : "";
+    const token = urlToken ? String(urlToken).trim() : "";
     const newPassword = (newPasswordEl && newPasswordEl.value) ? String(newPasswordEl.value) : "";
     const confirmPassword = (confirmPasswordEl && confirmPasswordEl.value) ? String(confirmPasswordEl.value) : "";
 
-    if (!email || !token || !newPassword || !confirmPassword) {
+    if (!token || !newPassword || !confirmPassword) {
       setAlert("error", "All fields are required.");
       return;
     }
@@ -129,15 +126,16 @@ function fillFromUrl() {
     }
 
     try {
+      const payload = {
+        token,
+        newPassword,
+        confirmPassword
+      };
+      if (email) payload.email = email;
       const res = await window.authFetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          token,
-          newPassword,
-          confirmPassword
-        })
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json().catch(() => ({}));
