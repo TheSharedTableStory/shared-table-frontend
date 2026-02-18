@@ -56,8 +56,8 @@
   let verificationFeePercent = 5.0;
   let verificationPolicyVersion = "";
   let activePolicySnapshot = null;
-  const PLATFORM_FEE_RATE = 0.05;
-  const PLATFORM_FEE_BPS = 500;
+  let platformFeeRate = null; // null = policy not yet loaded from API
+  let platformFeeBps = null;
 
   function ensureInlineNotice() {
     let el = document.getElementById("host-inline-notice");
@@ -195,11 +195,11 @@
   function computePublicPricingBreakdown(priceRaw) {
     const guestPriceCents = toCents(priceRaw);
     if (!(Number.isFinite(guestPriceCents) && guestPriceCents > 0)) return null;
-    const platformFeeCents = Math.max(0, Math.round(Number(guestPriceCents) * PLATFORM_FEE_RATE));
+    const platformFeeCents = Math.max(0, Math.round(Number(guestPriceCents) * platformFeeRate));
     const hostPayoutCents = Math.max(0, Number(guestPriceCents) - platformFeeCents);
     return {
       guestPriceCents: Number(guestPriceCents),
-      platformFeeBps: PLATFORM_FEE_BPS,
+      platformFeeBps: platformFeeBps,
       platformFeeCents: Number(platformFeeCents),
       hostPayoutCents: Number(hostPayoutCents),
     };
@@ -214,7 +214,7 @@
   function resolvePlatformFeeEstimate(price) {
     const b = computePublicPricingBreakdown(price);
     if (!b) return "—";
-    return "-" + formatMoneyFromCents(b.platformFeeCents) + " (" + String(PLATFORM_FEE_BPS / 100) + "% of public price)";
+    return "-" + formatMoneyFromCents(b.platformFeeCents) + " (" + String(platformFeeBps / 100) + "% of public price)";
   }
 
   function resolvePrivateSummary() {
@@ -257,6 +257,21 @@
   }
 
   function syncPricingTransparency() {
+    if (platformFeeRate === null) {
+      // Fee policy not yet loaded — show raw public price (fee-independent) and loading states
+      const rawPrice = priceInput ? safeNum(priceInput.value) : null;
+      const rawCents = toCents(rawPrice);
+      if (pricingPublicPerGuestEl) {
+        pricingPublicPerGuestEl.textContent = (Number.isFinite(rawCents) && rawCents > 0)
+          ? formatMoneyFromCents(rawCents)
+          : "Set a valid public price";
+      }
+      if (pricingPlatformFeePerGuestEl) pricingPlatformFeePerGuestEl.textContent = "Loading fee policy\u2026";
+      if (pricingHostPayoutEstimateEl) pricingHostPayoutEstimateEl.textContent = "Loading\u2026";
+      if (pricingVerifiedImpactEl) pricingVerifiedImpactEl.textContent = "Loading\u2026";
+      if (pricingPolicyReferenceEl) pricingPolicyReferenceEl.textContent = "Loading policy\u2026";
+      return;
+    }
     const publicPrice = priceInput ? safeNum(priceInput.value) : null;
     const pricingBreakdown = computePublicPricingBreakdown(publicPrice);
     if (pricingPublicPerGuestEl) {
@@ -308,6 +323,8 @@
         hostVerificationStatus = "none";
         verificationFeePercent = 5.0;
         verificationPolicyVersion = "";
+        platformFeeRate = 0.05;
+        platformFeeBps = 500;
         syncVerifiedUi();
         syncPricingTransparency();
         return;
@@ -319,10 +336,21 @@
       hostVerificationStatus = normalizeHostVerificationStatus(hostVerification.status);
       verificationFeePercent = resolveVerificationFeePercent(feePolicy.feePercent, 5.0);
       verificationPolicyVersion = String(feePolicy.policyVersion || "");
+      const pfp = (data && data.platformFeePolicy && typeof data.platformFeePolicy === "object")
+        ? data.platformFeePolicy : null;
+      if (pfp && pfp.type === "PERCENT" && Number.isFinite(Number(pfp.value)) && Number(pfp.value) >= 0) {
+        platformFeeRate = Math.max(0, Math.min(1, Number(pfp.value) / 100));
+        platformFeeBps = Math.round(platformFeeRate * 10000);
+      } else {
+        platformFeeRate = 0;
+        platformFeeBps = 0;
+      }
     } catch (_) {
       hostVerificationStatus = "none";
       verificationFeePercent = 5.0;
       verificationPolicyVersion = "";
+      platformFeeRate = 0.05;
+      platformFeeBps = 500;
     }
     syncVerifiedUi();
     syncPricingTransparency();

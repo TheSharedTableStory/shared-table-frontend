@@ -355,6 +355,7 @@
 
   let exp = null;
   let activePolicyVersion = "";
+  let activePolicyCancelCap = null;
   const TERMS_VERSION = "tsts_terms_v1";
   const defaultGuestOptionsMarkup = guestInput ? String(guestInput.innerHTML || "") : "";
   let bookingMode = "shared";
@@ -513,9 +514,23 @@
       const p = (payload.data && payload.data.policy) ? payload.data.policy : (payload.policy || {});
       const v = String((p && p.version) || "");
       activePolicyVersion = v;
+      const capRaw = p && p.rules && Number.isFinite(Number(p.rules.userCancelRefundCapPercent))
+        ? Number(p.rules.userCancelRefundCapPercent) : null;
+      activePolicyCancelCap = (capRaw !== null) ? Math.round(capRaw) : null;
+      renderPolicyCancelHint();
       return v;
     } catch (_) {
       return "";
+    }
+  }
+
+  function renderPolicyCancelHint() {
+    const hint = document.getElementById("booking-policy-hint");
+    const hintText = document.getElementById("booking-policy-hint-text");
+    if (!hint || !hintText) return;
+    if (activePolicyCancelCap != null) {
+      hintText.textContent = "Cancellation policy: up to " + String(activePolicyCancelCap) + "% refund may apply depending on timing. Full terms at policy.html.";
+      hint.classList.remove("hidden");
     }
   }
 

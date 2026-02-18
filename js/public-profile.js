@@ -109,8 +109,18 @@ async function loadHostExperiences() {
     const list = Array.isArray(payload) ? payload : (payload && Array.isArray(payload.experiences) ? payload.experiences : []);
 
     gridEl.textContent = "";
-    if (!res.ok || list.length === 0) {
-        noExpEl.classList.remove('hidden');
+    if (!res.ok) {
+        if (noExpEl) {
+            noExpEl.textContent = "Unable to load experiences. Please try again later.";
+            noExpEl.classList.remove('hidden');
+        }
+        return;
+    }
+    if (list.length === 0) {
+        if (noExpEl) {
+            noExpEl.textContent = "This host has no active listings at the moment.";
+            noExpEl.classList.remove('hidden');
+        }
         return;
     }
 

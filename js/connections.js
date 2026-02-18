@@ -80,6 +80,7 @@
       reqList.textContent = "";
 
       if (list.length === 0) {
+        if (reqEmpty) reqEmpty.textContent = "No pending requests.";
         showReq(reqEmpty);
         return;
       }
@@ -120,6 +121,7 @@
       connList.textContent = "";
 
       if (list.length === 0) {
+        if (connEmpty) connEmpty.textContent = "No connections yet. Visit someone\u2019s profile and click Connect to get started.";
         showConn(connEmpty);
         return;
       }

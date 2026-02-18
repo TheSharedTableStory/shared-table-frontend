@@ -660,11 +660,16 @@ function closeCancelReviewModal() {
   if (cancelReviewModal) cancelReviewModal.classList.add("hidden");
 }
 
-function openCancelReviewModalById(bookingId) {
+async function openCancelReviewModalById(bookingId) {
   const b = getGuestBookingById(bookingId);
   if (!b) {
     window.tstsNotify("Booking details are unavailable. Please refresh and try again.", "error");
     return;
+  }
+
+  // Legacy bookings (pre-Feb-17) may have no locked policySnapshot — fetch fresh policy for those only.
+  if (!b.policySnapshot || typeof b.policySnapshot !== "object" || !b.policySnapshot.version) {
+    await loadActivePolicySnapshot();
   }
 
   const preview = buildCancelPreview(b);
