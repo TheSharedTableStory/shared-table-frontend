@@ -10,10 +10,10 @@
   async function isAuthed() {
     try {
       if (!window.tstsGetSession) return false;
-      // Avoid noisy /api/auth/me 401s on public experience pages for guests.
-      // Logged-in sessions always set a local user cache via setAuth().
-      if (!localStorage.getItem("tsts_user")) return false;
-      const sess = await window.tstsGetSession({ force: false });
+      let sess = await window.tstsGetSession({ force: false });
+      if (sess && sess.ok && sess.user) return true;
+      // Reserve flow must re-probe auth to avoid stale cache/local-hint drift.
+      sess = await window.tstsGetSession({ force: true });
       return !!(sess && sess.ok && sess.user);
     } catch (_) {
       return false;
@@ -382,7 +382,7 @@
     const res = await af(`/api/experiences/${experienceId}`, { method: "GET" });
 
     if (res.status === 401 || res.status === 403) {
-      try { localStorage.removeItem("token"); localStorage.removeItem("user"); } catch (_) {}
+      try { if (window.clearAuth) window.clearAuth(); } catch (_) {}
       return redirectToLogin();
     }
     if (!res.ok) {
@@ -869,7 +869,7 @@
         });
 
         if (res.status === 401 || res.status === 403) {
-          try { localStorage.removeItem("token"); localStorage.removeItem("user"); } catch (_) {}
+          try { if (window.clearAuth) window.clearAuth(); } catch (_) {}
           return redirectToLogin();
         }
 
