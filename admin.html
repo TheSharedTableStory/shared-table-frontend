@@ -51,6 +51,9 @@
             <button id="tab-private-requests" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
                 Private Requests
             </button>
+            <button id="tab-audit" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
+                Audit Logs
+            </button>
         </nav>
       </div>
 
@@ -106,6 +109,30 @@
       </div>
 
       <div id="view-users" class="hidden space-y-8">
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+            <div class="flex items-center justify-between gap-4 mb-5">
+              <h2 class="font-bold text-lg text-tsts-ink">Invite Admin</h2>
+              <button id="btn-refresh-admin-invites" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh Invites</button>
+            </div>
+            <form id="admin-invite-form" class="grid gap-3 md:grid-cols-[1fr_auto]">
+              <div>
+                <label for="admin-invite-email" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Email</label>
+                <input id="admin-invite-email" type="email" placeholder="admin.user@example.com" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" required />
+              </div>
+              <div class="md:self-end">
+                <button type="submit" class="inline-flex items-center justify-center rounded-xl bg-tsts-clay px-4 py-2 text-sm font-bold text-white hover:opacity-90">Send Invite</button>
+              </div>
+            </form>
+            <div class="mt-6 overflow-x-auto">
+              <table class="min-w-full text-left text-sm">
+                <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                  <tr><th class="px-6 py-3">Email</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Created</th><th class="px-6 py-3">Expires</th><th class="px-6 py-3">Invited By</th></tr>
+                </thead>
+                <tbody id="admin-invites-table-body" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </section>
+
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                 <div class="font-bold text-lg">All Users</div>
@@ -232,6 +259,79 @@
                   <tr><th class="px-6 py-3">Created</th><th class="px-6 py-3">Experience</th><th class="px-6 py-3">Requester</th><th class="px-6 py-3">Schedule</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Actions</th></tr>
                 </thead>
                 <tbody id="private-requests-table-body" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </section>
+      </div>
+
+      <div id="view-audit" class="hidden space-y-8">
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+            <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-5">
+              <div>
+                <h2 class="font-bold text-lg text-tsts-ink">Admin Audit Log</h2>
+                <p class="text-xs text-slate-500 mt-1">Immutable request history for all admin API actions.</p>
+              </div>
+              <div class="flex items-center gap-2 text-xs text-slate-500">
+                <span>Total rows:</span>
+                <span id="audit-total-count" class="font-bold text-slate-700">0</span>
+              </div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <label for="audit-filter-from" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">From (UTC)</label>
+                <input id="audit-filter-from" type="datetime-local" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label for="audit-filter-to" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">To (UTC)</label>
+                <input id="audit-filter-to" type="datetime-local" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label for="audit-filter-actor" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Actor ID</label>
+                <input id="audit-filter-actor" type="text" placeholder="user id" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label for="audit-filter-action" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Action</label>
+                <input id="audit-filter-action" type="text" placeholder="admin_request" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label for="audit-filter-method" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Method</label>
+                <select id="audit-filter-method" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                  <option value="">All</option>
+                  <option value="GET">GET</option>
+                  <option value="POST">POST</option>
+                  <option value="PATCH">PATCH</option>
+                  <option value="PUT">PUT</option>
+                  <option value="DELETE">DELETE</option>
+                </select>
+              </div>
+              <div>
+                <label for="audit-filter-ok" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Outcome</label>
+                <select id="audit-filter-ok" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                  <option value="">All</option>
+                  <option value="true">OK</option>
+                  <option value="false">Fail</option>
+                </select>
+              </div>
+              <div class="xl:col-span-2">
+                <label for="audit-filter-path" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Path Contains</label>
+                <input id="audit-filter-path" type="text" placeholder="/api/admin/users" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+            </div>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <button id="btn-audit-apply" type="button" class="inline-flex items-center justify-center rounded-xl bg-tsts-clay px-4 py-2 text-sm font-bold text-white hover:opacity-90">Apply Filters</button>
+              <button id="btn-refresh-audit" type="button" class="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50">Refresh</button>
+              <button id="btn-export-audit-csv" type="button" class="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50">Export CSV</button>
+              <button id="btn-export-audit-json" type="button" class="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50">Export JSON</button>
+            </div>
+          </section>
+
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-left text-sm">
+                <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                  <tr><th class="px-6 py-3">Timestamp</th><th class="px-6 py-3">Actor</th><th class="px-6 py-3">Action</th><th class="px-6 py-3">Method</th><th class="px-6 py-3">Path</th><th class="px-6 py-3">Target</th><th class="px-6 py-3">Outcome</th><th class="px-6 py-3">Reason</th></tr>
+                </thead>
+                <tbody id="audit-table-body" class="divide-y divide-slate-100"></tbody>
               </table>
             </div>
           </section>

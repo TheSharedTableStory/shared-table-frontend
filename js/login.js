@@ -88,6 +88,9 @@ async function handleLogin(e) {
     e.preventDefault();
     const email = document.getElementById("login-email").value;
     const password = document.getElementById("login-password").value;
+    const params = new URLSearchParams(window.location.search);
+    const inviteToken = String(params.get("adminInviteToken") || "").trim();
+    const inviteEmail = String(params.get("adminInviteEmail") || "").trim();
 
     try {
         const res = await window.authFetch("/api/auth/login", {
@@ -104,10 +107,38 @@ async function handleLogin(e) {
         }
 
         const payload = (window.tstsUnwrap && typeof window.tstsUnwrap === "function") ? window.tstsUnwrap(data) : (data && data.data !== undefined ? data.data : data);
-        const user = (payload && payload.user) ? payload.user : (data && data.user ? data.user : null);
+        let user = (payload && payload.user) ? payload.user : (data && data.user ? data.user : null);
         const csrfToken = (payload && (payload.csrfToken || payload.token)) ? String(payload.csrfToken || payload.token) : String((data && (data.csrfToken || data.token)) || "");
 
         if (window.setAuth) window.setAuth(csrfToken, user);
+
+        if (inviteToken) {
+            try {
+                const acceptRes = await window.authFetch("/api/auth/admin-invites/accept", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        token: inviteToken,
+                        email: inviteEmail || email
+                    })
+                });
+                const acceptData = await acceptRes.json().catch(() => ({}));
+                if (!acceptRes.ok || !acceptData || acceptData.ok !== true) {
+                    const msg = (acceptData && acceptData.message) ? String(acceptData.message) : "Admin invite acceptance failed.";
+                    showModal("Admin Invite", msg, "error");
+                } else {
+                    showModal("Admin Invite", "Admin access granted successfully.", "success");
+                }
+                if (window.tstsGetSession) {
+                    const fresh = await window.tstsGetSession({ force: true }).catch(() => null);
+                    if (fresh && fresh.ok && fresh.user) {
+                        user = Object.assign({}, user || {}, fresh.user || {});
+                    }
+                }
+            } catch (_) {
+                showModal("Admin Invite", "Unable to accept the admin invite right now.", "error");
+            }
+        }
 
         // Admin routing must be role-based, not email-hardcoded.
         const isAdmin = !!(user && (user.isAdmin === true || String(user.role || "").toLowerCase() === "admin"));
@@ -116,7 +147,6 @@ async function handleLogin(e) {
             return;
         }
 
-        const params = new URLSearchParams(window.location.search);
         const redirect = params.get("redirect");
         const returnTo = params.get("returnTo");
         const rawTarget = redirect || returnTo || "index.html";
@@ -194,7 +224,13 @@ async function handleSignup(e) {
             const params = new URLSearchParams(window.location.search);
             const rawTarget = params.get("redirect") || params.get("returnTo") || "index.html";
             const target = safeRedirectTarget(rawTarget);
-            window.location.href = "login.html?returnTo=" + encodeURIComponent(target);
+            const next = new URLSearchParams();
+            next.set("returnTo", target);
+            const inviteToken = String(params.get("adminInviteToken") || "").trim();
+            const inviteEmail = String(params.get("adminInviteEmail") || "").trim();
+            if (inviteToken) next.set("adminInviteToken", inviteToken);
+            if (inviteEmail) next.set("adminInviteEmail", inviteEmail);
+            window.location.href = "login.html?" + next.toString();
         }, 1200);
 
     } catch (err) {

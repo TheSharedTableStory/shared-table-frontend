@@ -6,37 +6,8 @@ function redirectToLogin() {
   location.href = "login.html?returnTo=" + returnTo;
 }
 
-async function getAdminReason() {
-  let r = "";
-  try { r = String(sessionStorage.getItem("admin_reason") || ""); } catch (_) { r = ""; }
-  r = r.trim();
-  if (r.length >= 5) return r;
-  try {
-    r = await window.tstsPrompt("Admin reason (required)", "", { minLength: 5, placeholder: "Enter reason for this action..." });
-    r = String(r || "").trim();
-  } catch (_) { r = ""; }
-  if (r.length < 5) return "";
-  try { sessionStorage.setItem("admin_reason", r); } catch (_) {}
-  return r;
-}
-
-function withOptionalAdminReasonHeaders(opts) {
-  let r = "";
-  try { r = String(sessionStorage.getItem("admin_reason") || ""); } catch (_) { r = ""; }
-  r = r.trim();
-  if (r.length < 5) return opts || {};
-  const headers = Object.assign({}, (opts && opts.headers) || {}, { "X-Admin-Reason": r });
-  return Object.assign({}, opts || {}, { headers });
-}
-
 async function adminFetch(path, opts) {
-  if (!path.startsWith("/api/admin/")) {
-    return window.authFetch(path, withOptionalAdminReasonHeaders(opts));
-  }
-  const reason = await getAdminReason();
-  if (!reason) throw new Error("Admin reason required");
-  const headers = Object.assign({}, (opts && opts.headers) || {}, { "X-Admin-Reason": reason });
-  return window.authFetch(path, Object.assign({}, opts || {}, { headers }));
+  return window.authFetch(path, opts || {});
 }
 
 async function mustBeAdmin() {
@@ -92,6 +63,104 @@ async function loadUsers() {
   const res = await adminFetch("/api/admin/users", { method: "GET" });
   if (!res.ok) throw new Error("users");
   return res.json();
+}
+
+function buildAuditQueryString(filters) {
+  var f = (filters && typeof filters === "object") ? filters : {};
+  var p = new URLSearchParams();
+  if (f.from) p.set("from", String(f.from));
+  if (f.to) p.set("to", String(f.to));
+  if (f.actorId) p.set("actorId", String(f.actorId));
+  if (f.action) p.set("action", String(f.action));
+  if (typeof f.ok === "boolean") p.set("ok", f.ok ? "true" : "false");
+  if (f.method) p.set("method", String(f.method));
+  if (f.pathContains) p.set("pathContains", String(f.pathContains));
+  if (f.limit) p.set("limit", String(f.limit));
+  if (f.skip) p.set("skip", String(f.skip));
+  var s = p.toString();
+  return s ? ("?" + s) : "";
+}
+
+async function loadAuditLogs(filters) {
+  var qs = buildAuditQueryString(filters);
+  const res = await adminFetch("/api/admin/audit" + qs, { method: "GET" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "audit");
+  }
+  return data;
+}
+
+async function exportAuditLogs(format, filters) {
+  var f = Object.assign({}, filters || {}, { format: String(format || "csv").toLowerCase() });
+  var qs = buildAuditQueryString(f);
+  const res = await adminFetch("/api/admin/export/audit" + qs, { method: "GET" });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data && data.message) ? data.message : "Export failed");
+  }
+  if (String(format || "").toLowerCase() === "json") {
+    const data = await res.json().catch(() => ({}));
+    var text = JSON.stringify(data || {}, null, 2);
+    var blob = new Blob([text], { type: "application/json;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "admin_audit_export.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    return;
+  }
+  const csv = await res.text();
+  var blobCsv = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  var urlCsv = URL.createObjectURL(blobCsv);
+  var link = document.createElement("a");
+  link.href = urlCsv;
+  link.download = "admin_audit_export.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(urlCsv);
+}
+
+async function grantAdmin(userId) {
+  const res = await adminFetch("/api/admin/users/" + encodeURIComponent(userId) + "/grant-admin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to grant admin access");
+  }
+  return data.data || null;
+}
+
+async function loadAdminInvites(status) {
+  var p = new URLSearchParams();
+  p.set("status", String(status || "all"));
+  p.set("limit", "100");
+  const res = await adminFetch("/api/admin/admin-invites?" + p.toString(), { method: "GET" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to load admin invites");
+  }
+  return data;
+}
+
+async function inviteAdmin(email) {
+  const res = await adminFetch("/api/admin/admin-invites", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: String(email || "").trim() })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to send admin invite");
+  }
+  return data.data || null;
 }
 
 async function loadCoupons() {
@@ -232,7 +301,7 @@ async function rejectVerifiedExperience(id) {
 }
 
 async function deleteExperience(id) {
-  const res = await window.authFetch("/api/experiences/" + encodeURIComponent(id), withOptionalAdminReasonHeaders({ method: "DELETE" }));
+  const res = await window.authFetch("/api/experiences/" + encodeURIComponent(id), { method: "DELETE" });
   if (!res.ok) {
     let msg = "Failed to delete experience";
     try { msg = (await res.json()).message || msg; } catch (_) {}
@@ -541,16 +610,104 @@ function renderUsers(users) {
     var email = u.email || "—";
     var role = u.role || (u.isAdmin ? "Admin" : "Guest");
     var joined = formatDateValue(u.createdAt);
+    var emailVerified = !!(u && u.emailVerified === true);
+    var accountStatus = String((u && u.accountStatus) || "active").toLowerCase().trim();
+    var isAdmin = !!(u && (u.isAdmin === true || String(role).toLowerCase() === "admin"));
 
     var deleteBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-red-200 text-red-600 hover:bg-red-50", textContent: "Delete" });
     deleteBtn.addEventListener("click", function() { handleDeleteUser(id); });
+    var actionButtons = [];
+    if (!isAdmin && emailVerified && accountStatus === "active") {
+      var grantBtn = El("button", {
+        className: "px-3 py-1 text-xs font-bold rounded border border-emerald-200 text-emerald-700 hover:bg-emerald-50",
+        textContent: "Grant Admin"
+      });
+      grantBtn.addEventListener("click", function() { handleGrantAdmin(id, email || name); });
+      actionButtons.push(grantBtn);
+      actionButtons.push(El("span", { textContent: " " }));
+    }
+    actionButtons.push(deleteBtn);
 
     tbody.appendChild(El("tr", { className: "border-t border-slate-100" }, [
       El("td", { className: "px-6 py-4 text-sm font-semibold text-slate-800", textContent: name }),
       El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: email }),
-      El("td", { className: "px-6 py-4 text-sm text-slate-500", textContent: role }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-500" }, [
+        El("div", { className: "font-semibold text-slate-700", textContent: role }),
+        El("div", { className: "text-xs mt-1 text-slate-500", textContent: "Status: " + normalizeStateLabel(accountStatus) + " • Verified: " + (emailVerified ? "Yes" : "No") })
+      ]),
       El("td", { className: "px-6 py-4 text-sm text-slate-500", textContent: joined }),
-      El("td", { className: "px-6 py-4 text-sm text-right" }, [deleteBtn])
+      El("td", { className: "px-6 py-4 text-sm text-right" }, actionButtons)
+    ]));
+  });
+}
+
+function renderAdminInvites(items) {
+  const El = window.tstsEl;
+  const tbody = $("admin-invites-table-body");
+  if (!tbody) return;
+  tbody.textContent = "";
+
+  var list = Array.isArray(items) ? items : [];
+  if (list.length === 0) {
+    tbody.appendChild(El("tr", {}, [
+      El("td", { className: "px-6 py-6 text-center text-sm text-slate-500", colSpan: "5", textContent: "No admin invites." })
+    ]));
+    return;
+  }
+
+  list.forEach(function (item) {
+    var created = formatDateValue(item && item.createdAt);
+    var expires = formatDateValue(item && item.expiresAt);
+    var status = normalizeStateLabel(item && item.status);
+    tbody.appendChild(El("tr", { className: "border-t border-slate-100" }, [
+      El("td", { className: "px-6 py-4 text-sm text-slate-700 font-semibold", textContent: String((item && item.email) || "—") }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: status }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: created }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: expires }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: String((item && item.invitedByAdminMasked) || "—") })
+    ]));
+  });
+}
+
+function renderAuditLogs(items) {
+  const El = window.tstsEl;
+  const tbody = $("audit-table-body");
+  if (!tbody) return;
+  tbody.textContent = "";
+
+  var list = Array.isArray(items) ? items : [];
+  if (list.length === 0) {
+    tbody.appendChild(El("tr", {}, [
+      El("td", { className: "px-6 py-6 text-center text-sm text-slate-500", colSpan: "8", textContent: "No audit rows found." })
+    ]));
+    return;
+  }
+
+  list.forEach(function (item) {
+    var created = formatDateValue(item && item.createdAt);
+    var actor = String((item && item.actorMasked) || "—");
+    var action = String((item && item.action) || "admin_request");
+    var method = String((item && item.method) || "—");
+    var path = String((item && item.path) || "—");
+    var target = String((item && item.targetType) || "");
+    if (item && item.targetId) target = target ? (target + " • " + String(item.targetId).slice(0, 12)) : String(item.targetId).slice(0, 12);
+    if (!target) target = "—";
+    var status = (item && item.ok === true) ? "OK" : "FAIL";
+    var statusClass = (item && item.ok === true) ? "text-emerald-700" : "text-red-600";
+    var rid = String((item && item.rid) || "");
+
+    tbody.appendChild(El("tr", { className: "border-t border-slate-100 align-top" }, [
+      El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: created }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700", textContent: actor }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { className: "font-semibold", textContent: action }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: rid ? ("RID: " + rid) : "RID: —" })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: method }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-600 max-w-[320px] truncate", title: path, textContent: path }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: target }),
+      El("td", { className: "px-6 py-4 text-sm " + statusClass, textContent: status }),
+      El("td", { className: "px-6 py-4 text-xs text-slate-500", textContent: String((item && item.reason) || "—") })
     ]));
   });
 }
@@ -728,6 +885,41 @@ function renderPrivateRequests(requests) {
   });
 }
 
+function collectAuditFilters() {
+  var method = String(($("audit-filter-method") && $("audit-filter-method").value) || "").trim().toUpperCase();
+  var okRaw = String(($("audit-filter-ok") && $("audit-filter-ok").value) || "").trim().toLowerCase();
+  var out = {
+    from: String(($("audit-filter-from") && $("audit-filter-from").value) || "").trim(),
+    to: String(($("audit-filter-to") && $("audit-filter-to").value) || "").trim(),
+    actorId: String(($("audit-filter-actor") && $("audit-filter-actor").value) || "").trim(),
+    action: String(($("audit-filter-action") && $("audit-filter-action").value) || "").trim(),
+    method: method,
+    pathContains: String(($("audit-filter-path") && $("audit-filter-path").value) || "").trim(),
+    limit: 100,
+    skip: 0
+  };
+  if (!out.from) delete out.from;
+  if (!out.to) delete out.to;
+  if (!out.actorId) delete out.actorId;
+  if (!out.action) delete out.action;
+  if (!out.method) delete out.method;
+  if (!out.pathContains) delete out.pathContains;
+  if (okRaw === "true") out.ok = true;
+  if (okRaw === "false") out.ok = false;
+  return out;
+}
+
+async function refreshAuditLogs() {
+  const data = await loadAuditLogs(collectAuditFilters());
+  if ($("audit-total-count")) $("audit-total-count").textContent = String((data && data.total) || 0);
+  renderAuditLogs((data && data.items) || []);
+}
+
+async function refreshAdminInvites() {
+  const data = await loadAdminInvites("all");
+  renderAdminInvites((data && data.items) || []);
+}
+
 // Local action handlers (no window.* exposure)
 async function handleToggleExperience(id) {
   try { await toggleExperience(id); await boot(); } catch (e) { window.tstsNotify(e.message || "Failed", "error"); }
@@ -751,6 +943,20 @@ async function handleDeleteUser(id) {
   var confirmed = await window.tstsConfirm("Delete this user?", { destructive: true, confirmText: "Delete" });
   if (!confirmed) return;
   try { await deleteUser(id); await boot(); } catch (e) { window.tstsNotify(e.message || "Failed", "error"); }
+}
+async function handleGrantAdmin(id, label) {
+  var confirmed = await window.tstsConfirm("Grant admin access to " + String(label || "this user") + "?", { confirmText: "Grant Admin" });
+  if (!confirmed) return;
+  try {
+    await grantAdmin(id);
+    window.tstsNotify("Admin access granted.", "success");
+    await Promise.all([
+      loadUsers().then(renderUsers),
+      refreshAdminInvites().catch(function () {})
+    ]);
+  } catch (e) {
+    window.tstsNotify(e.message || "Failed to grant admin access.", "error");
+  }
 }
 async function handleCancelBooking(id) {
   var confirmed = await window.tstsConfirm("Cancel this booking?", { destructive: true, confirmText: "Cancel Booking" });
@@ -816,6 +1022,37 @@ async function handlePrivateRequestStatus(id, status) {
     await loadPrivateBookingRequests().then(renderPrivateRequests);
   } catch (e) {
     window.tstsNotify(e.message || "Private request update failed", "error");
+  }
+}
+async function handleInviteAdminSubmit(e) {
+  if (e && typeof e.preventDefault === "function") e.preventDefault();
+  var email = String(($("admin-invite-email") && $("admin-invite-email").value) || "").trim();
+  if (!email) {
+    window.tstsNotify("Invite email is required.", "error");
+    return;
+  }
+  try {
+    await inviteAdmin(email);
+    if ($("admin-invite-email")) $("admin-invite-email").value = "";
+    window.tstsNotify("Admin invite sent.", "success");
+    await refreshAdminInvites();
+  } catch (err) {
+    window.tstsNotify((err && err.message) ? err.message : "Failed to send invite", "error");
+  }
+}
+async function handleRefreshAudit() {
+  try {
+    await refreshAuditLogs();
+  } catch (e) {
+    window.tstsNotify(e.message || "Failed to load audit logs.", "error");
+  }
+}
+async function handleExportAudit(format) {
+  try {
+    await exportAuditLogs(format, collectAuditFilters());
+    window.tstsNotify("Audit export downloaded.", "success");
+  } catch (e) {
+    window.tstsNotify(e.message || "Failed to export audit logs.", "error");
   }
 }
 async function handleCreateCoupon(e) {
@@ -891,7 +1128,7 @@ async function handleDeactivateCoupon(code) {
 
 // Tab switching functionality (local, no window.* exposure)
 function switchTab(tabName) {
-  const views = ['dashboard', 'listings', 'users', 'coupons', 'moderation', 'private-requests'];
+  const views = ['dashboard', 'listings', 'users', 'coupons', 'moderation', 'private-requests', 'audit'];
   const activeClass = "border-tsts-clay text-tsts-clay border-b-2 py-4 px-1 font-bold text-sm";
   const inactiveClass = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm";
 
@@ -913,6 +1150,7 @@ function switchTab(tabName) {
 
   if (tabName === 'users') {
     loadUsers().then(renderUsers).catch(() => renderUsers([]));
+    refreshAdminInvites().catch(() => renderAdminInvites([]));
   }
   if (tabName === 'listings') {
     loadExperiences().then(renderExperiences).catch(() => renderExperiences([]));
@@ -935,6 +1173,9 @@ function switchTab(tabName) {
       renderBookings(bookings);
     });
   }
+  if (tabName === 'audit') {
+    refreshAuditLogs().catch(() => renderAuditLogs([]));
+  }
 };
 
 let __adminWired = false;
@@ -949,11 +1190,18 @@ function wireAdminEvents() {
   const tabCoupons = $("tab-coupons");
   const tabModeration = $("tab-moderation");
   const tabPrivateRequests = $("tab-private-requests");
+  const tabAudit = $("tab-audit");
   const refreshListings = $("btn-refresh-listings");
   const refreshUsers = $("btn-refresh-users");
   const refreshCoupons = $("btn-refresh-coupons");
   const refreshReports = $("btn-refresh-reports");
   const refreshPrivateRequests = $("btn-refresh-private-requests");
+  const refreshAudit = $("btn-refresh-audit");
+  const applyAuditFilters = $("btn-audit-apply");
+  const exportAuditCsv = $("btn-export-audit-csv");
+  const exportAuditJson = $("btn-export-audit-json");
+  const adminInviteForm = $("admin-invite-form");
+  const refreshAdminInvitesBtn = $("btn-refresh-admin-invites");
   const couponCreateForm = $("coupon-create-form");
 
   if (tabDashboard) tabDashboard.addEventListener("click", () => switchTab("dashboard"));
@@ -962,31 +1210,38 @@ function wireAdminEvents() {
   if (tabCoupons) tabCoupons.addEventListener("click", () => switchTab("coupons"));
   if (tabModeration) tabModeration.addEventListener("click", () => switchTab("moderation"));
   if (tabPrivateRequests) tabPrivateRequests.addEventListener("click", () => switchTab("private-requests"));
+  if (tabAudit) tabAudit.addEventListener("click", () => switchTab("audit"));
   if (refreshListings) refreshListings.addEventListener("click", () => loadExperiences().then(renderExperiences).catch(() => renderExperiences([])));
   if (refreshUsers) refreshUsers.addEventListener("click", () => loadUsers().then(renderUsers).catch(() => renderUsers([])));
   if (refreshCoupons) refreshCoupons.addEventListener("click", () => loadCoupons().then(renderCoupons).catch(() => renderCoupons([])));
   if (refreshReports) refreshReports.addEventListener("click", () => loadReports().then(renderReports).catch(() => renderReports([])));
   if (refreshPrivateRequests) refreshPrivateRequests.addEventListener("click", () => loadPrivateBookingRequests().then(renderPrivateRequests).catch(() => renderPrivateRequests([])));
+  if (refreshAudit) refreshAudit.addEventListener("click", () => handleRefreshAudit());
+  if (applyAuditFilters) applyAuditFilters.addEventListener("click", () => handleRefreshAudit());
+  if (exportAuditCsv) exportAuditCsv.addEventListener("click", () => handleExportAudit("csv"));
+  if (exportAuditJson) exportAuditJson.addEventListener("click", () => handleExportAudit("json"));
+  if (adminInviteForm) adminInviteForm.addEventListener("submit", handleInviteAdminSubmit);
+  if (refreshAdminInvitesBtn) refreshAdminInvitesBtn.addEventListener("click", () => refreshAdminInvites().catch(() => renderAdminInvites([])));
   if (couponCreateForm) couponCreateForm.addEventListener("submit", handleCreateCoupon);
 }
 
 async function boot() {
   if (!(await mustBeAdmin())) return;
 
-  try { getAdminReason(); } catch (_) {}
-
   wireAdminEvents();
 
   // basic skeleton if containers exist
   try {
-    const [stats, bookings, exps, users, promos, reports, privateRequests] = await Promise.all([
+    const [stats, bookings, exps, users, promos, reports, privateRequests, auditData, inviteData] = await Promise.all([
       loadStats().catch(() => ({})),
       loadBookings().catch(() => ([])),
       loadExperiences().catch(() => ([])),
       loadUsers().catch(() => ([])),
       loadCoupons().catch(() => ([])),
       loadReports().catch(() => ([])),
-      loadPrivateBookingRequests().catch(() => ([]))
+      loadPrivateBookingRequests().catch(() => ([])),
+      loadAuditLogs({ limit: 100, skip: 0 }).catch(() => ({ total: 0, items: [] })),
+      loadAdminInvites("all").catch(() => ({ items: [] }))
     ]);
 
     renderStats(stats);
@@ -996,6 +1251,9 @@ async function boot() {
     renderCoupons(promos);
     renderReports(reports);
     renderPrivateRequests(privateRequests);
+    if ($("audit-total-count")) $("audit-total-count").textContent = String((auditData && auditData.total) || 0);
+    renderAuditLogs((auditData && auditData.items) || []);
+    renderAdminInvites((inviteData && inviteData.items) || []);
   } catch (e) {
     window.tstsNotify("Admin load failed.", "error");
   }
