@@ -793,10 +793,6 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
         const authHint = hasAuthHint();
         try {
           if (!window.authFetch) return out;
-          if (!force && !authHint) {
-            cache = out;
-            return cache;
-          }
 
           let res = await window.authFetch("/api/auth/me", { method: "GET" });
           out.status = res ? res.status : 0;
@@ -813,7 +809,7 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
           }
 
           if (res && (res.status === 401 || res.status === 403)) {
-            const shouldTryRefresh = force || !!authHint;
+            const shouldTryRefresh = true;
             const refreshed = shouldTryRefresh ? await refreshAccessTokenOnce() : false;
             if (refreshed) {
               res = await window.authFetch("/api/auth/me", { method: "GET" });
@@ -896,7 +892,9 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
 document.addEventListener("DOMContentLoaded", () => {
   injectNavbar();
   injectFooter();
-  applyAuthStateToNav();
+  if (window.tstsHydrateNavAuth) {
+    window.tstsHydrateNavAuth({ force: false }).catch(() => {});
+  }
   initMobileMenu();
   setTimeout(function () {
     initGlobalStatusBanner().catch(() => {});
@@ -1123,9 +1121,13 @@ async function hydrateFooterPolicyMeta() {
 
 // 3) AUTH STATE IN NAV - DOM-safe construction
 // Auth must work when frontend and backend are on different hosts (cookies not readable from JS).
-async function applyAuthStateToNav() {
+async function applyAuthStateToNav(opts) {
   if (!window.tstsGetSession) return;
-  const sess = await window.tstsGetSession({ force: false });
+  const o = (opts && typeof opts === "object") ? opts : {};
+  const force = o.force === true;
+  const sess = (o.session && typeof o.session === "object")
+    ? o.session
+    : await window.tstsGetSession({ force: force });
   if (!sess || !sess.ok || !sess.user) return;
   const user = sess.user || {};
   const isAdminUser = !!(user && (user.isAdmin === true || String(user.role || "").toLowerCase() === "admin"));
@@ -1182,6 +1184,14 @@ async function applyAuthStateToNav() {
   initDropdownToggle();
   loadNavProfilePic();
 }
+
+window.tstsHydrateNavAuth = async function (opts) {
+  try {
+    return await applyAuthStateToNav(opts || {});
+  } catch (_) {
+    return false;
+  }
+};
 
 // 4) MOBILE MENU
 function initMobileMenu() {
@@ -1302,7 +1312,12 @@ window.tstsRequireAuth = function (opts) {
     if (!window.tstsGetSession) { go(); return Promise.resolve(false); }
     return window.tstsGetSession({ force: true })
       .then(function (sess) {
-        if (sess && sess.ok && sess.user) return true;
+        if (sess && sess.ok && sess.user) {
+          try {
+            if (window.tstsHydrateNavAuth) window.tstsHydrateNavAuth({ force: true, session: sess });
+          } catch (_) {}
+          return true;
+        }
         if (sess && Number(sess.status) === 429) {
           try { if (window.tstsNotify) window.tstsNotify("Session check is temporarily rate-limited. Please retry.", "warning"); } catch (_) {}
           return false;

@@ -23,10 +23,16 @@ async function mustBeAdmin() {
     }
     const u = sess.user || {};
     if (u && u.isAdmin === true) {
+      try {
+        if (window.tstsHydrateNavAuth) await window.tstsHydrateNavAuth({ force: true, session: sess });
+      } catch (_) {}
       return true;
     }
     const role = String((u && u.role) || "").toLowerCase();
     if (role === "admin") {
+      try {
+        if (window.tstsHydrateNavAuth) await window.tstsHydrateNavAuth({ force: true, session: sess });
+      } catch (_) {}
       return true;
     }
     document.body.replaceChildren();
