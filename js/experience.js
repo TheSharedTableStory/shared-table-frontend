@@ -480,6 +480,28 @@
 
     show("experience-content");
 
+    // D2: Show host-only status banner if viewer is the host and listing is not ACTIVE
+    if (exp.status && exp.status !== "ACTIVE" && exp.hostId) {
+      try {
+        const sess = await window.tstsGetSession({ force: false });
+        const viewerId = String((sess && sess.user && (sess.user._id || sess.user.id)) || "").trim();
+        if (viewerId && viewerId === String(exp.hostId).trim()) {
+          const statusMessages = {
+            DRAFT: "This listing is a draft and is not visible to guests. Submit it for review when ready.",
+            PENDING_REVIEW: "This listing is awaiting admin review and is not yet visible to guests.",
+            PAUSED: "This listing is currently paused and not visible to guests."
+          };
+          const msg = statusMessages[exp.status] || ("This listing is " + exp.status + " and not visible to guests.");
+          const bannerEl = document.getElementById("host-listing-status-banner");
+          const bannerText = document.getElementById("host-listing-status-text");
+          if (bannerEl && bannerText) {
+            bannerText.textContent = msg;
+            bannerEl.classList.remove("hidden");
+          }
+        }
+      } catch (_) {}
+    }
+
     // fire-and-forget secondary panels
     loadPolicyVersion().catch(() => {});
     initBookmarkState().catch(() => {});

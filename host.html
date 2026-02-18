@@ -18,7 +18,22 @@
 	        <h1 class="text-3xl font-bold mb-2">Host an Experience</h1>
 	        <p class="text-gray-600 mb-8">Share what you love with travellers.</p>
 
+        <!-- My Listings section -->
+        <section id="my-listings-section" class="mb-10">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold text-gray-900">My Listings</h2>
+            <button type="button" id="create-new-listing-btn" class="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition">
+              <i class="fa-solid fa-plus"></i> New Listing
+            </button>
+          </div>
+          <div id="my-listings-loading" class="text-sm text-gray-500 py-4">Loading your listings…</div>
+          <div id="my-listings-empty" class="hidden rounded-xl border border-dashed border-gray-200 bg-white px-6 py-8 text-center text-sm text-gray-500">You have no listings yet. Use the form below to create your first one.</div>
+          <div id="my-listings-error" class="hidden text-sm text-red-600 py-4">Failed to load listings. Please refresh.</div>
+          <div id="my-listings-list" class="hidden space-y-3"></div>
+        </section>
+
         <form id="create-experience-form" class="bg-white p-8 rounded-xl shadow-sm border border-gray-100 space-y-6">
+            <input type="hidden" id="editing-experience-id" value="">
             
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1" for="title">Experience Title</label>

@@ -865,15 +865,181 @@
           }
         }
 
-        showNotice("success", isEditing ? "Experience updated." : "Experience created.");
-        setTimeout(() => {
-          location.href = "my-bookings.html";
-        }, 450);
+        showNotice("success", isEditing ? "Experience updated." : "Experience published.");
+        // Reset to create mode after save
+        isEditing = false;
+        editId = null;
+        existingImageUrl = null;
+        currentVerifiedStatus = "none";
+        if (form) form.reset();
+        var hiddenId = document.getElementById("editing-experience-id");
+        if (hiddenId) hiddenId.value = "";
+        if (submitBtn) submitBtn.textContent = "Publish Experience";
+        syncTagLimitUI();
+        syncPrivateConfigUi();
+        syncVerifiedUi();
+        syncPricingTransparency();
+        await loadHostListings();
       } catch (_) {
         showNotice("error", "Something went wrong. Please try again.");
       } finally {
         if (submitBtn) submitBtn.disabled = false;
       }
+    });
+  }
+
+  function statusBadge(status) {
+    var badges = { DRAFT: "bg-gray-100 text-gray-600", PENDING_REVIEW: "bg-amber-100 text-amber-700", ACTIVE: "bg-green-100 text-green-700", PAUSED: "bg-orange-100 text-orange-700", DELETED_SOFT: "bg-red-100 text-red-700" };
+    var labels = { DRAFT: "Draft", PENDING_REVIEW: "Pending Review", ACTIVE: "Active", PAUSED: "Paused", DELETED_SOFT: "Deleted" };
+    var cls = badges[status] || "bg-gray-100 text-gray-600";
+    var label = labels[status] || status;
+    return '<span class="inline-block rounded-full px-2 py-0.5 text-xs font-semibold ' + cls + '">' + (window.tstsText ? window.tstsText(label) : label) + '</span>';
+  }
+
+  function renderListingCard(exp) {
+    var id = String((exp && (exp._id || exp.id)) || "");
+    var rawTitle = String((exp && exp.title) || "Untitled");
+    var title = window.tstsText ? window.tstsText(rawTitle) : rawTitle;
+    var status = String((exp && exp.status) || "ACTIVE");
+    var badge = statusBadge(status);
+    var actionHtml = "";
+    if (status === "ACTIVE") {
+      actionHtml = '<button type="button" class="listing-action text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition" data-id="' + id + '" data-action="edit">Edit</button>' +
+        '<button type="button" class="listing-action text-xs px-3 py-1.5 rounded-lg border border-orange-300 text-orange-700 hover:bg-orange-50 transition" data-id="' + id + '" data-action="pause">Pause</button>';
+    } else if (status === "PAUSED") {
+      actionHtml = '<button type="button" class="listing-action text-xs px-3 py-1.5 rounded-lg bg-green-600 text-white hover:bg-green-700 transition" data-id="' + id + '" data-action="resume">Resume</button>' +
+        '<button type="button" class="listing-action text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition" data-id="' + id + '" data-action="edit">Edit</button>';
+    } else if (status === "DRAFT" || status === "PENDING_REVIEW") {
+      // Legacy/edge-case: show edit only
+      actionHtml = '<button type="button" class="listing-action text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition" data-id="' + id + '" data-action="edit">Edit</button>';
+    }
+    var li = document.createElement("div");
+    li.className = "flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm";
+    li.innerHTML = '<div class="flex items-center gap-3 min-w-0"><span class="font-semibold text-gray-900 text-sm truncate">' + title + '</span>' + badge + '</div>' +
+      '<div class="flex items-center gap-2 flex-shrink-0">' + actionHtml + '</div>';
+    li.querySelectorAll(".listing-action").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var a = btn.getAttribute("data-action");
+        var eid = btn.getAttribute("data-id");
+        if (a === "edit") { loadListingForEdit(eid); }
+        else { doStatusAction(eid, a); }
+      });
+    });
+    return li;
+  }
+
+  async function loadHostListings() {
+    var loadingEl = document.getElementById("my-listings-loading");
+    var emptyEl = document.getElementById("my-listings-empty");
+    var errorEl = document.getElementById("my-listings-error");
+    var listEl = document.getElementById("my-listings-list");
+    if (!listEl) return;
+    if (loadingEl) loadingEl.classList.remove("hidden");
+    if (emptyEl) emptyEl.classList.add("hidden");
+    if (errorEl) errorEl.classList.add("hidden");
+    listEl.classList.add("hidden");
+    listEl.innerHTML = "";
+    try {
+      var res = await window.authFetch("/api/host/experiences");
+      if (!res.ok) { throw new Error("Failed"); }
+      var data = await res.json().catch(function () { return {}; });
+      var exps = Array.isArray(data) ? data : (data.experiences || data.data || []);
+      if (loadingEl) loadingEl.classList.add("hidden");
+      if (!exps || exps.length === 0) {
+        if (emptyEl) emptyEl.classList.remove("hidden");
+        return;
+      }
+      exps.forEach(function (exp) { listEl.appendChild(renderListingCard(exp)); });
+      listEl.classList.remove("hidden");
+    } catch (_) {
+      if (loadingEl) loadingEl.classList.add("hidden");
+      if (errorEl) errorEl.classList.remove("hidden");
+    }
+  }
+
+  async function doStatusAction(id, action) {
+    try {
+      var res = await window.authFetch("/api/experiences/" + encodeURIComponent(id) + "/status", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: action })
+      });
+      var payload = await res.json().catch(function () { return {}; });
+      if (!res.ok) {
+        alert(String((payload && payload.message) || "Action failed. Please try again."));
+        return;
+      }
+      await loadHostListings();
+    } catch (_) {
+      alert("Action failed. Please try again.");
+    }
+  }
+
+  async function loadListingForEdit(id) {
+    try {
+      var res = await window.authFetch("/api/experiences/" + encodeURIComponent(id));
+      if (!res.ok) { alert("Could not load listing."); return; }
+      var exp = await res.json().catch(function () { return null; });
+      if (!exp) { alert("Could not load listing."); return; }
+      isEditing = true;
+      editId = id;
+      existingImageUrl = exp.imageUrl || "";
+      currentVerifiedStatus = exp.verifiedStatus || "none";
+      if (titleInput) titleInput.value = String(exp.title || "");
+      if (descriptionInput) descriptionInput.value = String(exp.description || "");
+      if (priceInput) priceInput.value = String(exp.price != null ? exp.price : "");
+      if (dateInput) dateInput.value = String(exp.startDate || "");
+      if (endDateInput) endDateInput.value = String(exp.endDate || "");
+      if (timeInput) timeInput.value = String(exp.startTime || "");
+      if (endTimeInput) endTimeInput.value = String(exp.endTime || "");
+      if (locationInput) locationInput.value = String(exp.city || "");
+      if (suburbInput) suburbInput.value = String(exp.suburb || "");
+      if (postcodeInput) postcodeInput.value = String(exp.postcode || "");
+      if (addressLineInput) addressLineInput.value = String(exp.addressLine || "");
+      if (addressNotesInput) addressNotesInput.value = String(exp.addressNotes || "");
+      if (maxGuestsInput) maxGuestsInput.value = String(exp.maxGuests != null ? exp.maxGuests : "");
+      if (availableDaysInput) availableDaysInput.value = Array.isArray(exp.availableDays) ? exp.availableDays.join(", ") : String(exp.availableDays || "");
+      var tagCheckboxes = document.querySelectorAll('input[name="tags"]');
+      var expTags = Array.isArray(exp.tags) ? exp.tags : [];
+      tagCheckboxes.forEach(function (cb) { cb.checked = expTags.includes(cb.value); });
+      syncTagLimitUI();
+      var hasPrivate = !!(exp.privatePrice && Number(exp.privatePrice) > 0);
+      if (privateEnabledInput) privateEnabledInput.checked = hasPrivate;
+      syncPrivateConfigUi();
+      if (hasPrivate) {
+        if (privatePriceInput) privatePriceInput.value = String(exp.privatePrice || "");
+        if (privateCapacityInput) privateCapacityInput.value = String(exp.privateCapacity || "");
+        if (privateIncludedGuestsInput) privateIncludedGuestsInput.value = String(exp.privateIncludedGuests || "");
+        if (privateExtraGuestPriceInput) privateExtraGuestPriceInput.value = String(exp.privateExtraGuestPrice || "");
+      }
+      var hiddenId = document.getElementById("editing-experience-id");
+      if (hiddenId) hiddenId.value = id;
+      if (submitBtn) submitBtn.textContent = "Save Changes";
+      syncVerifiedUi();
+      syncPricingTransparency();
+      if (form) form.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (_) {
+      alert("Could not load listing for editing.");
+    }
+  }
+
+  var createNewBtn = document.getElementById("create-new-listing-btn");
+  if (createNewBtn) {
+    createNewBtn.addEventListener("click", function () {
+      isEditing = false;
+      editId = null;
+      existingImageUrl = null;
+      currentVerifiedStatus = "none";
+      if (form) form.reset();
+      var hiddenId = document.getElementById("editing-experience-id");
+      if (hiddenId) hiddenId.value = "";
+      if (submitBtn) submitBtn.textContent = "Publish Experience";
+      syncTagLimitUI();
+      syncPrivateConfigUi();
+      syncVerifiedUi();
+      syncPricingTransparency();
+      hideNotice();
+      if (form) form.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
 
@@ -887,6 +1053,7 @@
     await loadHostVerificationStatus();
     await loadActivePolicySnapshot();
     syncPricingTransparency();
+    loadHostListings();
     unmaskAuthGate();
   })().catch(function () {
     unmaskAuthGate();

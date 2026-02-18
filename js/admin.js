@@ -47,6 +47,79 @@ async function mustBeAdmin() {
   }
 }
 
+var currentListingsFilter = "all";
+var allExperiencesCache = [];
+
+async function handleLifecycleAction(id, action) {
+  var reason = "";
+  if (action === "reject" || action === "force-pause" || action === "force-delete") {
+    reason = (window.prompt("Reason for " + action + " (required):") || "").trim();
+    if (!reason) { alert("A reason is required."); return; }
+  }
+  try {
+    var res = await adminFetch("/api/admin/experiences/" + encodeURIComponent(id) + "/lifecycle", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: action, reason: reason })
+    });
+    var payload = await res.json().catch(function () { return {}; });
+    if (!res.ok) { alert(String((payload && payload.message) || "Action failed.")); return; }
+    alert("Done: listing status updated.");
+    loadExperiences();
+  } catch (_) {
+    alert("Action failed. Please try again.");
+  }
+}
+
+async function loadDashboardSummary() {
+  const res = await adminFetch("/api/admin/dashboard-summary", { method: "GET" });
+  if (!res.ok) throw new Error("dashboard-summary");
+  return res.json();
+}
+
+function renderDashboardSummary(data) {
+  const expSection = document.getElementById("lifecycle-summary-section");
+  const expCards = document.getElementById("exp-status-cards");
+  const bkCards = document.getElementById("booking-status-cards");
+  if (!expSection || !expCards || !bkCards) return;
+  const El = window.tstsEl;
+
+  var expByStatus = (data && data.expByStatus) || {};
+  var bookingByStatus = (data && data.bookingByStatus) || {};
+
+  var expDefs = [
+    { key: "PENDING_REVIEW", label: "Pending Review", color: "text-amber-700", bg: "bg-amber-50 border-amber-200" },
+    { key: "DRAFT", label: "Draft", color: "text-gray-600", bg: "bg-gray-50 border-gray-200" },
+    { key: "ACTIVE", label: "Active", color: "text-green-700", bg: "bg-green-50 border-green-200" },
+    { key: "PAUSED", label: "Paused", color: "text-orange-600", bg: "bg-orange-50 border-orange-200" },
+    { key: "DELETED_SOFT", label: "Deleted", color: "text-red-600", bg: "bg-red-50 border-red-200" }
+  ];
+  var bkDefs = [
+    { key: "confirmed", label: "Confirmed", color: "text-green-700", bg: "bg-green-50 border-green-200" },
+    { key: "completed", label: "Completed", color: "text-blue-700", bg: "bg-blue-50 border-blue-200" },
+    { key: "cancelled", label: "Cancelled", color: "text-red-600", bg: "bg-red-50 border-red-200" },
+    { key: "disputed", label: "Disputed", color: "text-amber-700", bg: "bg-amber-50 border-amber-200" }
+  ];
+
+  expCards.textContent = "";
+  expDefs.forEach(function(d) {
+    expCards.appendChild(El("article", { className: "rounded-xl border p-4 " + d.bg }, [
+      El("span", { className: "text-xs uppercase tracking-widest text-slate-500", textContent: d.label }),
+      El("p", { className: "text-2xl font-bold mt-1 " + d.color, textContent: String(expByStatus[d.key] || 0) })
+    ]));
+  });
+
+  bkCards.textContent = "";
+  bkDefs.forEach(function(d) {
+    bkCards.appendChild(El("article", { className: "rounded-xl border p-4 " + d.bg }, [
+      El("span", { className: "text-xs uppercase tracking-widest text-slate-500", textContent: d.label }),
+      El("p", { className: "text-2xl font-bold mt-1 " + d.color, textContent: String(bookingByStatus[d.key] || 0) })
+    ]));
+  });
+
+  expSection.classList.remove("hidden");
+}
+
 async function loadStats() {
   const res = await adminFetch("/api/admin/stats", { method: "GET" });
   if (!res.ok) throw new Error("stats");
@@ -639,9 +712,23 @@ function renderExperiences(exps) {
   const El = window.tstsEl;
   const tbody = $("listings-table-body");
   if (!tbody) return;
-  tbody.textContent = "";
 
-  var list = Array.isArray(exps) ? exps : [];
+  allExperiencesCache = Array.isArray(exps) ? exps : [];
+
+  // Update pending review count badge
+  var pendingCount = allExperiencesCache.filter(function(e) { return (e.status || "") === "PENDING_REVIEW"; }).length;
+  var countBadge = document.getElementById("pending-review-count");
+  if (countBadge) {
+    if (pendingCount > 0) { countBadge.textContent = String(pendingCount); countBadge.classList.remove("hidden"); }
+    else { countBadge.classList.add("hidden"); }
+  }
+
+  // Apply active filter
+  var list = currentListingsFilter === "all"
+    ? allExperiencesCache
+    : allExperiencesCache.filter(function(e) { return (e.status || (e.isDeleted ? "DELETED_SOFT" : e.isPaused ? "PAUSED" : "ACTIVE")) === currentListingsFilter; });
+
+  tbody.textContent = "";
   if (list.length === 0) {
     tbody.appendChild(El("tr", {}, [
       El("td", { className: "px-6 py-6 text-center text-sm text-slate-500", colSpan: "6", textContent: "No listings." })
@@ -654,55 +741,90 @@ function renderExperiences(exps) {
     var title = e.title || "Untitled";
     var host = e.hostName || "—";
     var price = formatCurrencyValue(e.price);
-    var statusText = e.isDeleted ? "Deleted" : (e.isPaused ? "Paused" : "Active");
+    var statusValue = e.status || (e.isDeleted ? "DELETED_SOFT" : (e.isPaused ? "PAUSED" : "ACTIVE"));
+    var statusLabels = { DRAFT: "Draft", PENDING_REVIEW: "Pending Review", ACTIVE: "Active", PAUSED: "Paused", DELETED_SOFT: "Deleted" };
+    var statusColors = { DRAFT: "text-gray-500", PENDING_REVIEW: "text-amber-700 font-bold", ACTIVE: "text-green-700", PAUSED: "text-orange-600", DELETED_SOFT: "text-red-500" };
+    var statusText = statusLabels[statusValue] || statusValue;
+    var statusColor = statusColors[statusValue] || "text-slate-700";
     var verifiedStatus = normalizeVerifiedStatus(e.verifiedStatus);
     var verifiedText = verifiedStatus === "verified"
-      ? "Verified"
+      ? "Event: Verified"
       : (verifiedStatus === "pending"
-        ? "Verification pending"
-        : (verifiedStatus === "rejected" ? "Verification rejected" : "Not verified"));
+        ? "Event: Verification pending"
+        : (verifiedStatus === "rejected" ? "Event: Verification rejected" : ""));
 
     var imgUrl = (window.tstsSafeUrl && window.tstsSafeUrl(e.imageUrl || (Array.isArray(e.images) ? e.images[0] : ""), "/assets/experience-default.jpg")) || (e.imageUrl || "");
     var imgEl = El("img", { className: "h-12 w-16 rounded-lg object-cover", alt: "Experience" });
-    if (window.tstsSafeImg) {
-      window.tstsSafeImg(imgEl, imgUrl, "/assets/experience-default.jpg");
-    } else {
-      imgEl.src = imgUrl;
+    if (window.tstsSafeImg) { window.tstsSafeImg(imgEl, imgUrl, "/assets/experience-default.jpg"); } else { imgEl.src = imgUrl; }
+
+    var actions = [];
+
+    // Lifecycle actions for PENDING_REVIEW
+    if (statusValue === "PENDING_REVIEW") {
+      var approveBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-green-300 text-green-700 hover:bg-green-50", textContent: "Approve Listing" });
+      approveBtn.addEventListener("click", function() { handleLifecycleAction(id, "approve"); });
+      var rejectBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-red-200 text-red-600 hover:bg-red-50", textContent: "Reject Listing" });
+      rejectBtn.addEventListener("click", function() { handleLifecycleAction(id, "reject"); });
+      actions.push(approveBtn, El("span", { textContent: " " }), rejectBtn);
     }
 
-    var toggleLabel = e.isPaused ? "Resume" : "Pause";
-    var toggleBtn = El("button", { 
-      className: "px-3 py-1 text-xs font-bold rounded border " + (e.isPaused ? "border-green-200 text-green-700 hover:bg-green-50" : "border-gray-200 text-gray-700 hover:bg-gray-50"),
-      textContent: toggleLabel
-    });
-    toggleBtn.addEventListener("click", function() { handleToggleExperience(id); });
+    // Toggle pause/resume via legacy admin toggle (for ACTIVE/PAUSED)
+    if (statusValue === "ACTIVE" || statusValue === "PAUSED") {
+      var toggleLabel = (statusValue === "PAUSED") ? "Resume" : "Pause";
+      var toggleBtn = El("button", {
+        className: "px-3 py-1 text-xs font-bold rounded border " + (statusValue === "PAUSED" ? "border-green-200 text-green-700 hover:bg-green-50" : "border-gray-200 text-gray-700 hover:bg-gray-50"),
+        textContent: toggleLabel
+      });
+      toggleBtn.addEventListener("click", function() { handleToggleExperience(id); });
+      if (actions.length > 0) actions.push(El("span", { textContent: " " }));
+      actions.push(toggleBtn);
+    }
 
-    var deleteBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-red-200 text-red-600 hover:bg-red-50", textContent: "Delete" });
-    deleteBtn.addEventListener("click", function() { handleDeleteExperience(id); });
-    var verifyApproveBtn = null;
-    var verifyRejectBtn = null;
+    // Event verification buttons (SEPARATE from lifecycle)
+    var verifyApproveBtn = null, verifyRejectBtn = null;
     if (verifiedStatus === "pending") {
-      verifyApproveBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-blue-200 text-blue-700 hover:bg-blue-50", textContent: "Approve" });
+      verifyApproveBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-blue-200 text-blue-700 hover:bg-blue-50", textContent: "Approve Verification" });
       verifyApproveBtn.addEventListener("click", function() { handleApproveVerifiedExperience(id); });
-      verifyRejectBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-amber-200 text-amber-700 hover:bg-amber-50", textContent: "Reject" });
+      verifyRejectBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-amber-200 text-amber-700 hover:bg-amber-50", textContent: "Reject Verification" });
       verifyRejectBtn.addEventListener("click", function() { handleRejectVerifiedExperience(id); });
+      if (actions.length > 0) actions.push(El("span", { textContent: " " }));
+      actions.push(verifyApproveBtn, El("span", { textContent: " " }), verifyRejectBtn);
     }
-    var actions = [toggleBtn];
-    if (verifyApproveBtn) actions.push(El("span", { textContent: " " }), verifyApproveBtn);
-    if (verifyRejectBtn) actions.push(El("span", { textContent: " " }), verifyRejectBtn);
-    actions.push(El("span", { textContent: " " }), deleteBtn);
+
+    // Delete (not for already deleted)
+    if (statusValue !== "DELETED_SOFT") {
+      var deleteBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-red-200 text-red-600 hover:bg-red-50", textContent: "Delete" });
+      deleteBtn.addEventListener("click", function() { handleDeleteExperience(id); });
+      if (actions.length > 0) actions.push(El("span", { textContent: " " }));
+      actions.push(deleteBtn);
+    }
+
+    var statusCell = [El("div", { className: "font-semibold " + statusColor, textContent: statusText })];
+    if (verifiedText) statusCell.push(El("div", { className: "text-xs mt-1 " + (verifiedStatus === "verified" ? "text-blue-700" : verifiedStatus === "pending" ? "text-amber-700" : "text-slate-500"), textContent: verifiedText }));
 
     tbody.appendChild(El("tr", { className: "border-t border-slate-100" }, [
       El("td", { className: "px-6 py-4" }, [imgEl]),
       El("td", { className: "px-6 py-4 text-sm font-semibold text-slate-800", textContent: title }),
       El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: host }),
       El("td", { className: "px-6 py-4 text-sm text-emerald-700 font-semibold", textContent: price }),
-      El("td", { className: "px-6 py-4 text-sm text-slate-500" }, [
-        El("div", { className: "font-semibold text-slate-700", textContent: statusText }),
-        El("div", { className: "text-xs mt-1 " + (verifiedStatus === "verified" ? "text-blue-700" : verifiedStatus === "pending" ? "text-amber-700" : "text-slate-500"), textContent: verifiedText })
-      ]),
-      El("td", { className: "px-6 py-4 text-sm text-right" }, actions)
+      El("td", { className: "px-6 py-4 text-sm text-slate-500" }, statusCell),
+      El("td", { className: "px-6 py-4 text-sm text-right" }, actions.length > 0 ? actions : [El("span", { className: "text-slate-400 text-xs", textContent: "—" })])
     ]));
+  });
+
+  // Wire up filter tabs
+  var tabEls = document.querySelectorAll(".listing-filter-tab");
+  tabEls.forEach(function(tab) {
+    tab.onclick = function() {
+      currentListingsFilter = tab.getAttribute("data-filter") || "all";
+      tabEls.forEach(function(t) {
+        t.classList.remove("bg-gray-900", "text-white");
+        t.classList.add("bg-white", "text-gray-600");
+      });
+      tab.classList.add("bg-gray-900", "text-white");
+      tab.classList.remove("bg-white", "text-gray-600");
+      renderExperiences(allExperiencesCache);
+    };
   });
 }
 
@@ -1635,10 +1757,12 @@ function switchTab(tabName) {
   if (tabName === 'dashboard') {
     Promise.all([
       loadStats().catch(() => ({})),
-      loadBookings().catch(() => ([]))
-    ]).then(([stats, bookings]) => {
-      renderStats(stats);
-      renderBookings(bookings);
+      loadBookings().catch(() => ([])),
+      loadDashboardSummary().catch(() => ({}))
+    ]).then(function(results) {
+      renderStats(results[0]);
+      renderBookings(results[1]);
+      renderDashboardSummary(results[2]);
     });
   }
   if (tabName === 'audit') {
@@ -1733,7 +1857,7 @@ async function boot() {
 
   // basic skeleton if containers exist
   try {
-    const [stats, bookings, exps, users, promos, reports, privateRequests, auditData, inviteData, verificationPolicy, hostVerifications, eventVerifications, actionItems] = await Promise.all([
+    const [stats, bookings, exps, users, promos, reports, privateRequests, auditData, inviteData, verificationPolicy, hostVerifications, eventVerifications, actionItems, dashSummary] = await Promise.all([
       loadStats().catch(() => ({})),
       loadBookings().catch(() => ([])),
       loadExperiences().catch(() => ([])),
@@ -1746,12 +1870,14 @@ async function boot() {
       loadVerificationFeePolicy().catch(() => ({ data: { policy: { feePercent: 0, policyVersion: "Unavailable", effectiveFrom: null } } })),
       loadHostVerifications("all").catch(() => ({ data: { items: [] } })),
       loadEventVerifications("all").catch(() => ({ data: { items: [] } })),
-      loadAdminActionItems("pending").catch(() => ({ data: { items: [] } }))
+      loadAdminActionItems("pending").catch(() => ({ data: { items: [] } })),
+      loadDashboardSummary().catch(() => ({}))
     ]);
 
     renderStats(stats);
     renderBookings(bookings);
     renderExperiences(exps);
+    renderDashboardSummary(dashSummary);
     renderUsers(users);
     renderCoupons(promos);
     renderReports(reports);

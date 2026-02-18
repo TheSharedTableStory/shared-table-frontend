@@ -1464,6 +1464,12 @@ function renderHostBookingsSection(bookings) {
       "data-action": "guest", "data-booking-id": b._id || "", textContent: "View Details"
     });
 
+    // Booking lifecycle status badge for host view
+    var bookingStatusNorm = normalizeState(b.status);
+    var bookingStatusColors = { confirmed: "bg-green-100 text-green-700", completed: "bg-blue-100 text-blue-700", cancelled: "bg-red-100 text-red-700", cancelled_by_host: "bg-red-100 text-red-700", disputed: "bg-amber-100 text-amber-700", pending_payment: "bg-gray-100 text-gray-600" };
+    var bookingStatusBadgeClass = bookingStatusColors[bookingStatusNorm] || "bg-slate-100 text-slate-700";
+    var bookingStatusBadge = El("span", { className: "inline-block rounded-full px-2 py-0.5 text-[11px] font-bold " + bookingStatusBadgeClass, textContent: stateLabel(bookingStatusNorm) });
+
     var card = El("div", { className: "bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 mb-4" }, [
       El("div", { className: "flex items-center gap-4 w-full" }, [
         El("div", { className: "bg-orange-50 text-orange-600 w-16 h-16 rounded-xl flex flex-col items-center justify-center border border-orange-100 flex-shrink-0" }, [
@@ -1471,7 +1477,10 @@ function renderHostBookingsSection(bookings) {
           El("span", { className: "text-xl font-bold", textContent: String(day) })
         ]),
         El("div", {}, [
-          El("h3", { className: "font-bold text-lg text-gray-900", textContent: title }),
+          El("div", { className: "flex items-center gap-2 mb-1" }, [
+            El("h3", { className: "font-bold text-lg text-gray-900", textContent: title }),
+            bookingStatusBadge
+          ]),
           El("p", { className: "text-sm text-gray-500" }, ["Guest: ", El("span", { className: "font-bold text-gray-700", textContent: guestName })]),
           El("div", { className: "flex gap-4 text-xs text-gray-400 mt-1" }, [
             El("span", { textContent: "Paid: " + (paid !== "" ? "$" + paid : "—") }),
