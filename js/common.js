@@ -768,6 +768,17 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
       }
     }
 
+    function readLocalNumber(key) {
+      try {
+        const raw = String(window.localStorage.getItem(String(key || "")) || "").trim();
+        if (!raw) return 0;
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) ? Math.floor(parsed) : 0;
+      } catch (_) {
+        return 0;
+      }
+    }
+
     function writeSessionNumber(key, value) {
       try {
         const n = Number(value || 0);
@@ -777,6 +788,21 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
         }
         window.sessionStorage.setItem(String(key || ""), String(Math.floor(n)));
       } catch (_) {}
+    }
+
+    function writeLocalNumber(key, value) {
+      try {
+        const n = Number(value || 0);
+        if (!Number.isFinite(n) || n <= 0) {
+          window.localStorage.removeItem(String(key || ""));
+          return;
+        }
+        window.localStorage.setItem(String(key || ""), String(Math.floor(n)));
+      } catch (_) {}
+    }
+
+    function readEvidenceNumber(key) {
+      return Math.max(readSessionNumber(key), readLocalNumber(key));
     }
 
     function syncRefreshStateFromStorage() {
@@ -803,13 +829,15 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
 
     function hasFreshEvidence(key, nowMs) {
       const now = Number(nowMs || Date.now());
-      const ts = readSessionNumber(key);
+      const ts = readEvidenceNumber(key);
       if (!ts) return false;
       return (now - ts) >= 0 && (now - ts) <= AUTH_EVIDENCE_TTL_MS;
     }
 
     function markAuthEvidence(key, nowMs) {
-      writeSessionNumber(key, Number(nowMs || Date.now()));
+      const ts = Number(nowMs || Date.now());
+      writeSessionNumber(key, ts);
+      writeLocalNumber(key, ts);
     }
 
     function hasAuthEvidence(nowMs) {
@@ -966,7 +994,11 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
   })();
 
   window.tstsMarkLoginOk = function () {
-    try { window.sessionStorage.setItem("tsts_login_ok_ts", String(Date.now())); } catch (_) {}
+    try {
+      const ts = String(Date.now());
+      window.sessionStorage.setItem("tsts_login_ok_ts", ts);
+      window.localStorage.setItem("tsts_login_ok_ts", ts);
+    } catch (_) {}
   };
 
   function tstsParseDateLike(x) {
