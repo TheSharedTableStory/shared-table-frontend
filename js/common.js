@@ -900,11 +900,12 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
         const out = { ts: Date.now(), ok: false, status: 0, user: null, csrfToken: "" };
         try {
           if (!window.authFetch) return out;
-          if (force && isForcedMeProbeCooling(now)) {
+          const hasEvidence = hasAuthEvidence(now);
+          if (force && !hasEvidence && isForcedMeProbeCooling(now)) {
             if (cache && cache.ok && cache.user) return cache;
             return out;
           }
-          if (force) markForcedMeProbe(now);
+          if (force && !hasEvidence) markForcedMeProbe(now);
 
           let res = await window.authFetch("/api/auth/me", { method: "GET" });
           out.status = res ? res.status : 0;
@@ -922,7 +923,7 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
           }
 
           if (res && (res.status === 401 || res.status === 403)) {
-            const shouldTryRefresh = (!force) && hasAuthEvidence(Date.now()) && !isRefreshCooldownActive(Date.now());
+            const shouldTryRefresh = hasAuthEvidence(Date.now()) && !isRefreshCooldownActive(Date.now());
             const refreshed = shouldTryRefresh ? await refreshAccessTokenOnce() : false;
             if (refreshed) {
               res = await window.authFetch("/api/auth/me", { method: "GET" });
