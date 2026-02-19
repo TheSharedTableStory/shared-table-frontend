@@ -13,6 +13,11 @@ const cancelReviewModal = document.getElementById("cancel-review-modal");
 const closeGuestBtn = document.getElementById("close-modal-btn");
 const reviewCancelBtn = document.getElementById("review-cancel-btn");
 const reviewForm = document.getElementById("review-form");
+const reviewModalTitleEl = document.getElementById("review-modal-title");
+const reviewModalSubtitleEl = document.getElementById("review-modal-subtitle");
+const reviewSubmitBtn = document.getElementById("review-submit-btn");
+const reviewWindowHintEl = document.getElementById("review-window-hint");
+const reviewIdInput = document.getElementById("review-id");
 const complaintCancelBtn = document.getElementById("complaint-cancel-btn");
 const complaintForm = document.getElementById("complaint-form");
 const complaintMessageInput = document.getElementById("complaint-message");
@@ -33,6 +38,7 @@ const cancelReviewConfirmBtn = document.getElementById("cancel-review-confirm-bt
 let hostBookingsCache = []; // for modal lookup by booking id
 let guestBookingsCache = []; // for complaint modal lookup by booking id
 let activePolicySnapshot = null;
+const reviewModalState = { mode: "create", reviewId: "", canEdit: true, editableUntil: null };
 const dashboardQueryParams = new URLSearchParams(window.location.search || "");
 const dashboardDeepLink = {
   tab: String(dashboardQueryParams.get("tab") || "").trim().toLowerCase(),
@@ -504,13 +510,33 @@ function renderTripCard(booking) {
     actionArea = El("span", { className: "text-sm text-gray-400 italic", textContent: "This booking was cancelled." });
   } else if (isCompleted) {
     statusBadge = El("span", { className: "px-2 py-1 text-xs font-bold rounded bg-gray-100 text-gray-700", textContent: "COMPLETED" });
+    const reviewInfo = (booking && booking.review && typeof booking.review === "object") ? booking.review : null;
+    const hasReview = !!String((reviewInfo && reviewInfo.id) || "").trim();
+    const canEditReview = !!(reviewInfo && reviewInfo.canEdit);
+    let reviewLabel = "Write a Review";
+    let reviewIcon = "fas fa-star";
+    if (hasReview && canEditReview) {
+      reviewLabel = "Edit Review";
+      reviewIcon = "fas fa-pen";
+    } else if (hasReview) {
+      reviewLabel = "View Review";
+      reviewIcon = "fas fa-eye";
+    }
 
     const reviewBtn = El("button", {
       className: "w-full md:w-auto px-5 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg shadow hover:bg-black transition flex items-center justify-center gap-2",
       "data-action": "review", "data-booking-id": bookingId, "data-exp-id": expId
-    }, [El("i", { className: "fas fa-star" }), " Write a Review"]);
+    }, [El("i", { className: reviewIcon }), " " + reviewLabel]);
 
     const nodes = [reviewBtn];
+    if (hasReview && reviewInfo && reviewInfo.editableUntil && canEditReview) {
+      actionNote = El("p", {
+        className: "text-xs text-slate-600 md:text-right",
+        textContent: "Review editable until " + fmtTripDate(reviewInfo.editableUntil) + "."
+      });
+    } else if (hasReview && !canEditReview) {
+      actionNote = El("p", { className: "text-xs text-slate-600 md:text-right", textContent: "Review submitted. Edit window closed." });
+    }
     if (canFileComplaint) {
       nodes.push(
         El("button", {
@@ -520,13 +546,26 @@ function renderTripCard(booking) {
         }, [El("i", { className: "fas fa-flag" }), " Report an Issue"])
       );
       if (complaintWindowEndsAt) {
-        actionNote = El("p", {
-          className: "text-xs text-amber-700 md:text-right",
-          textContent: "Complaint window closes on " + fmtTripDate(complaintWindowEndsAt) + "."
-        });
+        const complaintNote = "Complaint window closes on " + fmtTripDate(complaintWindowEndsAt) + ".";
+        if (actionNote) {
+          actionNote = El("p", {
+            className: "text-xs text-amber-700 md:text-right",
+            textContent: actionNote.textContent + " " + complaintNote
+          });
+        } else {
+          actionNote = El("p", {
+            className: "text-xs text-amber-700 md:text-right",
+            textContent: complaintNote
+          });
+        }
       }
     } else if (complaintId) {
-      actionNote = El("p", { className: "text-xs text-gray-500 md:text-right", textContent: "Issue already reported for this booking." });
+      const issueNote = "Issue already reported for this booking.";
+      if (actionNote) {
+        actionNote = El("p", { className: "text-xs text-gray-500 md:text-right", textContent: actionNote.textContent + " " + issueNote });
+      } else {
+        actionNote = El("p", { className: "text-xs text-gray-500 md:text-right", textContent: issueNote });
+      }
     }
     if (visibilityToggleBtn) nodes.push(visibilityToggleBtn);
     actionArea = El("div", { className: "w-full md:w-auto flex flex-col gap-2 md:items-end" }, nodes);
@@ -582,24 +621,117 @@ function renderTripCard(booking) {
 /* ====================== REVIEW ====================== */
 
 function openReviewModal(bookingId, expId) {
-  const bid = document.getElementById("review-booking-id");
-  const eid = document.getElementById("review-exp-id");
-  if (bid) bid.value = bookingId || "";
-  if (eid) eid.value = expId || "";
-  if (reviewModal) reviewModal.classList.remove("hidden");
+  return (async () => {
+    if (!(await requireAuthOrRedirect())) return;
+    const bid = document.getElementById("review-booking-id");
+    const eid = document.getElementById("review-exp-id");
+    const ratingEl = document.getElementById("review-rating");
+    const commentEl = document.getElementById("review-comment");
+    if (bid) bid.value = bookingId || "";
+    if (eid) eid.value = expId || "";
+    if (reviewIdInput) reviewIdInput.value = "";
+    if (ratingEl) ratingEl.value = "5";
+    if (commentEl) commentEl.value = "";
+    reviewModalState.mode = "create";
+    reviewModalState.reviewId = "";
+    reviewModalState.canEdit = true;
+    reviewModalState.editableUntil = null;
+    if (reviewModalTitleEl) reviewModalTitleEl.textContent = "How was it?";
+    if (reviewModalSubtitleEl) reviewModalSubtitleEl.textContent = "Share your experience with the community.";
+    if (reviewSubmitBtn) {
+      reviewSubmitBtn.textContent = "Post Review";
+      reviewSubmitBtn.disabled = false;
+      reviewSubmitBtn.classList.remove("opacity-60", "cursor-not-allowed");
+    }
+    if (ratingEl) ratingEl.disabled = false;
+    if (commentEl) commentEl.disabled = false;
+    if (reviewWindowHintEl) {
+      reviewWindowHintEl.textContent = "";
+      reviewWindowHintEl.classList.add("hidden");
+    }
+    if (reviewModal) reviewModal.classList.remove("hidden");
+
+    try {
+      const cached = getGuestBookingById(bookingId);
+      const cachedReview = cached && cached.review ? cached.review : null;
+      if (cachedReview && String(cachedReview.id || "").trim()) {
+        applyReviewModalMode(cachedReview);
+      }
+
+      const res = await window.authFetch("/api/reviews/booking/" + encodeURIComponent(String(bookingId || "")) + "/mine", { method: "GET" });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) return;
+      const reviewData = payload && payload.data ? payload.data : null;
+      if (reviewData && String(reviewData.id || "").trim()) applyReviewModalMode(reviewData);
+    } catch (_) {
+    }
+  })();
+}
+
+function applyReviewModalMode(reviewData) {
+  const ratingEl = document.getElementById("review-rating");
+  const commentEl = document.getElementById("review-comment");
+  const reviewId = String((reviewData && reviewData.id) || "").trim();
+  const canEdit = !!(reviewData && reviewData.canEdit);
+  const editableUntilRaw = (reviewData && reviewData.editableUntil) ? reviewData.editableUntil : null;
+  reviewModalState.reviewId = reviewId;
+  reviewModalState.canEdit = canEdit;
+  reviewModalState.editableUntil = editableUntilRaw;
+  reviewModalState.mode = canEdit ? "edit" : "locked";
+  if (reviewIdInput) reviewIdInput.value = reviewId;
+  if (ratingEl) ratingEl.value = String((reviewData && reviewData.rating) || 5);
+  if (commentEl) commentEl.value = String((reviewData && reviewData.comment) || "");
+
+  if (canEdit) {
+    if (reviewModalTitleEl) reviewModalTitleEl.textContent = "Edit your review";
+    if (reviewModalSubtitleEl) reviewModalSubtitleEl.textContent = "You can edit this review within 24 hours of submission.";
+    if (reviewSubmitBtn) {
+      reviewSubmitBtn.textContent = "Update Review";
+      reviewSubmitBtn.disabled = false;
+      reviewSubmitBtn.classList.remove("opacity-60", "cursor-not-allowed");
+    }
+    if (ratingEl) ratingEl.disabled = false;
+    if (commentEl) commentEl.disabled = false;
+    if (reviewWindowHintEl) {
+      const untilText = editableUntilRaw ? fmtTripDate(editableUntilRaw) : "the 24-hour limit";
+      reviewWindowHintEl.textContent = "Edit window closes on " + untilText + ".";
+      reviewWindowHintEl.classList.remove("hidden");
+    }
+    return;
+  }
+
+  if (reviewModalTitleEl) reviewModalTitleEl.textContent = "Review submitted";
+  if (reviewModalSubtitleEl) reviewModalSubtitleEl.textContent = "The 24-hour edit window has closed.";
+  if (reviewSubmitBtn) {
+    reviewSubmitBtn.textContent = "Edit Window Closed";
+    reviewSubmitBtn.disabled = true;
+    reviewSubmitBtn.classList.add("opacity-60", "cursor-not-allowed");
+  }
+  if (ratingEl) ratingEl.disabled = true;
+  if (commentEl) commentEl.disabled = true;
+  if (reviewWindowHintEl) {
+    reviewWindowHintEl.textContent = "Reviews become immutable after 24 hours from submission.";
+    reviewWindowHintEl.classList.remove("hidden");
+  }
 }
 
 async function submitReview(e) {
   e.preventDefault();
   if (!(await requireAuthOrRedirect())) return;
 
-  const submitBtn = e.target.querySelector('button[type="submit"]');
+  if (reviewModalState.mode === "locked") {
+    window.tstsNotify("Review edit window has closed.", "warning");
+    return;
+  }
+
+  const submitBtn = reviewSubmitBtn || e.target.querySelector('button[type="submit"]');
   const originalText = submitBtn ? submitBtn.textContent : "";
 
-  if (submitBtn) { submitBtn.textContent = "Posting..."; submitBtn.disabled = true; }
+  if (submitBtn) { submitBtn.textContent = reviewModalState.reviewId ? "Updating..." : "Posting..."; submitBtn.disabled = true; }
 
   const bookingId = (document.getElementById("review-booking-id") || {}).value || "";
   const expId = (document.getElementById("review-exp-id") || {}).value || "";
+  const reviewId = (reviewIdInput || {}).value || "";
   const ratingRaw = (document.getElementById("review-rating") || {}).value || "5";
   const comment = (document.getElementById("review-comment") || {}).value || "";
 
@@ -611,18 +743,26 @@ async function submitReview(e) {
       comment
     };
 
-    const res = await window.authFetch("/api/reviews", {
-      method: "POST",
+    const endpoint = reviewId
+      ? ("/api/reviews/" + encodeURIComponent(String(reviewId)))
+      : "/api/reviews";
+    const method = reviewId ? "PATCH" : "POST";
+    const res = await window.authFetch(endpoint, {
+      method: method,
       body: JSON.stringify(payload)
     });
 
     const data = await res.json().catch(() => ({}));
 
     if (res.ok) {
-      window.tstsNotify("Review posted successfully! Thank you.", "success");
-      if (reviewModal) reviewModal.classList.add("hidden");
+      window.tstsNotify(reviewId ? "Review updated successfully." : "Review posted successfully! Thank you.", "success");
+      closeReviewModal();
       e.target.reset();
+      loadTrips().catch(() => {});
     } else {
+      if (String((data && data.error) || "") === "REVIEW_EDIT_WINDOW_CLOSED") {
+        applyReviewModalMode({ id: reviewId, rating: payload.rating, comment: payload.comment, canEdit: false });
+      }
       window.tstsNotify(data.message || "Failed to post review.", "error");
     }
   } catch (_) {
@@ -1874,6 +2014,36 @@ function closeGuestModal() {
 }
 
 function closeReviewModal() {
+  const bid = document.getElementById("review-booking-id");
+  const eid = document.getElementById("review-exp-id");
+  const ratingEl = document.getElementById("review-rating");
+  const commentEl = document.getElementById("review-comment");
+  if (bid) bid.value = "";
+  if (eid) eid.value = "";
+  if (reviewIdInput) reviewIdInput.value = "";
+  if (ratingEl) {
+    ratingEl.value = "5";
+    ratingEl.disabled = false;
+  }
+  if (commentEl) {
+    commentEl.value = "";
+    commentEl.disabled = false;
+  }
+  reviewModalState.mode = "create";
+  reviewModalState.reviewId = "";
+  reviewModalState.canEdit = true;
+  reviewModalState.editableUntil = null;
+  if (reviewModalTitleEl) reviewModalTitleEl.textContent = "How was it?";
+  if (reviewModalSubtitleEl) reviewModalSubtitleEl.textContent = "Share your experience with the community.";
+  if (reviewSubmitBtn) {
+    reviewSubmitBtn.textContent = "Post Review";
+    reviewSubmitBtn.disabled = false;
+    reviewSubmitBtn.classList.remove("opacity-60", "cursor-not-allowed");
+  }
+  if (reviewWindowHintEl) {
+    reviewWindowHintEl.textContent = "";
+    reviewWindowHintEl.classList.add("hidden");
+  }
   if (reviewModal) reviewModal.classList.add("hidden");
 }
 

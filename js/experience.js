@@ -781,7 +781,7 @@
 
       if (res.status === 403) {
         commentsSection.classList.remove("hidden");
-        if (commentHint) commentHint.textContent = "Comments are available only to the host and confirmed attendees.";
+        if (commentHint) commentHint.textContent = "Comments are available only to completed attendees.";
         if (commentForm) commentForm.classList.add("hidden");
         return;
       }
