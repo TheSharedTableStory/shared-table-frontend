@@ -743,6 +743,48 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
     let refreshInFlight = null;
     let cache = { ts: 0, ok: false, status: 0, user: null, csrfToken: "" };
     const TTL_MS = 8000;
+    const AUTH_EVIDENCE_TTL_MS = 24 * 60 * 60 * 1000;
+    const ME_PROBE_COOLDOWN_MS = 10 * 1000;
+    const REFRESH_FAIL_STREAK_MAX = 12;
+    const REFRESH_COOLDOWN_STEP_MS = 5 * 1000;
+    let refreshCooldownUntil = 0;
+    let refreshFailureStreak = 0;
+    const REFRESH_COOLDOWN_MAX_MS = 60000;
+    const SESSION_KEY_LAST_ME_OK_TS = "tsts_last_me_ok_ts";
+    const SESSION_KEY_LOGIN_OK_TS = "tsts_login_ok_ts";
+    const SESSION_KEY_REFRESH_COOLDOWN_UNTIL = "tsts_refresh_cooldown_until";
+    const SESSION_KEY_REFRESH_FAIL_STREAK = "tsts_refresh_fail_streak";
+    const SESSION_KEY_REFRESH_LAST_ATTEMPT_TS = "tsts_refresh_last_attempt_ts";
+    const SESSION_KEY_ME_PROBE_COOLDOWN_UNTIL = "tsts_me_probe_cooldown_until";
+
+    function readSessionNumber(key) {
+      try {
+        const raw = String(window.sessionStorage.getItem(String(key || "")) || "").trim();
+        if (!raw) return 0;
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) ? Math.floor(parsed) : 0;
+      } catch (_) {
+        return 0;
+      }
+    }
+
+    function writeSessionNumber(key, value) {
+      try {
+        const n = Number(value || 0);
+        if (!Number.isFinite(n) || n <= 0) {
+          window.sessionStorage.removeItem(String(key || ""));
+          return;
+        }
+        window.sessionStorage.setItem(String(key || ""), String(Math.floor(n)));
+      } catch (_) {}
+    }
+
+    function syncRefreshStateFromStorage() {
+      const storedCooldown = readSessionNumber(SESSION_KEY_REFRESH_COOLDOWN_UNTIL);
+      const storedStreak = readSessionNumber(SESSION_KEY_REFRESH_FAIL_STREAK);
+      if (storedCooldown > refreshCooldownUntil) refreshCooldownUntil = storedCooldown;
+      if (storedStreak > refreshFailureStreak) refreshFailureStreak = Math.min(storedStreak, REFRESH_FAIL_STREAK_MAX);
+    }
 
     function parseMe(payload) {
       const unwrapped = (window.tstsUnwrap ? window.tstsUnwrap(payload) : ((payload && payload.data !== undefined) ? payload.data : payload));
@@ -759,13 +801,74 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
       return false;
     }
 
+    function hasFreshEvidence(key, nowMs) {
+      const now = Number(nowMs || Date.now());
+      const ts = readSessionNumber(key);
+      if (!ts) return false;
+      return (now - ts) >= 0 && (now - ts) <= AUTH_EVIDENCE_TTL_MS;
+    }
+
+    function markAuthEvidence(key, nowMs) {
+      writeSessionNumber(key, Number(nowMs || Date.now()));
+    }
+
+    function hasAuthEvidence(nowMs) {
+      const now = Number(nowMs || Date.now());
+      if (hasAuthHint()) return true;
+      if (hasFreshEvidence(SESSION_KEY_LAST_ME_OK_TS, now)) return true;
+      if (hasFreshEvidence(SESSION_KEY_LOGIN_OK_TS, now)) return true;
+      return false;
+    }
+
+    function isForcedMeProbeCooling(nowMs) {
+      const now = Number(nowMs || Date.now());
+      return readSessionNumber(SESSION_KEY_ME_PROBE_COOLDOWN_UNTIL) > now;
+    }
+
+    function markForcedMeProbe(nowMs) {
+      const now = Number(nowMs || Date.now());
+      writeSessionNumber(SESSION_KEY_ME_PROBE_COOLDOWN_UNTIL, now + ME_PROBE_COOLDOWN_MS);
+    }
+
+    function isRefreshCooldownActive(nowMs) {
+      syncRefreshStateFromStorage();
+      return refreshCooldownUntil > Number(nowMs || 0);
+    }
+
+    function markRefreshFailure(statusCode) {
+      const status = Number(statusCode || 0);
+      if (!(status === 0 || status === 401 || status === 429)) return;
+      syncRefreshStateFromStorage();
+      refreshFailureStreak = Math.min(refreshFailureStreak + 1, REFRESH_FAIL_STREAK_MAX);
+      const waitMs = Math.min(REFRESH_COOLDOWN_MAX_MS, REFRESH_COOLDOWN_STEP_MS * refreshFailureStreak);
+      const now = Date.now();
+      refreshCooldownUntil = now + waitMs;
+      writeSessionNumber(SESSION_KEY_REFRESH_FAIL_STREAK, refreshFailureStreak);
+      writeSessionNumber(SESSION_KEY_REFRESH_COOLDOWN_UNTIL, refreshCooldownUntil);
+      writeSessionNumber(SESSION_KEY_REFRESH_LAST_ATTEMPT_TS, now);
+    }
+
+    function markRefreshSuccess() {
+      refreshFailureStreak = 0;
+      refreshCooldownUntil = 0;
+      writeSessionNumber(SESSION_KEY_REFRESH_FAIL_STREAK, 0);
+      writeSessionNumber(SESSION_KEY_REFRESH_COOLDOWN_UNTIL, 0);
+      writeSessionNumber(SESSION_KEY_REFRESH_LAST_ATTEMPT_TS, Date.now());
+    }
+
     async function refreshAccessTokenOnce() {
       if (refreshInFlight) return refreshInFlight;
       refreshInFlight = (async function () {
         try {
+          const now = Date.now();
+          if (isRefreshCooldownActive(now)) return false;
+          writeSessionNumber(SESSION_KEY_REFRESH_LAST_ATTEMPT_TS, now);
           if (!window.authFetch) return false;
           const res = await window.authFetch("/api/auth/refresh", { method: "POST" });
-          if (!res || !res.ok) return false;
+          if (!res || !res.ok) {
+            markRefreshFailure(res ? res.status : 0);
+            return false;
+          }
           const payload = await res.json().catch(() => ({}));
           const unwrapped = (window.tstsUnwrap ? window.tstsUnwrap(payload) : ((payload && payload.data !== undefined) ? payload.data : payload));
           const csrfToken = String((unwrapped && unwrapped.csrfToken) || "");
@@ -773,8 +876,10 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
             const existingUser = (window.getAuthUser && window.getAuthUser()) || null;
             window.setAuth(csrfToken, existingUser && Object.keys(existingUser).length ? existingUser : null);
           }
+          markRefreshSuccess();
           return true;
         } catch (_) {
+          markRefreshFailure(0);
           return false;
         } finally {
           refreshInFlight = null;
@@ -793,9 +898,13 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
 
       inFlight = (async function () {
         const out = { ts: Date.now(), ok: false, status: 0, user: null, csrfToken: "" };
-        const authHint = hasAuthHint();
         try {
           if (!window.authFetch) return out;
+          if (force && isForcedMeProbeCooling(now)) {
+            if (cache && cache.ok && cache.user) return cache;
+            return out;
+          }
+          if (force) markForcedMeProbe(now);
 
           let res = await window.authFetch("/api/auth/me", { method: "GET" });
           out.status = res ? res.status : 0;
@@ -806,13 +915,14 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
             out.ok = true;
             out.user = parsed.user || null;
             out.csrfToken = String(parsed.csrfToken || "");
+            markAuthEvidence(SESSION_KEY_LAST_ME_OK_TS, Date.now());
             try { if (window.setAuth) window.setAuth(out.csrfToken, out.user); } catch (_) {}
             cache = out;
             return cache;
           }
 
           if (res && (res.status === 401 || res.status === 403)) {
-            const shouldTryRefresh = true;
+            const shouldTryRefresh = (!force) && hasAuthEvidence(Date.now()) && !isRefreshCooldownActive(Date.now());
             const refreshed = shouldTryRefresh ? await refreshAccessTokenOnce() : false;
             if (refreshed) {
               res = await window.authFetch("/api/auth/me", { method: "GET" });
@@ -823,6 +933,7 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
                 out.ok = true;
                 out.user = retryParsed.user || null;
                 out.csrfToken = String(retryParsed.csrfToken || "");
+                markAuthEvidence(SESSION_KEY_LAST_ME_OK_TS, Date.now());
                 try { if (window.setAuth) window.setAuth(out.csrfToken, out.user); } catch (_) {}
                 cache = out;
                 return cache;
@@ -852,6 +963,10 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
       return inFlight;
     };
   })();
+
+  window.tstsMarkLoginOk = function () {
+    try { window.sessionStorage.setItem("tsts_login_ok_ts", String(Date.now())); } catch (_) {}
+  };
 
   function tstsParseDateLike(x) {
     try {

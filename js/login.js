@@ -8,16 +8,28 @@ window.showModal = window.showModal || function (title, message, type) {
   window.tstsNotify(String(title || "") + ": " + String(message || ""), notifyType);
 };
 
+let forgotPasswordInFlight = false;
+
 async function handleForgotPassword(e) {
     try { if (e && typeof e.preventDefault === "function") e.preventDefault(); } catch (_) {}
 
     const emailEl = document.getElementById("login-email");
+    const forgotBtn = document.getElementById("btn-forgot-password");
     const email = String((emailEl && emailEl.value) ? emailEl.value : "").trim();
 
     if (!email) {
         showModal("Forgot Password", "Enter your email in the Email field first, then click Forgot Password again.", "error");
         return;
     }
+
+    if (forgotPasswordInFlight) return;
+    forgotPasswordInFlight = true;
+    try {
+        if (forgotBtn) {
+            forgotBtn.disabled = true;
+            forgotBtn.setAttribute("aria-busy", "true");
+        }
+    } catch (_) {}
 
     try {
         const res = await window.authFetch("/api/auth/forgot-password", {
@@ -40,6 +52,14 @@ async function handleForgotPassword(e) {
         showModal("Reset Password", msg, "success");
     } catch (_) {
         showModal("Reset Password", "Could not reach the server. Please try again.", "error");
+    } finally {
+        forgotPasswordInFlight = false;
+        try {
+            if (forgotBtn) {
+                forgotBtn.disabled = false;
+                forgotBtn.removeAttribute("aria-busy");
+            }
+        } catch (_) {}
     }
 }
 
@@ -139,6 +159,10 @@ async function handleLogin(e) {
         const csrfToken = (payload && (payload.csrfToken || payload.token)) ? String(payload.csrfToken || payload.token) : String((data && (data.csrfToken || data.token)) || "");
 
         if (window.setAuth) window.setAuth(csrfToken, user);
+        try {
+            if (window.tstsMarkLoginOk) window.tstsMarkLoginOk();
+            else if (window.sessionStorage) window.sessionStorage.setItem("tsts_login_ok_ts", String(Date.now()));
+        } catch (_) {}
 
         if (inviteToken) {
             try {
@@ -291,6 +315,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (loginForm) loginForm.addEventListener("submit", handleLogin);
     if (signupForm) signupForm.addEventListener("submit", handleSignup);
     if (forgotBtn) forgotBtn.addEventListener("click", handleForgotPassword);
+    if (forgotBtn) {
+        forgotBtn.addEventListener("keydown", (ev) => {
+            if (forgotPasswordInFlight && (ev.key === "Enter" || ev.keyCode === 13)) {
+                try { ev.preventDefault(); } catch (_) {}
+            }
+        });
+    }
 
     if (loginForm && signupForm && tabLogin && tabSignup) {
         toggleAuth("login");

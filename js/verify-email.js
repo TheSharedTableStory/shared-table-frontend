@@ -7,6 +7,7 @@
   var errorEl = document.getElementById("state-error");
   var errorMsgEl = document.getElementById("error-message");
   var resendBtn = document.getElementById("resend-btn");
+  var resendInFlight = false;
 
   function show(el) { try { if (el) el.classList.remove("hidden"); } catch (_) {} }
   function hide(el) { try { if (el) el.classList.add("hidden"); } catch (_) {} }
@@ -116,8 +117,15 @@
 
   function wireResend() {
     if (!resendBtn) return;
+    resendBtn.addEventListener("keydown", function (e) {
+      if (!resendInFlight) return;
+      if (e && (e.key === "Enter" || e.keyCode === 13)) {
+        try { e.preventDefault(); } catch (_) {}
+      }
+    });
     resendBtn.addEventListener("click", function (e) {
       try { e.preventDefault(); } catch (_) {}
+      if (resendInFlight) return;
 
       var parsed = parseHash();
       var email = parsed.email;
@@ -126,6 +134,12 @@
         setError("Missing email in the verification link. Please log in and request a new verification email.");
         return;
       }
+
+      resendInFlight = true;
+      try {
+        resendBtn.disabled = true;
+        resendBtn.setAttribute("aria-busy", "true");
+      } catch (_) {}
 
       authFetch("/api/auth/resend-verification", {
         method: "POST",
@@ -140,6 +154,13 @@
         })
         .catch(function () {
           setError("Could not resend verification email due to a network error.");
+        })
+        .finally(function () {
+          resendInFlight = false;
+          try {
+            resendBtn.disabled = false;
+            resendBtn.removeAttribute("aria-busy");
+          } catch (_) {}
         });
     });
   }
