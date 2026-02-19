@@ -590,8 +590,11 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
   }
 
   // CSRF token strategy:
-  // 1) Prefer cookie (same-origin deployments can read it).
-  // 2) Fall back to localStorage for cross-origin deployments where cookie is not readable from JS.
+  // Cookie is the ONLY authoritative source (server-set, HttpOnly:false, has maxAge).
+  // If cookie is absent (expired or cleared), return "" to trigger GET /api/csrf recovery
+  // in authFetch. Do NOT fall back to localStorage — stale localStorage values cause
+  // CSRF_MISSING rejections because the server validates header vs cookie (double-submit
+  // pattern requires both to be present and matching).
   function __getCsrfToken() {
     try {
       const cookies = String(document.cookie || "");
@@ -604,7 +607,7 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
         }
       }
     } catch (_) {}
-    return __getStoredCsrfToken();
+    return "";
   }
 
   async function __refreshCsrfToken(base) {
@@ -1304,7 +1307,14 @@ window.tstsRequireAuth = function (opts) {
   const o = opts || {};
   const returnTo = String(o.returnTo || (location.pathname + location.search) || "");
   const loginUrl = String(o.loginUrl || "login.html");
-  const q = "returnTo=" + encodeURIComponent(returnTo);
+  function hasAuthHintCookie() {
+    try {
+      return /(^|;\s*)tsts_auth_hint=1(?:;|$)/.test(String(document.cookie || ""));
+    } catch (_) {
+      return false;
+    }
+  }
+  const q = "returnTo=" + encodeURIComponent(returnTo) + (hasAuthHintCookie() ? "&reason=session_expired" : "");
 
   function go() { location.replace(loginUrl + (loginUrl.indexOf("?") >= 0 ? "&" : "?") + q); }
 

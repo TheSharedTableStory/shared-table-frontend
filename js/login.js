@@ -27,9 +27,16 @@ async function handleForgotPassword(e) {
         });
 
         const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            const errMsg = (data && data.message)
+                ? String(data.message)
+                : "Could not send reset instructions. Please try again.";
+            showModal("Reset Password", errMsg, "error");
+            return;
+        }
         const msg = (data && data.message) ? String(data.message) : "If an account exists, you will receive instructions.";
 
-        // Always show privacy-safe message; backend is intentionally non-enumerating.
+        // Always show privacy-safe message on 2xx; backend is intentionally non-enumerating.
         showModal("Reset Password", msg, "success");
     } catch (_) {
         showModal("Reset Password", "Could not reach the server. Please try again.", "error");
@@ -287,5 +294,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (loginForm && signupForm && tabLogin && tabSignup) {
         toggleAuth("login");
+    }
+
+    const urlReason = new URLSearchParams(window.location.search).get("reason");
+    if (urlReason === "session_expired") {
+        try { if (window.tstsNotify) window.tstsNotify("Your session has expired. Please log in to continue.", "info"); } catch (_) {}
     }
 });
