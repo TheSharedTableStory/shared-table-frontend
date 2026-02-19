@@ -1026,7 +1026,7 @@
         setCommentComposerState({
           hideComposer: false,
           hideInputs: true,
-          hint: "Hosts can view comments and reply to guests, but cannot post top-level comments on their own experience. Guests rate from My Bookings after completion."
+          hint: "Reply to guest comments below. Guests leave ratings from My Bookings after completion."
         });
       } else {
         setCommentComposerState({

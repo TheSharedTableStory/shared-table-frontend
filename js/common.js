@@ -1152,7 +1152,7 @@ function injectFooter() {
 
   const grid = tstsEl("div", { className: "container mx-auto px-4 grid md:grid-cols-3 gap-8" }, [col1, col2, col3]);
   const companyInfo = tstsEl("p", { className: "text-gray-500 text-sm" }, "The Shared Table Story PTY LTD | 24 Balance Pl, Birtinya QLD 4575");
-  const policyMeta = tstsEl("p", { id: "footer-policy-version", className: "text-gray-500 text-xs" }, "Policy metadata unavailable.");
+  const policyMeta = tstsEl("p", { id: "footer-policy-version", className: "text-gray-500 text-xs" }, "Policy details are temporarily unavailable.");
   const copyrightText = "© " + new Date().getFullYear() + " The Shared Table Story. All rights reserved.";
   const copyright = tstsEl("div", { className: "border-t border-gray-800 mt-12 pt-8 text-center text-gray-500 text-sm space-y-2" }, [tstsEl("p", {}, copyrightText), companyInfo, policyMeta]);
   const footer = tstsEl("footer", { className: "bg-gray-900 text-white py-12 mt-auto" }, [grid, copyright]);
@@ -1267,7 +1267,7 @@ async function hydrateFooterPolicyMeta() {
   const line = document.getElementById("footer-policy-version");
   if (!line || !window.authFetch) return;
   if (shouldSkipGlobalMetaFetch()) {
-    line.textContent = "Policy metadata unavailable.";
+    line.textContent = "Policy details are temporarily unavailable.";
     return;
   }
 
@@ -1275,21 +1275,21 @@ async function hydrateFooterPolicyMeta() {
     const res = await window.authFetch("/api/policy/active", { method: "GET" });
     const payload = await res.json().catch(() => null);
     if (!res.ok || !payload || payload.ok !== true) {
-      line.textContent = "Policy metadata unavailable.";
+      line.textContent = "Policy details are temporarily unavailable.";
       return;
     }
     const policy = (payload.data && payload.data.policy) ? payload.data.policy : (payload.policy || {});
     const version = String((policy && policy.version) || "").trim();
     const effective = formatPolicyDate(policy && policy.effectiveFrom);
     if (!version) {
-      line.textContent = "Policy metadata unavailable.";
+      line.textContent = "Policy details are temporarily unavailable.";
       return;
     }
     line.textContent = effective
       ? ("Policy: " + version + " • Effective: " + effective)
       : ("Policy: " + version);
   } catch (_) {
-    line.textContent = "Policy metadata unavailable.";
+    line.textContent = "Policy details are temporarily unavailable.";
   }
 }
 

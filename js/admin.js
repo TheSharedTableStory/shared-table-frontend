@@ -1412,7 +1412,7 @@ async function handleHostVerificationTransition(userId, nextStatus) {
     var confirmed = await window.tstsConfirm("Mark this host as verified?", { confirmText: "Verify" });
     if (!confirmed) return;
   } else if (target === "under_review") {
-    note = await window.tstsPrompt("Optional review note", "", { minLength: 0, placeholder: "Optional internal note..." });
+    note = await window.tstsPrompt("Optional review note", "", { minLength: 0, placeholder: "Add a note for this review (optional)." });
     note = String(note || "").trim();
   }
 
@@ -1574,7 +1574,7 @@ async function handleReportAction(id, action, status, extra) {
 }
 async function handlePrivateRequestStatus(id, status) {
   try {
-    var note = await window.tstsPrompt("Optional admin note", "", { minLength: 0, placeholder: "Add internal context..." });
+    var note = await window.tstsPrompt("Optional admin note", "", { minLength: 0, placeholder: "Add a note (optional)." });
     await updatePrivateBookingRequestStatus(id, { status: status, adminNote: String(note || "").trim() });
     window.tstsNotify("Private request updated.", "success");
     await loadPrivateBookingRequests().then(renderPrivateRequests);
