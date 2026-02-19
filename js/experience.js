@@ -351,9 +351,15 @@
   const commentsList = document.getElementById("comments-list");
   const commentForm = document.getElementById("comment-form");
   const commentText = document.getElementById("comment-text");
+  const commentSubmit = document.getElementById("comment-submit");
   const commentHint = document.getElementById("comment-hint");
+  const COMMENT_REPLY_MAX_LENGTH = 800;
+  const COMMENT_REPLY_LINK_RE = /(https?:\/\/|www\.)/i;
 
   let exp = null;
+  let viewerUserId = "";
+  let viewerIsHostForExperience = false;
+  let commentFormBound = false;
   let activePolicyVersion = "";
   let activePolicyCancelCap = null;
   const TERMS_VERSION = "tsts_terms_v1";
@@ -465,6 +471,14 @@
       }
     }
 
+    try {
+      const sess = await window.tstsGetSession({ force: false });
+      viewerUserId = String((sess && sess.user && (sess.user._id || sess.user.id)) || "").trim();
+    } catch (_) {
+      viewerUserId = "";
+    }
+    viewerIsHostForExperience = !!hostId && !!viewerUserId && viewerUserId === hostId;
+
     if (verifiedBadgeEl) verifiedBadgeEl.classList.toggle("hidden", verifiedState !== "verified");
     if (verifiedPendingBadgeEl) verifiedPendingBadgeEl.classList.toggle("hidden", verifiedState !== "pending");
     if (verifiedFeeNoteEl) verifiedFeeNoteEl.classList.toggle("hidden", verifiedState !== "verified");
@@ -481,25 +495,19 @@
     show("experience-content");
 
     // D2: Show host-only status banner if viewer is the host and listing is not ACTIVE
-    if (exp.status && exp.status !== "ACTIVE" && exp.hostId) {
-      try {
-        const sess = await window.tstsGetSession({ force: false });
-        const viewerId = String((sess && sess.user && (sess.user._id || sess.user.id)) || "").trim();
-        if (viewerId && viewerId === String(exp.hostId).trim()) {
-          const statusMessages = {
-            DRAFT: "This listing is temporarily unavailable to guests.",
-            PENDING_REVIEW: "This listing is temporarily unavailable to guests.",
-            PAUSED: "This listing is currently paused and not visible to guests."
-          };
-          const msg = statusMessages[exp.status] || ("This listing is " + exp.status + " and not visible to guests.");
-          const bannerEl = document.getElementById("host-listing-status-banner");
-          const bannerText = document.getElementById("host-listing-status-text");
-          if (bannerEl && bannerText) {
-            bannerText.textContent = msg;
-            bannerEl.classList.remove("hidden");
-          }
-        }
-      } catch (_) {}
+    if (exp.status && exp.status !== "ACTIVE" && viewerIsHostForExperience) {
+      const statusMessages = {
+        DRAFT: "This listing is temporarily unavailable to guests.",
+        PENDING_REVIEW: "This listing is temporarily unavailable to guests.",
+        PAUSED: "This listing is currently paused and not visible to guests."
+      };
+      const msg = statusMessages[exp.status] || ("This listing is " + exp.status + " and not visible to guests.");
+      const bannerEl = document.getElementById("host-listing-status-banner");
+      const bannerText = document.getElementById("host-listing-status-text");
+      if (bannerEl && bannerText) {
+        bannerText.textContent = msg;
+        bannerEl.classList.remove("hidden");
+      }
     }
 
     // fire-and-forget secondary panels
@@ -744,28 +752,209 @@
     } catch (_) {}
   }
 
-  function buildCommentCard(c) {
-    const El = window.tstsEl;
-    const a = c.author || {};
-    const name = a ? (a.name || "User") : "User";
-    const when = c.createdAt ? fmtDate(c.createdAt) : "";
-    const text = String(c.text || "");
+  function validateReplyText(raw) {
+    const text = String(raw || "").trim();
+    if (!text) return { ok: false, message: "Reply text is required." };
+    if (text.length > COMMENT_REPLY_MAX_LENGTH) return { ok: false, message: "Reply must be 800 characters or fewer." };
+    if (COMMENT_REPLY_LINK_RE.test(text)) return { ok: false, message: "Reply cannot contain links." };
+    return { ok: true, text: text };
+  }
 
-    return El("div", { className: "bg-slate-50/70 border border-slate-200 rounded-2xl p-4" }, [
+  function setCommentComposerState(opts) {
+    const cfg = opts || {};
+    if (!commentForm) return;
+    const hideComposer = !!cfg.hideComposer;
+    commentForm.classList.toggle("hidden", hideComposer);
+
+    const hideInputs = !!cfg.hideInputs;
+    if (commentText) {
+      commentText.classList.toggle("hidden", hideInputs);
+      commentText.disabled = hideInputs;
+    }
+    if (commentSubmit) {
+      commentSubmit.classList.toggle("hidden", hideInputs);
+      commentSubmit.disabled = hideInputs;
+    }
+    if (commentHint) commentHint.textContent = String(cfg.hint || "");
+  }
+
+  function buildCommentCard(c, opts) {
+    const El = window.tstsEl;
+    const cfg = opts || {};
+    const a = c && c.author ? c.author : {};
+    const name = a ? (a.name || "User") : "User";
+    const when = c && c.createdAt ? fmtDate(c.createdAt) : "";
+    const text = String((c && c.text) || "");
+    const reply = (c && c.reply && typeof c.reply === "object") ? c.reply : null;
+    const isHostViewer = !!cfg.isHostViewer;
+    const canHostReply = !!(isHostViewer && c && c.canHostReply);
+
+    const content = [
       El("div", { className: "flex justify-between items-start gap-4" }, [
         El("div", { className: "font-bold text-slate-900", textContent: name }),
         El("div", { className: "text-xs text-slate-500", textContent: when })
       ]),
       El("p", { className: "text-sm text-slate-700 mt-2", textContent: text })
-    ]);
+    ];
+
+    if (reply) {
+      const replyAuthor = reply.author || {};
+      const replyName = replyAuthor ? (replyAuthor.name || "Host") : "Host";
+      const replyWhen = reply.createdAt ? fmtDate(reply.createdAt) : "";
+      const replyEdited = reply.editedAt ? (" (edited " + fmtDate(reply.editedAt) + ")") : "";
+      const replyBlock = El("div", { className: "mt-3 ml-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2" }, [
+        El("div", { className: "flex items-center justify-between gap-3" }, [
+          El("p", { className: "text-xs font-semibold uppercase tracking-wide text-amber-800", textContent: "Host reply by " + replyName }),
+          El("p", { className: "text-[11px] text-amber-700", textContent: (replyWhen + replyEdited).trim() })
+        ]),
+        El("p", { className: "mt-1 text-sm text-amber-900", textContent: String(reply.text || "") })
+      ]);
+      content.push(replyBlock);
+
+      if (isHostViewer && reply.canEdit) {
+        const editBtn = El("button", {
+          type: "button",
+          className: "mt-2 inline-flex items-center rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition",
+          textContent: "Edit reply"
+        });
+        const editArea = El("div", { className: "mt-2 ml-4 hidden space-y-2" }, []);
+        const editText = El("textarea", {
+          rows: "3",
+          maxlength: String(COMMENT_REPLY_MAX_LENGTH),
+          className: "w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-300",
+          textContent: String(reply.text || "")
+        });
+        const editStatus = El("p", { className: "text-xs text-slate-500", textContent: "No links. Max 800 characters." });
+        const editSave = El("button", {
+          type: "button",
+          className: "inline-flex items-center rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800 transition",
+          textContent: "Save reply"
+        });
+        const editCancel = El("button", {
+          type: "button",
+          className: "inline-flex items-center rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition",
+          textContent: "Cancel"
+        });
+        const editActions = El("div", { className: "flex items-center gap-2" }, [editSave, editCancel]);
+        editArea.appendChild(editText);
+        editArea.appendChild(editStatus);
+        editArea.appendChild(editActions);
+        content.push(editBtn);
+        content.push(editArea);
+
+        editBtn.addEventListener("click", function () {
+          editArea.classList.remove("hidden");
+          editBtn.classList.add("hidden");
+        });
+        editCancel.addEventListener("click", function () {
+          editArea.classList.add("hidden");
+          editBtn.classList.remove("hidden");
+          editText.value = String(reply.text || "");
+          editStatus.textContent = "No links. Max 800 characters.";
+          editStatus.className = "text-xs text-slate-500";
+        });
+        editSave.addEventListener("click", async function () {
+          const valid = validateReplyText(editText.value);
+          if (!valid.ok) {
+            editStatus.textContent = valid.message;
+            editStatus.className = "text-xs text-red-600";
+            return;
+          }
+          editSave.disabled = true;
+          editCancel.disabled = true;
+          try {
+            await cfg.onEditReply(reply._id, valid.text);
+            loadComments().catch(() => {});
+          } catch (err) {
+            editStatus.textContent = (err && err.message) ? err.message : "Reply update failed.";
+            editStatus.className = "text-xs text-red-600";
+          } finally {
+            editSave.disabled = false;
+            editCancel.disabled = false;
+          }
+        });
+      } else if (isHostViewer && !reply.canEdit) {
+        content.push(El("p", {
+          className: "mt-2 ml-4 text-xs text-slate-600",
+          textContent: "Edit window closed."
+        }));
+      }
+    } else if (canHostReply) {
+      const replyBtn = El("button", {
+        type: "button",
+        className: "mt-2 inline-flex items-center rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition",
+        textContent: "Reply"
+      });
+      const replyArea = El("div", { className: "mt-2 ml-4 hidden space-y-2" }, []);
+      const replyInput = El("textarea", {
+        rows: "3",
+        maxlength: String(COMMENT_REPLY_MAX_LENGTH),
+        placeholder: "Write a host reply...",
+        className: "w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-300"
+      });
+      const replyStatus = El("p", { className: "text-xs text-slate-500", textContent: "No links. Max 800 characters." });
+      const replySave = El("button", {
+        type: "button",
+        className: "inline-flex items-center rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800 transition",
+        textContent: "Post reply"
+      });
+      const replyCancel = El("button", {
+        type: "button",
+        className: "inline-flex items-center rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition",
+        textContent: "Cancel"
+      });
+      const replyActions = El("div", { className: "flex items-center gap-2" }, [replySave, replyCancel]);
+      replyArea.appendChild(replyInput);
+      replyArea.appendChild(replyStatus);
+      replyArea.appendChild(replyActions);
+      content.push(replyBtn);
+      content.push(replyArea);
+
+      replyBtn.addEventListener("click", function () {
+        replyArea.classList.remove("hidden");
+        replyBtn.classList.add("hidden");
+      });
+      replyCancel.addEventListener("click", function () {
+        replyArea.classList.add("hidden");
+        replyBtn.classList.remove("hidden");
+        replyInput.value = "";
+        replyStatus.textContent = "No links. Max 800 characters.";
+        replyStatus.className = "text-xs text-slate-500";
+      });
+      replySave.addEventListener("click", async function () {
+        const valid = validateReplyText(replyInput.value);
+        if (!valid.ok) {
+          replyStatus.textContent = valid.message;
+          replyStatus.className = "text-xs text-red-600";
+          return;
+        }
+        replySave.disabled = true;
+        replyCancel.disabled = true;
+        try {
+          await cfg.onCreateReply(c._id, valid.text);
+          loadComments().catch(() => {});
+        } catch (err) {
+          replyStatus.textContent = (err && err.message) ? err.message : "Reply submission failed.";
+          replyStatus.className = "text-xs text-red-600";
+        } finally {
+          replySave.disabled = false;
+          replyCancel.disabled = false;
+        }
+      });
+    }
+
+    return El("div", { className: "bg-slate-50/70 border border-slate-200 rounded-2xl p-4" }, content);
   }
 
   async function loadComments() {
     if (!commentsSection || !commentsList) return;
     if (!(await isAuthed())) {
       commentsSection.classList.remove("hidden");
-      if (commentHint) commentHint.textContent = "Login required to view/post comments.";
-      if (commentForm) commentForm.classList.add("hidden");
+      setCommentComposerState({
+        hideComposer: false,
+        hideInputs: true,
+        hint: "Login required to view/post comments."
+      });
       return;
     }
     try {
@@ -774,30 +963,86 @@
 
       if (res.status === 401) {
         commentsSection.classList.remove("hidden");
-        if (commentHint) commentHint.textContent = "Login required to view/post comments.";
-        if (commentForm) commentForm.classList.add("hidden");
+        setCommentComposerState({
+          hideComposer: false,
+          hideInputs: true,
+          hint: "Login required to view/post comments."
+        });
         return;
       }
 
       if (res.status === 403) {
         commentsSection.classList.remove("hidden");
-        if (commentHint) commentHint.textContent = "Comments are available only to completed attendees.";
-        if (commentForm) commentForm.classList.add("hidden");
+        setCommentComposerState({
+          hideComposer: false,
+          hideInputs: true,
+          hint: "Comments are available only to completed attendees."
+        });
         return;
       }
 
       const list = Array.isArray(data) ? data : [];
       commentsList.textContent = "";
-      list.forEach(function(c) {
-        commentsList.appendChild(buildCommentCard(c));
+
+      const postHostReply = async function (parentCommentId, text) {
+        const resReply = await af(
+          "/api/experiences/" + encodeURIComponent(experienceId) + "/comments/" + encodeURIComponent(String(parentCommentId || "")) + "/reply",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: text })
+          }
+        );
+        const payload = await resReply.json().catch(() => ({}));
+        if (!resReply.ok) throw new Error(String((payload && payload.message) || "Reply submission failed."));
+        return payload;
+      };
+
+      const patchHostReply = async function (replyId, text) {
+        const resReply = await af(
+          "/api/experiences/" + encodeURIComponent(experienceId) + "/comments/" + encodeURIComponent(String(replyId || "")),
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: text })
+          }
+        );
+        const payload = await resReply.json().catch(() => ({}));
+        if (!resReply.ok) throw new Error(String((payload && payload.message) || "Reply update failed."));
+        return payload;
+      };
+
+      list.forEach(function (c) {
+        commentsList.appendChild(buildCommentCard(c, {
+          isHostViewer: viewerIsHostForExperience,
+          onCreateReply: postHostReply,
+          onEditReply: patchHostReply
+        }));
       });
 
       commentsSection.classList.remove("hidden");
-      if (commentHint) commentHint.textContent = "";
 
-      if (commentForm) {
+      if (viewerIsHostForExperience) {
+        setCommentComposerState({
+          hideComposer: false,
+          hideInputs: true,
+          hint: "Hosts can view comments and reply to guests, but cannot post top-level comments on their own experience. Guests rate from My Bookings after completion."
+        });
+      } else {
+        setCommentComposerState({
+          hideComposer: false,
+          hideInputs: false,
+          hint: ""
+        });
+      }
+
+      if (commentForm && !commentFormBound) {
         commentForm.addEventListener("submit", async (e) => {
           e.preventDefault();
+          if (viewerIsHostForExperience) {
+            window.tstsNotify("Hosts cannot post top-level comments on their own experience.", "warning");
+            return;
+          }
           const txt = String((commentText && commentText.value) ? commentText.value : "").trim();
           if (!txt) return;
           try {
@@ -813,11 +1058,16 @@
           } catch (err) {
             window.tstsNotify((err && err.message) ? err.message : "Comment failed", "error");
           }
-        }, { once: true });
+        });
+        commentFormBound = true;
       }
     } catch (_) {
       commentsSection.classList.remove("hidden");
-      if (commentHint) commentHint.textContent = "Unable to load comments.";
+      setCommentComposerState({
+        hideComposer: false,
+        hideInputs: true,
+        hint: "Unable to load comments."
+      });
     }
   }
 

@@ -528,14 +528,12 @@ function renderTripCard(booking) {
       "data-action": "review", "data-booking-id": bookingId, "data-exp-id": expId
     }, [El("i", { className: reviewIcon }), " " + reviewLabel]);
 
+    let actionNoteText = "Rate from 1 to 5 stars after completion.";
     const nodes = [reviewBtn];
     if (hasReview && reviewInfo && reviewInfo.editableUntil && canEditReview) {
-      actionNote = El("p", {
-        className: "text-xs text-slate-600 md:text-right",
-        textContent: "Review editable until " + fmtTripDate(reviewInfo.editableUntil) + "."
-      });
+      actionNoteText += " Review editable until " + fmtTripDate(reviewInfo.editableUntil) + ".";
     } else if (hasReview && !canEditReview) {
-      actionNote = El("p", { className: "text-xs text-slate-600 md:text-right", textContent: "Review submitted. Edit window closed." });
+      actionNoteText += " Review submitted. Edit window closed.";
     }
     if (canFileComplaint) {
       nodes.push(
@@ -547,26 +545,13 @@ function renderTripCard(booking) {
       );
       if (complaintWindowEndsAt) {
         const complaintNote = "Complaint window closes on " + fmtTripDate(complaintWindowEndsAt) + ".";
-        if (actionNote) {
-          actionNote = El("p", {
-            className: "text-xs text-amber-700 md:text-right",
-            textContent: actionNote.textContent + " " + complaintNote
-          });
-        } else {
-          actionNote = El("p", {
-            className: "text-xs text-amber-700 md:text-right",
-            textContent: complaintNote
-          });
-        }
+        actionNoteText += " " + complaintNote;
       }
     } else if (complaintId) {
       const issueNote = "Issue already reported for this booking.";
-      if (actionNote) {
-        actionNote = El("p", { className: "text-xs text-gray-500 md:text-right", textContent: actionNote.textContent + " " + issueNote });
-      } else {
-        actionNote = El("p", { className: "text-xs text-gray-500 md:text-right", textContent: issueNote });
-      }
+      actionNoteText += " " + issueNote;
     }
+    actionNote = El("p", { className: "text-xs text-slate-600 md:text-right", textContent: actionNoteText });
     if (visibilityToggleBtn) nodes.push(visibilityToggleBtn);
     actionArea = El("div", { className: "w-full md:w-auto flex flex-col gap-2 md:items-end" }, nodes);
   } else if (isPast) {
