@@ -728,16 +728,24 @@ function renderExperiences(exps) {
 
     var actions = [];
 
-    // Toggle pause/resume via legacy admin toggle (for ACTIVE/PAUSED)
-    if (statusValue === "ACTIVE" || statusValue === "PAUSED") {
-      var toggleLabel = (statusValue === "PAUSED") ? "Resume" : "Pause";
-      var toggleBtn = El("button", {
-        className: "px-3 py-1 text-xs font-bold rounded border " + (statusValue === "PAUSED" ? "border-green-200 text-green-700 hover:bg-green-50" : "border-gray-200 text-gray-700 hover:bg-gray-50"),
-        textContent: toggleLabel
+    // Pause (ACTIVE → PAUSED) via lifecycle API (requires reason, writes audit)
+    // Resume (PAUSED → ACTIVE) via legacy toggle (non-destructive, no reason required)
+    if (statusValue === "ACTIVE") {
+      var pauseBtn = El("button", {
+        className: "px-3 py-1 text-xs font-bold rounded border border-gray-200 text-gray-700 hover:bg-gray-50",
+        textContent: "Pause"
       });
-      toggleBtn.addEventListener("click", function() { handleToggleExperience(id); });
+      pauseBtn.addEventListener("click", function() { handleLifecycleAction(id, "force-pause"); });
       if (actions.length > 0) actions.push(El("span", { textContent: " " }));
-      actions.push(toggleBtn);
+      actions.push(pauseBtn);
+    } else if (statusValue === "PAUSED") {
+      var resumeBtn = El("button", {
+        className: "px-3 py-1 text-xs font-bold rounded border border-green-200 text-green-700 hover:bg-green-50",
+        textContent: "Resume"
+      });
+      resumeBtn.addEventListener("click", function() { handleToggleExperience(id); });
+      if (actions.length > 0) actions.push(El("span", { textContent: " " }));
+      actions.push(resumeBtn);
     }
 
     // Event verification buttons (SEPARATE from lifecycle)
@@ -751,10 +759,10 @@ function renderExperiences(exps) {
       actions.push(verifyApproveBtn, El("span", { textContent: " " }), verifyRejectBtn);
     }
 
-    // Delete (not for already deleted)
+    // Delete (not for already deleted) — via lifecycle API (cascade booking cancel + audit log with reason)
     if (statusValue !== "DELETED_SOFT") {
       var deleteBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-red-200 text-red-600 hover:bg-red-50", textContent: "Delete" });
-      deleteBtn.addEventListener("click", function() { handleDeleteExperience(id); });
+      deleteBtn.addEventListener("click", function() { handleLifecycleAction(id, "force-delete"); });
       if (actions.length > 0) actions.push(El("span", { textContent: " " }));
       actions.push(deleteBtn);
     }
@@ -1446,6 +1454,38 @@ async function handleDeleteExperience(id) {
   var confirmed = await window.tstsConfirm("Delete this experience?", { destructive: true, confirmText: "Delete" });
   if (!confirmed) return;
   try { await deleteExperience(id); await boot(); } catch (e) { window.tstsNotify(e.message || "Failed", "error"); }
+}
+async function handleLifecycleAction(id, action) {
+  var reasonPrompt = action === "force-delete"
+    ? "Reason for force-deleting this listing (required):"
+    : "Reason for force-pausing this listing (required):";
+  var confirmMsg = action === "force-delete"
+    ? "Force-delete this listing? Pending bookings will be cancelled. This cannot be undone."
+    : "Force-pause this listing? It will no longer be visible to guests.";
+  var reason = await window.tstsPrompt(reasonPrompt, "", { minLength: 1 });
+  reason = String(reason || "").trim();
+  if (!reason) {
+    window.tstsNotify("A reason is required for this action.", "error");
+    return;
+  }
+  var confirmed = await window.tstsConfirm(confirmMsg, { destructive: true, confirmText: action === "force-delete" ? "Force Delete" : "Force Pause" });
+  if (!confirmed) return;
+  try {
+    var res = await adminFetch("/api/admin/experiences/" + encodeURIComponent(id) + "/lifecycle", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: action, reason: reason })
+    });
+    var payload = await res.json().catch(function() { return {}; });
+    if (!res.ok) {
+      window.tstsNotify(String((payload && payload.message) || "Action failed. Please try again."), "error");
+      return;
+    }
+    window.tstsNotify(action === "force-delete" ? "Listing force-deleted." : "Listing force-paused.", "success");
+    await boot();
+  } catch (e) {
+    window.tstsNotify((e && e.message) || "Action failed. Please try again.", "error");
+  }
 }
 async function handleApproveVerifiedExperience(id) {
   var confirmed = await window.tstsConfirm("Approve verification for this experience?", { confirmText: "Approve" });
