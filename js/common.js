@@ -569,6 +569,8 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
   // This ensures CSRF works across tabs (cookies are shared, sessionStorage is not)
   
   const CSRF_COOKIE_NAME = window.__TSTS_CSRF_COOKIE__ || "tsts_csrf";
+  const FRONT_AUTH_HINT_COOKIE = "tsts_fe_auth_hint";
+  const FRONT_AUTH_HINT_MAX_AGE_SEC = 60 * 60 * 24 * 7;
   const CSRF_STORAGE_KEY = "tsts_csrf_token";
   
   // SEC-002: Response unwrapper helper for normalized { ok, data } responses
@@ -586,6 +588,18 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
       const s = String(v || "").trim();
       if (s) localStorage.setItem(CSRF_STORAGE_KEY, s);
       else localStorage.removeItem(CSRF_STORAGE_KEY);
+    } catch (_) {}
+  }
+
+  function __setFrontendAuthHintCookie() {
+    try {
+      document.cookie = FRONT_AUTH_HINT_COOKIE + "=1; Path=/; Max-Age=" + String(FRONT_AUTH_HINT_MAX_AGE_SEC) + "; SameSite=Lax";
+    } catch (_) {}
+  }
+
+  function __clearFrontendAuthHintCookie() {
+    try {
+      document.cookie = FRONT_AUTH_HINT_COOKIE + "=; Path=/; Max-Age=0; SameSite=Lax";
     } catch (_) {}
   }
 
@@ -636,8 +650,13 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
   // setAuth stores non-sensitive UI user data + CSRF token (public) for cross-origin CSRF header use.
   window.setAuth = function (csrfToken, user) {
     try {
-      if (user != null) localStorage.setItem("tsts_user", JSON.stringify(user));
-      else localStorage.removeItem("tsts_user");
+      if (user != null) {
+        localStorage.setItem("tsts_user", JSON.stringify(user));
+        __setFrontendAuthHintCookie();
+      } else {
+        localStorage.removeItem("tsts_user");
+        __clearFrontendAuthHintCookie();
+      }
 
       __setStoredCsrfToken(csrfToken);
 
@@ -661,6 +680,7 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
       // Clean up legacy keys
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+      __clearFrontendAuthHintCookie();
     } catch (_) {}
   };
 
@@ -822,7 +842,8 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
     function hasAuthHint() {
       try {
         const cookie = String(document.cookie || "");
-        return /(^|;\s*)tsts_auth_hint=1(?:;|$)/.test(cookie);
+        if (/(^|;\s*)tsts_auth_hint=1(?:;|$)/.test(cookie)) return true;
+        if (/(^|;\s*)tsts_fe_auth_hint=1(?:;|$)/.test(cookie)) return true;
       } catch (_) {}
       return false;
     }
@@ -838,6 +859,7 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
       const ts = Number(nowMs || Date.now());
       writeSessionNumber(key, ts);
       writeLocalNumber(key, ts);
+      __setFrontendAuthHintCookie();
     }
 
     function hasAuthEvidence(nowMs) {
@@ -998,6 +1020,7 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
       const ts = String(Date.now());
       window.sessionStorage.setItem("tsts_login_ok_ts", ts);
       window.localStorage.setItem("tsts_login_ok_ts", ts);
+      __setFrontendAuthHintCookie();
     } catch (_) {}
   };
 
