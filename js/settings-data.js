@@ -107,21 +107,21 @@
       const res = await window.authFetch("/api/policy/active", { method: "GET" });
       const payload = await res.json().catch(() => null);
       if (!res.ok || !payload || payload.ok !== true) {
-        retentionMetaEl.textContent = "Current policy details are temporarily unavailable.";
+        retentionMetaEl.textContent = "Current policy details could not be loaded.";
         return;
       }
       const policy = (payload.data && payload.data.policy) ? payload.data.policy : (payload.policy || {});
       const version = safeString(policy && policy.version).trim();
       const effective = formatDate(policy && policy.effectiveFrom);
       if (!version) {
-        retentionMetaEl.textContent = "Current policy details are temporarily unavailable.";
+        retentionMetaEl.textContent = "Current policy details could not be loaded.";
         return;
       }
       retentionMetaEl.textContent = effective
         ? ("Current policy: " + version + " (effective " + effective + ").")
         : ("Current policy: " + version + ".");
     } catch (_) {
-      retentionMetaEl.textContent = "Current policy details are temporarily unavailable.";
+      retentionMetaEl.textContent = "Current policy details could not be loaded.";
     }
   }
 
