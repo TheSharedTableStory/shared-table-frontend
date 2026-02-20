@@ -64,6 +64,7 @@ PUBLIC_FILES=(
   "sitemap.xml"
   "success.html"
   "terms.html"
+  "unsubscribe.html"
   "verify-email.html"
 )
 
