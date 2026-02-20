@@ -7,6 +7,7 @@
   const handleInput = document.getElementById("handle");
   const allowHandleSearchToggle = document.getElementById("allow-handle-search");
   const shareToFriendsToggle = document.getElementById("share-to-friends");
+  const recommendationEmailToggle = document.getElementById("recommendation-email-toggle");
   const hostOwnershipWarning = document.getElementById("host-ownership-warning");
 
   const profilePicInput = document.getElementById("file-upload");
@@ -90,6 +91,7 @@
       try { if (handleInput) handleInput.value = user.handle || ""; } catch (_) {}
       try { if (allowHandleSearchToggle) allowHandleSearchToggle.checked = !!user.allowHandleSearch; } catch (_) {}
       try { if (shareToFriendsToggle) shareToFriendsToggle.checked = !!user.showExperiencesToFriends; } catch (_) {}
+      try { if (recommendationEmailToggle) recommendationEmailToggle.checked = !user.recommendationEmailOptOut; } catch (_) {}
 
       if (profilePicPreview && user.profilePic) window.tstsSafeImg(profilePicPreview, user.profilePic, "/assets/avatar-default.svg");
 
@@ -242,12 +244,13 @@
 
       const allowHandleSearch = !!(allowHandleSearchToggle && allowHandleSearchToggle.checked);
       const showExperiencesToFriends = !!(shareToFriendsToggle && shareToFriendsToggle.checked);
+      const recommendationEmailOptOut = !(recommendationEmailToggle && recommendationEmailToggle.checked);
 
       try {
         const res = await window.authFetch("/api/auth/update", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, bio, handle, allowHandleSearch, showExperiencesToFriends })
+          body: JSON.stringify({ name, bio, handle, allowHandleSearch, showExperiencesToFriends, recommendationEmailOptOut })
         });
 
         if (handleUnauthorized(res)) return;
