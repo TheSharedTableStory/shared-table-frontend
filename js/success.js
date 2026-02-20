@@ -63,9 +63,15 @@ async function verifyBooking(bookingId, sessionId) {
   }
 
   const data = await res.json();
-  // Expecting { status: "confirmed" } or "paid"
-  if (data.status !== "confirmed" && data.status !== "paid") {
-    throw new Error("Booking not confirmed yet. Status: " + data.status);
+  // Gate on ok === true before trusting status
+  if (!data || data.ok !== true) {
+    var errMsg = (data && data.message) ? String(data.message) : "Payment verification failed";
+    throw new Error(errMsg);
+  }
+  // Backend returns { ok: true, data: { status: "confirmed" } }
+  var verifyStatus = (data.data && data.data.status) || (data.status) || "";
+  if (verifyStatus !== "confirmed" && verifyStatus !== "paid") {
+    throw new Error("Booking not confirmed yet. Status: " + verifyStatus);
   }
 
   return data;

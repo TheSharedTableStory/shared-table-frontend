@@ -554,12 +554,27 @@ function renderTripCard(booking) {
     actionNote = El("p", { className: "text-xs text-slate-600 md:text-right", textContent: actionNoteText });
     if (visibilityToggleBtn) nodes.push(visibilityToggleBtn);
     actionArea = El("div", { className: "w-full md:w-auto flex flex-col gap-2 md:items-end" }, nodes);
-  } else if (isPast) {
+  } else if (status === "expired") {
+    statusBadge = El("span", { className: "px-2 py-1 text-xs font-bold rounded bg-gray-100 text-gray-500", textContent: "PAYMENT EXPIRED" });
+    actionArea = El("span", { className: "text-sm text-gray-400 italic", textContent: "This booking has expired." });
+  } else if (status === "pending_payment") {
+    var payStatus = safeStr(booking.paymentStatus).toLowerCase();
+    if (payStatus === "failed" || payStatus === "abandoned") {
+      statusBadge = El("span", { className: "px-2 py-1 text-xs font-bold rounded bg-red-100 text-red-600", textContent: "PAYMENT FAILED" });
+      actionArea = El("span", { className: "text-sm text-gray-400 italic", textContent: "Payment could not be completed." });
+    } else {
+      statusBadge = El("span", { className: "px-2 py-1 text-xs font-bold rounded bg-yellow-100 text-yellow-700", textContent: "PAYMENT PENDING" });
+      actionArea = El("span", { className: "text-sm text-gray-500 italic", textContent: "Payment has not been completed." });
+    }
+  } else if (status === "refunded") {
+    statusBadge = El("span", { className: "px-2 py-1 text-xs font-bold rounded bg-gray-100 text-gray-600", textContent: "REFUNDED" });
+    actionArea = El("span", { className: "text-sm text-gray-400 italic", textContent: "This booking has been refunded." });
+  } else if (status === "confirmed" && isPast) {
     statusBadge = El("span", { className: "px-2 py-1 text-xs font-bold rounded bg-blue-100 text-blue-700", textContent: "AWAITING COMPLETION" });
     const nodes = [El("span", { className: "text-sm text-gray-500 italic", textContent: "Completion is being finalized." })];
     if (visibilityToggleBtn) nodes.push(visibilityToggleBtn);
     actionArea = El("div", { className: "w-full md:w-auto flex flex-col gap-2 md:items-end" }, nodes);
-  } else {
+  } else if (status === "confirmed") {
     statusBadge = El("span", { className: "px-2 py-1 text-xs font-bold rounded bg-green-100 text-green-700", textContent: "CONFIRMED" });
     const nodes = [El("button", {
       className: "w-full md:w-auto px-5 py-2 border border-red-200 text-red-600 text-sm font-bold rounded-lg hover:bg-red-50 transition",
@@ -567,6 +582,9 @@ function renderTripCard(booking) {
     })];
     if (visibilityToggleBtn) nodes.push(visibilityToggleBtn);
     actionArea = El("div", { className: "w-full md:w-auto flex flex-col gap-2 md:items-end" }, nodes);
+  } else {
+    statusBadge = El("span", { className: "px-2 py-1 text-xs font-bold rounded bg-gray-100 text-gray-600", textContent: "NEEDS REVIEW" });
+    actionArea = El("span", { className: "text-sm text-gray-400 italic", textContent: "This booking requires attention." });
   }
 
   var imgEl = El("img", { className: "w-full h-full object-cover", alt: "Experience" });
