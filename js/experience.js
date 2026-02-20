@@ -665,7 +665,7 @@
     const name = r.authorName || "Guest";
     const comment = (r.comment == null) ? "" : String(r.comment);
 
-    return El("div", { className: "bg-slate-50/70 border border-slate-200 rounded-2xl p-4" }, [
+    var children = [
       El("div", { className: "flex justify-between items-start gap-4" }, [
         El("div", {}, [
           El("div", { className: "font-bold text-slate-900", textContent: name }),
@@ -674,7 +674,22 @@
         El("div", { className: "text-xs text-yellow-500", textContent: "★".repeat(rating) + "☆".repeat(5 - rating) })
       ]),
       El("p", { className: "text-sm text-slate-700 mt-3 italic", textContent: '"' + comment + '"' })
-    ]);
+    ];
+
+    // Show host reply if present
+    var hostReply = String(r.hostReply || "").trim();
+    if (hostReply) {
+      children.push(
+        El("div", { className: "mt-3 pl-4 border-l-2 border-orange-200 bg-orange-50/50 rounded-r-lg p-3" }, [
+          El("div", { className: "flex items-center gap-2 mb-1" }, [
+            El("span", { className: "text-xs font-bold text-orange-700 uppercase tracking-wide", textContent: "Host Reply" })
+          ]),
+          El("p", { className: "text-sm text-slate-700", textContent: hostReply })
+        ])
+      );
+    }
+
+    return El("div", { className: "bg-slate-50/70 border border-slate-200 rounded-2xl p-4" }, children);
   }
 
   async function loadReviews() {
@@ -698,16 +713,24 @@
           const El = window.tstsEl;
           const rating = Math.max(0, Math.min(5, parseInt(top.rating, 10) || 0));
           featuredReviewContainer.textContent = "";
-          featuredReviewContainer.appendChild(
-            El("div", {}, [
+          var featChildren = [
               El("p", { className: "text-xs uppercase tracking-[0.18em] text-slate-500 mb-1", textContent: "Featured review" }),
               El("div", { className: "flex items-center justify-between gap-3" }, [
                 El("p", { className: "font-semibold text-tsts-ink", textContent: top.authorName || "Guest" }),
                 El("p", { className: "text-xs text-yellow-500", textContent: "★".repeat(rating) + "☆".repeat(5 - rating) })
               ]),
               El("p", { className: "text-sm text-slate-700 mt-3 italic", textContent: '"' + String(top.comment || "") + '"' })
-            ])
-          );
+          ];
+          var topHostReply = String(top.hostReply || "").trim();
+          if (topHostReply) {
+            featChildren.push(
+              El("div", { className: "mt-3 pl-3 border-l-2 border-orange-200 bg-orange-50/50 rounded-r-lg p-2" }, [
+                El("span", { className: "text-xs font-bold text-orange-700 uppercase tracking-wide", textContent: "Host Reply" }),
+                El("p", { className: "text-sm text-slate-700 mt-1", textContent: topHostReply })
+              ])
+            );
+          }
+          featuredReviewContainer.appendChild(El("div", {}, featChildren));
           featuredReviewContainer.classList.remove("hidden");
         }
       }

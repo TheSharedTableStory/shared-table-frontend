@@ -46,20 +46,22 @@ const dashboardDeepLink = {
   panel: String(dashboardQueryParams.get("panel") || "").trim().toLowerCase(),
   requestId: String(dashboardQueryParams.get("requestId") || "").trim()
 };
-const HOSTING_SECTION_KEYS = Object.freeze(["overview", "listings", "bookings", "private-requests", "verification-payout"]);
+const HOSTING_SECTION_KEYS = Object.freeze(["overview", "listings", "bookings", "private-requests", "verification-payout", "reviews"]);
 const HOSTING_SECTION_LABELS = Object.freeze({
   overview: "Overview",
   listings: "My Listings",
   bookings: "Booking Requests",
   "private-requests": "Private Requests",
-  "verification-payout": "Verification & Payout"
+  "verification-payout": "Verification & Payout",
+  reviews: "Reviews & Performance"
 });
 const hostDashboardState = {
   section: "overview",
   listings: { status: "idle", items: [], summary: null, warnings: [], message: "" },
   bookings: { status: "idle", rows: [], message: "" },
   privateRequests: { status: "idle", rows: [], message: "" },
-  verification: { status: "idle", data: null, message: "" }
+  verification: { status: "idle", data: null, message: "" },
+  reviews: { status: "idle", data: null, message: "" }
 };
 
 function resolveDashboardTab(rawTab) {
@@ -700,6 +702,7 @@ function applyReviewModalMode(reviewData) {
       reviewWindowHintEl.textContent = "Edit window closes on " + untilText + ".";
       reviewWindowHintEl.classList.remove("hidden");
     }
+    renderGuestReviewHostReply(reviewData);
     return;
   }
 
@@ -716,6 +719,30 @@ function applyReviewModalMode(reviewData) {
     reviewWindowHintEl.textContent = "Reviews become immutable after 24 hours from submission.";
     reviewWindowHintEl.classList.remove("hidden");
   }
+
+  // Show host reply if present (both edit and locked modes)
+  renderGuestReviewHostReply(reviewData);
+}
+
+function renderGuestReviewHostReply(reviewData) {
+  var container = document.getElementById("review-host-reply-container");
+  if (!container) return;
+  container.textContent = "";
+  container.classList.add("hidden");
+
+  var hostReply = String((reviewData && reviewData.hostReply) || "").trim();
+  if (!hostReply) return;
+
+  var El = window.tstsEl;
+  container.classList.remove("hidden");
+  container.appendChild(
+    El("div", { className: "pl-4 border-l-2 border-orange-200 bg-orange-50/50 rounded-r-lg p-3" }, [
+      El("div", { className: "flex items-center gap-2 mb-1" }, [
+        El("span", { className: "text-xs font-bold text-orange-700 uppercase tracking-wide", textContent: "Host Reply" })
+      ]),
+      El("p", { className: "text-sm text-slate-700", textContent: hostReply })
+    ])
+  );
 }
 
 async function submitReview(e) {
@@ -1800,6 +1827,463 @@ function renderHostOverviewSection() {
   return section;
 }
 
+/* ====================== REVIEWS & PERFORMANCE ====================== */
+
+async function loadHostReviewsSummary() {
+  hostDashboardState.reviews = { status: "loading", data: null, message: "" };
+  renderHostingDashboard();
+  try {
+    var res = await window.authFetch("/api/host/reviews/summary", { method: "GET" });
+    var payload = await res.json().catch(function () { return {}; });
+    if (!res.ok) {
+      hostDashboardState.reviews = { status: "error", data: null, message: String((payload && payload.error) || "Failed to load reviews.") };
+      renderHostingDashboard();
+      return;
+    }
+    var d = (payload && payload.data) ? payload.data : {};
+    hostDashboardState.reviews = { status: "ready", data: d, message: "" };
+    renderHostingDashboard();
+  } catch (_) {
+    hostDashboardState.reviews = { status: "error", data: null, message: "Failed to load reviews." };
+    renderHostingDashboard();
+  }
+}
+
+async function handleDigestOptOutToggle(currentOptOut) {
+  var next = !currentOptOut;
+  try {
+    var res = await window.authFetch("/api/host/preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ digestOptOut: next })
+    });
+    var payload = await res.json().catch(function () { return {}; });
+    if (!res.ok) {
+      window.tstsNotify(String((payload && payload.error) || "Failed to update preference."), "error");
+      return;
+    }
+    var d = hostDashboardState.reviews.data || {};
+    d.hostDigestOptOut = next;
+    hostDashboardState.reviews.data = d;
+    renderHostingDashboard();
+    window.tstsNotify(next ? "Daily digest email turned off." : "Daily digest email turned on.", "success");
+  } catch (_) {
+    window.tstsNotify("Failed to update preference.", "error");
+  }
+}
+
+function openHostReplyModal(reviewId, existingReply, replyAt) {
+  var modal = document.getElementById("host-reply-modal");
+  var reviewIdInput = document.getElementById("host-reply-review-id");
+  var textInput = document.getElementById("host-reply-text");
+  var charCount = document.getElementById("host-reply-char-count");
+  var titleEl = document.getElementById("host-reply-modal-title");
+  var windowHint = document.getElementById("host-reply-window-hint");
+  var errorEl = document.getElementById("host-reply-error");
+  var submitBtn = document.getElementById("host-reply-submit-btn");
+  if (!modal) return;
+
+  if (reviewIdInput) reviewIdInput.value = reviewId || "";
+  if (errorEl) { errorEl.textContent = ""; errorEl.classList.add("hidden"); }
+
+  var reply = String(existingReply || "").trim();
+  var isEdit = reply.length > 0;
+
+  if (textInput) {
+    textInput.value = reply;
+    textInput.disabled = false;
+  }
+  if (charCount) charCount.textContent = String(reply.length) + " / 800 characters";
+
+  if (isEdit) {
+    if (titleEl) titleEl.textContent = "Edit Your Reply";
+    if (submitBtn) submitBtn.textContent = "Update Reply";
+    if (windowHint && replyAt) {
+      var editableUntil = new Date(new Date(replyAt).getTime() + 24 * 60 * 60 * 1000);
+      var now = new Date();
+      if (now >= editableUntil) {
+        if (textInput) textInput.disabled = true;
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.classList.add("opacity-60", "cursor-not-allowed"); }
+        windowHint.textContent = "Edit window has closed (24 hours from first reply).";
+        windowHint.classList.remove("hidden");
+      } else {
+        var hoursLeft = Math.ceil((editableUntil.getTime() - now.getTime()) / (60 * 60 * 1000));
+        windowHint.textContent = "Edit window closes in " + hoursLeft + " hour" + (hoursLeft === 1 ? "" : "s") + ".";
+        windowHint.classList.remove("hidden");
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove("opacity-60", "cursor-not-allowed"); }
+      }
+    }
+  } else {
+    if (titleEl) titleEl.textContent = "Reply to Review";
+    if (submitBtn) { submitBtn.textContent = "Post Reply"; submitBtn.disabled = false; submitBtn.classList.remove("opacity-60", "cursor-not-allowed"); }
+    if (windowHint) { windowHint.textContent = ""; windowHint.classList.add("hidden"); }
+  }
+
+  modal.classList.remove("hidden");
+}
+
+function closeHostReplyModal() {
+  var modal = document.getElementById("host-reply-modal");
+  if (modal) modal.classList.add("hidden");
+  var textInput = document.getElementById("host-reply-text");
+  if (textInput) { textInput.value = ""; textInput.disabled = false; }
+  var errorEl = document.getElementById("host-reply-error");
+  if (errorEl) { errorEl.textContent = ""; errorEl.classList.add("hidden"); }
+  var submitBtn = document.getElementById("host-reply-submit-btn");
+  if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove("opacity-60", "cursor-not-allowed"); }
+}
+
+async function submitHostReply(e) {
+  e.preventDefault();
+  var reviewIdInput = document.getElementById("host-reply-review-id");
+  var textInput = document.getElementById("host-reply-text");
+  var errorEl = document.getElementById("host-reply-error");
+  var submitBtn = document.getElementById("host-reply-submit-btn");
+  var reviewId = reviewIdInput ? reviewIdInput.value.trim() : "";
+  var text = textInput ? textInput.value.trim() : "";
+
+  if (!reviewId) return;
+  if (!text || text.length < 1 || text.length > 800) {
+    if (errorEl) { errorEl.textContent = "Reply must be 1-800 characters."; errorEl.classList.remove("hidden"); }
+    return;
+  }
+
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.classList.add("opacity-60", "cursor-not-allowed"); }
+  if (errorEl) { errorEl.textContent = ""; errorEl.classList.add("hidden"); }
+
+  try {
+    var res = await window.authFetch("/api/reviews/" + encodeURIComponent(reviewId) + "/host-reply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ replyText: text })
+    });
+    var payload = await res.json().catch(function () { return {}; });
+    if (!res.ok) {
+      var errMsg = String((payload && payload.error) || "Failed to submit reply.");
+      if (errMsg === "HOST_REPLY_EDIT_WINDOW_CLOSED") errMsg = "Edit window has closed (24 hours from first reply).";
+      if (errMsg === "HOST_REPLY_ALREADY_EXISTS") errMsg = "You have already replied to this review.";
+      if (errMsg === "HOST_REPLY_CONTAINS_PII") errMsg = "Reply cannot contain personal contact information (email or phone).";
+      if (errorEl) { errorEl.textContent = errMsg; errorEl.classList.remove("hidden"); }
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove("opacity-60", "cursor-not-allowed"); }
+      return;
+    }
+    closeHostReplyModal();
+    window.tstsNotify("Reply posted successfully.", "success");
+    loadHostReviewsSummary();
+  } catch (_) {
+    if (errorEl) { errorEl.textContent = "Failed to submit reply. Please try again."; errorEl.classList.remove("hidden"); }
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove("opacity-60", "cursor-not-allowed"); }
+  }
+}
+
+function renderHostReviewsTrendArrow(direction, delta) {
+  var El = window.tstsEl;
+  if (direction === "new") {
+    return El("span", { className: "inline-flex items-center gap-1 text-xs font-bold text-blue-600" }, [
+      El("span", { textContent: "New" })
+    ]);
+  }
+  if (direction === "up") {
+    return El("span", { className: "inline-flex items-center gap-1 text-xs font-bold text-green-600" }, [
+      El("i", { className: "fas fa-arrow-up" }),
+      El("span", { textContent: "+" + Number(delta || 0).toFixed(1) })
+    ]);
+  }
+  if (direction === "down") {
+    return El("span", { className: "inline-flex items-center gap-1 text-xs font-bold text-red-600" }, [
+      El("i", { className: "fas fa-arrow-down" }),
+      El("span", { textContent: Number(delta || 0).toFixed(1) })
+    ]);
+  }
+  return El("span", { className: "inline-flex items-center gap-1 text-xs font-bold text-gray-400" }, [
+    El("span", { textContent: "—" })
+  ]);
+}
+
+function renderHostStarRating(rating) {
+  var El = window.tstsEl;
+  var stars = Math.round(Number(rating) || 0);
+  var wrap = El("span", { className: "inline-flex items-center gap-0.5" });
+  for (var i = 1; i <= 5; i++) {
+    wrap.appendChild(El("i", {
+      className: i <= stars ? "fas fa-star text-orange-400 text-sm" : "far fa-star text-gray-300 text-sm"
+    }));
+  }
+  return wrap;
+}
+
+function renderHostReviewsSection(data) {
+  var El = window.tstsEl;
+  var d = data || {};
+  var overall = d.overall || {};
+  var perListing = Array.isArray(d.perListing) ? d.perListing : [];
+  var ratingDist = d.ratingDistribution || {};
+  var recentReviews = (d.recentReviews && Array.isArray(d.recentReviews.reviews)) ? d.recentReviews.reviews : [];
+  var recentComments = Array.isArray(d.recentComments) ? d.recentComments : [];
+  var ratingTrend = d.ratingTrend || {};
+  var perListingTrend = Array.isArray(d.perListingTrend) ? d.perListingTrend : [];
+  var hints = Array.isArray(d.hints) ? d.hints : [];
+  var digestOptOut = !!d.hostDigestOptOut;
+  var totalReviews = Number(overall.totalReviews) || 0;
+  var avgRating = Number(overall.averageRating) || 0;
+  var totalComments = Number(overall.totalComments) || 0;
+
+  var section = El("section", { className: "space-y-6" });
+
+  /* ---- Header + Digest Toggle ---- */
+  var headerRow = El("div", { className: "flex flex-col md:flex-row md:items-center md:justify-between gap-3" }, [
+    El("h2", { className: "text-xl font-bold text-gray-900", textContent: "Reviews & Performance" })
+  ]);
+
+  var toggleWrap = El("label", { className: "inline-flex items-center gap-3 cursor-pointer select-none" }, [
+    El("span", { className: "text-sm text-gray-600", textContent: "Daily digest email" })
+  ]);
+  var toggleInput = El("input", { type: "checkbox", className: "sr-only peer" });
+  toggleInput.checked = !digestOptOut;
+  toggleInput.addEventListener("change", function () { handleDigestOptOutToggle(digestOptOut); });
+  var toggleTrack = El("div", {
+    className: "relative w-11 h-6 rounded-full transition-colors " + (!digestOptOut ? "bg-orange-500" : "bg-gray-300")
+  }, [
+    El("div", {
+      className: "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform " + (!digestOptOut ? "translate-x-5" : "translate-x-0")
+    })
+  ]);
+  toggleWrap.appendChild(toggleInput);
+  toggleWrap.appendChild(toggleTrack);
+  headerRow.appendChild(toggleWrap);
+  section.appendChild(headerRow);
+
+  /* ---- Empty State ---- */
+  if (totalReviews === 0 && recentComments.length === 0) {
+    section.appendChild(
+      El("div", { className: "text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm" }, [
+        El("div", { className: "text-5xl mb-4", textContent: "💬" }),
+        El("h3", { className: "text-xl font-bold text-gray-900 mb-2", textContent: "No reviews yet" }),
+        El("p", { className: "text-gray-500", textContent: "Reviews appear here once guests share feedback after their experience." })
+      ])
+    );
+    return section;
+  }
+
+  /* ---- Summary Cards ---- */
+  var summaryGrid = El("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" });
+
+  // Overall Rating card
+  var ratingCard = El("div", { className: "bg-white rounded-xl border border-gray-100 p-4 shadow-sm" }, [
+    El("p", { className: "text-xs uppercase tracking-wide text-gray-500", textContent: "Overall Rating" }),
+    El("div", { className: "flex items-center gap-2 mt-1" }, [
+      El("p", { className: "text-2xl font-bold text-gray-900", textContent: totalReviews > 0 ? avgRating.toFixed(1) : "—" }),
+      renderHostStarRating(avgRating),
+      renderHostReviewsTrendArrow(ratingTrend.direction, ratingTrend.delta)
+    ])
+  ]);
+  summaryGrid.appendChild(ratingCard);
+
+  // Total Reviews card
+  summaryGrid.appendChild(
+    El("div", { className: "bg-white rounded-xl border border-gray-100 p-4 shadow-sm" }, [
+      El("p", { className: "text-xs uppercase tracking-wide text-gray-500", textContent: "Total Reviews" }),
+      El("p", { className: "text-2xl font-bold text-gray-900 mt-1", textContent: String(totalReviews) })
+    ])
+  );
+
+  // Total Comments card
+  summaryGrid.appendChild(
+    El("div", { className: "bg-white rounded-xl border border-gray-100 p-4 shadow-sm" }, [
+      El("p", { className: "text-xs uppercase tracking-wide text-gray-500", textContent: "Total Comments" }),
+      El("p", { className: "text-2xl font-bold text-gray-900 mt-1", textContent: String(totalComments) })
+    ])
+  );
+  section.appendChild(summaryGrid);
+
+  /* ---- Rating Distribution ---- */
+  if (totalReviews > 0) {
+    var distBlock = El("div", { className: "bg-white rounded-xl border border-gray-100 p-4 shadow-sm space-y-2" }, [
+      El("h3", { className: "text-sm font-bold text-gray-700 mb-2", textContent: "Rating Distribution" })
+    ]);
+    for (var star = 5; star >= 1; star--) {
+      var count = Number(ratingDist[star]) || 0;
+      var pct = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
+      distBlock.appendChild(
+        El("div", { className: "flex items-center gap-2" }, [
+          El("span", { className: "text-xs text-gray-500 w-8 text-right", textContent: star + "★" }),
+          El("div", { className: "flex-grow h-3 bg-gray-100 rounded-full overflow-hidden" }, [
+            El("div", { className: "h-full bg-orange-400 rounded-full transition-all", style: "width:" + pct + "%" })
+          ]),
+          El("span", { className: "text-xs text-gray-500 w-8", textContent: String(count) })
+        ])
+      );
+    }
+    section.appendChild(distBlock);
+  }
+
+  /* ---- Per-Listing Table ---- */
+  if (perListing.length > 0) {
+    var listingBlock = El("div", { className: "bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden" }, [
+      El("div", { className: "p-4 border-b border-gray-100" }, [
+        El("h3", { className: "text-sm font-bold text-gray-700", textContent: "Per-Listing Breakdown" })
+      ])
+    ]);
+    var listingTable = El("div", { className: "divide-y divide-gray-100" });
+    perListing.forEach(function (item) {
+      var listingTrend = perListingTrend.find(function (t) { return t.experienceId === item.experienceId; }) || {};
+      listingTable.appendChild(
+        El("div", { className: "flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition" }, [
+          El("div", { className: "flex-grow min-w-0" }, [
+            El("p", { className: "text-sm font-medium text-gray-900 truncate", textContent: item.title || "Untitled Listing" }),
+            El("p", { className: "text-xs text-gray-500", textContent: (item.reviewCount || 0) + " review" + ((item.reviewCount || 0) !== 1 ? "s" : "") })
+          ]),
+          El("div", { className: "flex items-center gap-2 flex-shrink-0" }, [
+            renderHostStarRating(item.averageRating),
+            El("span", { className: "text-sm font-bold text-gray-700", textContent: Number(item.averageRating || 0).toFixed(1) }),
+            renderHostReviewsTrendArrow(listingTrend.direction, listingTrend.delta)
+          ])
+        ])
+      );
+    });
+    listingBlock.appendChild(listingTable);
+    section.appendChild(listingBlock);
+  }
+
+  /* ---- Recent Reviews ---- */
+  if (recentReviews.length > 0) {
+    var reviewsBlock = El("div", { className: "bg-white rounded-xl border border-gray-100 shadow-sm" }, [
+      El("div", { className: "p-4 border-b border-gray-100" }, [
+        El("h3", { className: "text-sm font-bold text-gray-700", textContent: "Recent Reviews" })
+      ])
+    ]);
+    var reviewsList = El("div", { className: "divide-y divide-gray-100" });
+    recentReviews.forEach(function (rv) {
+      var reviewCard = El("div", { className: "p-4 space-y-2" });
+      var headerLine = El("div", { className: "flex items-center justify-between gap-2" }, [
+        El("div", { className: "flex items-center gap-2 min-w-0" }, [
+          El("span", { className: "font-medium text-sm text-gray-900", textContent: rv.authorName || "Guest" }),
+          renderHostStarRating(rv.rating),
+          El("span", { className: "text-xs text-gray-400", textContent: rv.experienceTitle || "" })
+        ])
+      ]);
+      var dateStr = "";
+      if (rv.date) {
+        try { dateStr = new Date(rv.date).toLocaleDateString("en-AU", { year: "numeric", month: "short", day: "numeric", timeZone: "Australia/Melbourne" }); } catch (_) { dateStr = ""; }
+      }
+      if (dateStr) {
+        headerLine.appendChild(El("span", { className: "text-xs text-gray-400 flex-shrink-0", textContent: dateStr }));
+      }
+      reviewCard.appendChild(headerLine);
+
+      if (rv.comment) {
+        reviewCard.appendChild(El("p", { className: "text-sm text-gray-700", textContent: rv.comment }));
+      }
+
+      // Host reply block
+      var hostReply = String(rv.hostReply || "").trim();
+      if (hostReply) {
+        var replyBlock = El("div", { className: "mt-2 pl-4 border-l-2 border-orange-200 bg-orange-50/50 rounded-r-lg p-3" }, [
+          El("div", { className: "flex items-center justify-between gap-2 mb-1" }, [
+            El("span", { className: "text-xs font-bold text-orange-700 uppercase tracking-wide", textContent: "Your Reply" })
+          ]),
+          El("p", { className: "text-sm text-slate-700", textContent: hostReply })
+        ]);
+        // Edit button if within 24 hours
+        if (rv.hostReplyAt) {
+          var editableUntil = new Date(new Date(rv.hostReplyAt).getTime() + 24 * 60 * 60 * 1000);
+          if (new Date() < editableUntil) {
+            var editBtn = El("button", {
+              type: "button",
+              className: "text-xs text-orange-600 hover:text-orange-800 font-medium mt-1",
+              "data-action": "host-reply-edit",
+              "data-review-id": rv._id || "",
+              "data-reply-text": hostReply,
+              "data-reply-at": rv.hostReplyAt || "",
+              textContent: "Edit reply"
+            });
+            replyBlock.firstChild.appendChild(editBtn);
+          }
+        }
+        reviewCard.appendChild(replyBlock);
+      } else {
+        // Reply button
+        var replyBtn = El("button", {
+          type: "button",
+          className: "text-xs text-orange-600 hover:text-orange-800 font-medium flex items-center gap-1",
+          "data-action": "host-reply",
+          "data-review-id": rv._id || "",
+          textContent: "Reply"
+        });
+        reviewCard.appendChild(replyBtn);
+      }
+
+      reviewsList.appendChild(reviewCard);
+    });
+    reviewsBlock.appendChild(reviewsList);
+    section.appendChild(reviewsBlock);
+  }
+
+  /* ---- Recent Comments ---- */
+  if (recentComments.length > 0) {
+    var commentsBlock = El("div", { className: "bg-white rounded-xl border border-gray-100 shadow-sm" }, [
+      El("div", { className: "p-4 border-b border-gray-100" }, [
+        El("h3", { className: "text-sm font-bold text-gray-700", textContent: "Recent Comments" })
+      ])
+    ]);
+    var commentsList = El("div", { className: "divide-y divide-gray-100" });
+    recentComments.forEach(function (cm) {
+      var cmDateStr = "";
+      if (cm.createdAt) {
+        try { cmDateStr = new Date(cm.createdAt).toLocaleDateString("en-AU", { year: "numeric", month: "short", day: "numeric", timeZone: "Australia/Melbourne" }); } catch (_) { cmDateStr = ""; }
+      }
+      commentsList.appendChild(
+        El("div", { className: "p-4" }, [
+          El("div", { className: "flex items-center justify-between gap-2 mb-1" }, [
+            El("div", { className: "flex items-center gap-2 min-w-0" }, [
+              El("span", { className: "font-medium text-sm text-gray-900", textContent: cm.authorName || "Guest" }),
+              El("span", { className: "text-xs text-gray-400", textContent: cm.experienceTitle || "" })
+            ]),
+            cmDateStr ? El("span", { className: "text-xs text-gray-400 flex-shrink-0", textContent: cmDateStr }) : El("span", { textContent: "" })
+          ]),
+          El("p", { className: "text-sm text-gray-700", textContent: cm.text || "" })
+        ])
+      );
+    });
+    commentsBlock.appendChild(commentsList);
+    section.appendChild(commentsBlock);
+  } else if (totalReviews > 0) {
+    section.appendChild(
+      El("div", { className: "bg-white rounded-xl border border-gray-100 p-4 shadow-sm text-sm text-gray-500" }, [
+        El("h3", { className: "text-sm font-bold text-gray-700 mb-1", textContent: "Recent Comments" }),
+        El("p", { textContent: "No comments yet." })
+      ])
+    );
+  }
+
+  /* ---- Improvement Hints ---- */
+  if (hints.length > 0) {
+    var hintsBlock = El("div", { className: "bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3" }, [
+      El("h3", { className: "text-sm font-bold text-gray-700", textContent: "Insights & Opportunities" })
+    ]);
+    hints.forEach(function (h) {
+      var severityClass = "bg-blue-50 text-blue-700 border-blue-200";
+      var iconClass = "fas fa-info-circle text-blue-500";
+      if (h.severity === "attention") {
+        severityClass = "bg-amber-50 text-amber-700 border-amber-200";
+        iconClass = "fas fa-exclamation-circle text-amber-500";
+      } else if (h.severity === "positive") {
+        severityClass = "bg-green-50 text-green-700 border-green-200";
+        iconClass = "fas fa-check-circle text-green-500";
+      }
+      hintsBlock.appendChild(
+        El("div", { className: "flex items-start gap-3 rounded-lg border p-3 " + severityClass }, [
+          El("i", { className: iconClass + " mt-0.5" }),
+          El("p", { className: "text-sm", textContent: h.message || "" })
+        ])
+      );
+    });
+    section.appendChild(hintsBlock);
+  }
+
+  return section;
+}
+
 function renderHostingSectionContent() {
   const section = hostDashboardState.section || "overview";
   const listingsState = hostDashboardState.listings || {};
@@ -1842,6 +2326,17 @@ function renderHostingSectionContent() {
     if (verificationState.status === "loading") return renderHostSourceLoading("Loading verification and payout status...");
     if (verificationState.status === "error") return renderHostSourceError("Verification and payout unavailable", verificationState.message, "Retry Verification");
     return renderHostVerificationSection(verificationState.data);
+  }
+
+  if (section === "reviews") {
+    var reviewsState = hostDashboardState.reviews || {};
+    if (reviewsState.status === "loading") return renderHostSourceLoading("Loading reviews and performance data...");
+    if (reviewsState.status === "error") return renderHostSourceError("Reviews unavailable", reviewsState.message, "Retry Reviews");
+    if (reviewsState.status === "idle") {
+      loadHostReviewsSummary();
+      return renderHostSourceLoading("Loading reviews and performance data...");
+    }
+    return renderHostReviewsSection(reviewsState.data);
   }
 
   return renderHostOverviewSection();
@@ -2047,6 +2542,11 @@ function closeReviewModal() {
     reviewWindowHintEl.textContent = "";
     reviewWindowHintEl.classList.add("hidden");
   }
+  var hostReplyContainer = document.getElementById("review-host-reply-container");
+  if (hostReplyContainer) {
+    hostReplyContainer.textContent = "";
+    hostReplyContainer.classList.add("hidden");
+  }
   if (reviewModal) reviewModal.classList.add("hidden");
 }
 
@@ -2106,6 +2606,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (action === "connection-request-action") {
       handleConnectionRequestAction(requestId, requestStatus);
     }
+    if (action === "host-reply") {
+      var reviewId = btn.getAttribute("data-review-id") || "";
+      openHostReplyModal(reviewId, "", "");
+    }
+    if (action === "host-reply-edit") {
+      var reviewId2 = btn.getAttribute("data-review-id") || "";
+      var replyText = btn.getAttribute("data-reply-text") || "";
+      var replyAt = btn.getAttribute("data-reply-at") || "";
+      openHostReplyModal(reviewId2, replyText, replyAt);
+    }
   });
 
   // Close guest modal
@@ -2117,12 +2627,27 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (cancelReviewCloseBtn) cancelReviewCloseBtn.addEventListener("click", closeCancelReviewModal);
   if (cancelReviewConfirmBtn) cancelReviewConfirmBtn.addEventListener("click", handleCancelReviewConfirm);
 
+  // Host reply modal handlers
+  var hostReplyForm = document.getElementById("host-reply-form");
+  var hostReplyCancelBtn = document.getElementById("host-reply-cancel-btn");
+  var hostReplyTextInput = document.getElementById("host-reply-text");
+  var hostReplyCharCount = document.getElementById("host-reply-char-count");
+  if (hostReplyForm) hostReplyForm.addEventListener("submit", submitHostReply);
+  if (hostReplyCancelBtn) hostReplyCancelBtn.addEventListener("click", closeHostReplyModal);
+  if (hostReplyTextInput && hostReplyCharCount) {
+    hostReplyTextInput.addEventListener("input", function () {
+      hostReplyCharCount.textContent = String((hostReplyTextInput.value || "").length) + " / 800 characters";
+    });
+  }
+
   // Click outside to close
+  var hostReplyModalEl = document.getElementById("host-reply-modal");
   document.addEventListener("click", (e) => {
     if (guestModal && !guestModal.classList.contains("hidden") && e.target === guestModal) closeGuestModal();
     if (reviewModal && !reviewModal.classList.contains("hidden") && e.target === reviewModal) closeReviewModal();
     if (complaintModal && !complaintModal.classList.contains("hidden") && e.target === complaintModal) closeComplaintModal();
     if (cancelReviewModal && !cancelReviewModal.classList.contains("hidden") && e.target === cancelReviewModal) closeCancelReviewModal();
+    if (hostReplyModalEl && !hostReplyModalEl.classList.contains("hidden") && e.target === hostReplyModalEl) closeHostReplyModal();
   });
 
   // ESC to close
@@ -2132,6 +2657,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     closeReviewModal();
     closeComplaintModal();
     closeCancelReviewModal();
+    closeHostReplyModal();
   });
 
   // Default load
