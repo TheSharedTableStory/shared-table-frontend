@@ -505,11 +505,19 @@ html[data-auth-pending="1"] body { visibility: hidden; }
   border: 1px solid rgb(203 213 225);
 }
 .tsts-btn-secondary:hover { background-color: rgb(248 250 252); }
+.tsts-btn-secondary:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgb(30 41 59);
+}
 
 /* INDICATOR — dark ink for interactive selection states ONLY (chips/tabs/selected) */
 .tsts-indicator-ink {
   background-color: rgb(31 41 51);
   color: #fff;
+}
+.tsts-indicator-ink:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgb(31 41 51);
 }
 
 /* SURFACE — dark ink for structural backgrounds (cards, nav) — NOT interactive */
