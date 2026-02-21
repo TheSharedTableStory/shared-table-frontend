@@ -2,18 +2,53 @@
 # Render static sites require headers to be set via Dashboard > Headers.
 # This file documents the intended policy. Copy values into Render Dashboard.
 #
-# Path                  | Header Name                  | Value
-# ──────────────────────┼──────────────────────────────┼──────────────────────────────
-# /*                    | X-Content-Type-Options       | nosniff
-# /*                    | X-Frame-Options              | DENY
-# /*                    | Referrer-Policy              | strict-origin-when-cross-origin
-# /*                    | Permissions-Policy           | camera=(), microphone=(), geolocation=()
-# /*.html               | Cache-Control                | no-cache
-# /*.html               | Content-Security-Policy      | (see below)
-# /*.html               | Strict-Transport-Security    | max-age=31536000; includeSubDomains
-# /css/*                | Cache-Control                | public, max-age=31536000, immutable
-# /js/*                 | Cache-Control                | public, max-age=31536000, immutable
-# /assets/*             | Cache-Control                | public, max-age=31536000, immutable
+# 13 entries total. Security baseline is global (/*), not per-HTML.
 #
-# CSP value (single line):
-# default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'
+# ═══════════════════════════════════════════════════════════════════════════
+# GLOBAL SECURITY BASELINE (/*) — 7 entries
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Path | Header Name                    | Value
+# ─────┼────────────────────────────────┼──────────────────────────────────
+# /*   | X-Content-Type-Options         | nosniff
+# /*   | X-Frame-Options                | DENY
+# /*   | Referrer-Policy                | strict-origin-when-cross-origin
+# /*   | Permissions-Policy             | camera=(), microphone=(), geolocation=()
+# /*   | Cross-Origin-Opener-Policy     | same-origin
+# /*   | Cross-Origin-Resource-Policy   | same-origin
+# /*   | Strict-Transport-Security      | max-age=31536000; includeSubDomains; preload
+#
+# ═══════════════════════════════════════════════════════════════════════════
+# GLOBAL CSP (/*) — 1 entry
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Path | Header Name                    | Value (single line)
+# ─────┼────────────────────────────────┼──────────────────────────────────
+# /*   | Content-Security-Policy        | default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'
+#
+# ═══════════════════════════════════════════════════════════════════════════
+# HTML CACHE (/*.html) — 1 entry
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Path    | Header Name   | Value
+# ────────┼───────────────┼──────────────────────────────────
+# /*.html | Cache-Control | no-store
+#
+# ═══════════════════════════════════════════════════════════════════════════
+# STATIC ASSET CACHE — 3 entries (CSS + JS + assets)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Note: /vendor/* also needs long-cache if Render supports it.
+#
+# Path     | Header Name   | Value
+# ─────────┼───────────────┼──────────────────────────────────
+# /css/*   | Cache-Control | public, max-age=31536000, immutable
+# /js/*    | Cache-Control | public, max-age=31536000, immutable
+# /assets/*| Cache-Control | public, max-age=31536000, immutable
+#
+# ═══════════════════════════════════════════════════════════════════════════
+# WHAT'S ENFORCED VIA CODE (meta tags in all 25 HTML files):
+#   - Content-Security-Policy (meta http-equiv)
+#   - Referrer-Policy (meta name="referrer")
+# These meta tags provide defense-in-depth alongside the Dashboard headers.
+# ═══════════════════════════════════════════════════════════════════════════
