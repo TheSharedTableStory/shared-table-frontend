@@ -1449,7 +1449,7 @@ async function requestHostVerification() {
 }
 
 async function startStripeConnectStandard() {
-  const res = await window.authFetch("/api/stripe/connect/standard/start", { method: "GET" });
+  const res = await window.authFetch("/api/stripe/connect/standard/start", { method: "POST" });
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(String((payload && payload.message) || "Could not start Stripe onboarding."));

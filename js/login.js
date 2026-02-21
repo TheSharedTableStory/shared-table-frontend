@@ -46,7 +46,8 @@ async function handleForgotPassword(e) {
             showModal("Reset Password", errMsg, "error");
             return;
         }
-        const msg = (data && data.message) ? String(data.message) : "If an account exists, you will receive instructions.";
+        const inner = (data && data.data && typeof data.data === "object") ? data.data : data;
+        const msg = (inner && inner.message) ? String(inner.message) : "If an account exists, you will receive instructions.";
 
         // Always show privacy-safe message on 2xx; backend is intentionally non-enumerating.
         showModal("Reset Password", msg, "success");
