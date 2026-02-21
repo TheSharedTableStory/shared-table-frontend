@@ -36,9 +36,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         const res = await window.authFetch(`/api/users/${userId}/profile`, { method: "GET" });
-        const data = await res.json().catch(() => null);
+        const profileRaw = await res.json().catch(() => null);
         if (!res.ok) throw new Error("Host not found");
-        renderProfile(data);
+        const profileData = (profileRaw && profileRaw.data) ? profileRaw.data : profileRaw;
+        renderProfile(profileData);
     } catch (err) {
         showError();
     }

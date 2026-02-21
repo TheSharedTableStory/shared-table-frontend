@@ -289,14 +289,16 @@ async function inviteAdmin(email) {
 async function loadCoupons() {
   const res = await adminFetch("/api/admin/promo-codes", { method: "GET" });
   if (!res.ok) throw new Error("coupons");
-  const data = await res.json().catch(() => ({}));
+  const raw = await res.json().catch(() => ({}));
+  const data = (raw && raw.data) ? raw.data : raw;
   return Array.isArray(data.promos) ? data.promos : [];
 }
 
 async function loadReports() {
   const res = await adminFetch("/api/admin/reports?limit=100", { method: "GET" });
   if (!res.ok) throw new Error("reports");
-  const data = await res.json().catch(() => ({}));
+  const raw = await res.json().catch(() => ({}));
+  const data = (raw && raw.data) ? raw.data : raw;
   return Array.isArray(data.items) ? data.items : [];
 }
 
@@ -316,7 +318,8 @@ async function updateReport(id, payload) {
 async function loadPrivateBookingRequests() {
   const res = await adminFetch("/api/admin/private-booking-requests?limit=100", { method: "GET" });
   if (!res.ok) throw new Error("private_requests");
-  const data = await res.json().catch(() => ({}));
+  const raw = await res.json().catch(() => ({}));
+  const data = (raw && raw.data) ? raw.data : raw;
   return Array.isArray(data.requests) ? data.requests : [];
 }
 

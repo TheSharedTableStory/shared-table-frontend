@@ -175,8 +175,9 @@
         })
       });
 
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error((data && data.message) ? data.message : "Connect failed");
+      const connRaw = await res.json().catch(() => ({}));
+      const data = (connRaw && connRaw.data) ? connRaw.data : connRaw;
+      if (!res.ok) throw new Error((data && data.message) ? data.message : ((connRaw && connRaw.message) ? connRaw.message : "Connect failed"));
 
       const st = String(data.status || "");
       if (st) setText(connectStatusEl, "Status: " + st);

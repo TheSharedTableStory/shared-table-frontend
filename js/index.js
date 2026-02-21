@@ -214,7 +214,8 @@ async function loadHomeCurations() {
     if (!res || !res.ok) return;
 
     const payload = await res.json();
-    const collections = payload && Array.isArray(payload.collections) ? payload.collections : [];
+    const curData = (payload && payload.data) ? payload.data : payload;
+    const collections = curData && Array.isArray(curData.collections) ? curData.collections : [];
     if (collections.length <= 0) return;
 
     section.classList.remove("hidden");

@@ -961,9 +961,10 @@ async function uploadComplaintEvidence(file) {
     method: "POST",
     body: fd
   });
-  const out = await up.json().catch(() => ({}));
+  const outRaw = await up.json().catch(() => ({}));
+  const out = (outRaw && outRaw.data) ? outRaw.data : outRaw;
   if (!up.ok) {
-    const msg = String((out && out.message) || "Evidence upload failed.");
+    const msg = String((out && out.message) || (outRaw && outRaw.message) || "Evidence upload failed.");
     throw new Error(msg);
   }
   const images = (out && Array.isArray(out.images)) ? out.images : [];

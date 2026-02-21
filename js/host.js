@@ -1060,8 +1060,9 @@
     try {
       var res = await window.authFetch("/api/experiences/" + encodeURIComponent(id));
       if (!res.ok) { if (window.tstsNotify) window.tstsNotify("Could not load listing.", "error"); return; }
-      var exp = await res.json().catch(function () { return null; });
-      if (!exp) { if (window.tstsNotify) window.tstsNotify("Could not load listing.", "error"); return; }
+      var expRaw = await res.json().catch(function () { return null; });
+      if (!expRaw) { if (window.tstsNotify) window.tstsNotify("Could not load listing.", "error"); return; }
+      var exp = (expRaw && expRaw.data) ? expRaw.data : expRaw;
       isEditing = true;
       editId = id;
       existingImageUrl = exp.imageUrl || "";

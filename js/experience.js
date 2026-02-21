@@ -727,9 +727,10 @@
       try {
         const res = await af("/api/bookmarks/" + encodeURIComponent(experienceId), { method: "POST" });
         if (res.status === 401 || res.status === 403) return redirectToLogin();
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error((data && data.message) ? data.message : "Failed");
-        const msg = String((data && data.message) || "").toLowerCase();
+        const bmRaw = await res.json().catch(() => ({}));
+        const bmData = (bmRaw && bmRaw.data) ? bmRaw.data : bmRaw;
+        if (!res.ok) throw new Error((bmData && bmData.message) ? bmData.message : ((bmRaw && bmRaw.message) ? bmRaw.message : "Failed"));
+        const msg = String((bmData && bmData.message) || (bmRaw && bmRaw.message) || "").toLowerCase();
         if (msg.includes("removed")) setBookmarkUI(false);
         else if (msg.includes("added")) setBookmarkUI(true);
       } catch (e) {
@@ -753,17 +754,19 @@
         likeBtn.addEventListener("click", () => redirectToLogin());
         return;
       }
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) setLikeUI(!!data.liked, data.count);
+      const likeRaw = await res.json().catch(() => ({}));
+      const likeData = (likeRaw && likeRaw.data) ? likeRaw.data : likeRaw;
+      if (res.ok) setLikeUI(!!likeData.liked, likeData.count);
     } catch (_) {}
 
     likeBtn.addEventListener("click", async () => {
       try {
         const res = await af("/api/experiences/" + encodeURIComponent(experienceId) + "/like", { method: "POST" });
         if (res.status === 401 || res.status === 403) return redirectToLogin();
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error((data && data.message) ? data.message : "Like failed");
-        setLikeUI(!!data.liked, data.count);
+        const likePostRaw = await res.json().catch(() => ({}));
+        const likePostData = (likePostRaw && likePostRaw.data) ? likePostRaw.data : likePostRaw;
+        if (!res.ok) throw new Error((likePostData && likePostData.message) ? likePostData.message : "Like failed");
+        setLikeUI(!!likePostData.liked, likePostData.count);
       } catch (e) {
         window.tstsNotify((e && e.message) ? e.message : "Like failed", "error");
       }
@@ -1319,10 +1322,11 @@
           return;
         }
 
-        const data = await res.json().catch(() => ({}));
+        const bookRaw = await res.json().catch(() => ({}));
+        const data = (bookRaw && bookRaw.data) ? bookRaw.data : bookRaw;
 
         if (!res.ok) {
-          let msg = (data && data.message) ? String(data.message) : "Booking failed";
+          let msg = (data && data.message) ? String(data.message) : ((bookRaw && bookRaw.message) ? String(bookRaw.message) : "Booking failed");
           if (isPrivateBooking && data && data.nextPrivateAvailable && data.nextPrivateAvailable.bookingDate && data.nextPrivateAvailable.timeSlot) {
             msg += " Next available private slot: " + fmtDate(data.nextPrivateAvailable.bookingDate) + " (" + String(data.nextPrivateAvailable.timeSlot) + ").";
           }
