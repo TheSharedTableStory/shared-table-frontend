@@ -2079,9 +2079,17 @@ async function viewEntryCode(bookingId) {
 }
 function closeEntryPass() { if (entryPassOverlay) entryPassOverlay.classList.add("hidden"); }
 
-// Make close functions globally accessible for onclick handlers
+// Make close functions globally accessible
 window.closeCheckinModal = closeCheckinModal;
 window.closeEntryPass = closeEntryPass;
+
+// Bind close buttons (replaces inline onclick handlers removed from HTML)
+var _cCloseX = document.getElementById("checkin-close-x");
+if (_cCloseX) _cCloseX.addEventListener("click", closeCheckinModal);
+var _cCancelBtn = document.getElementById("checkin-cancel-btn");
+if (_cCancelBtn) _cCancelBtn.addEventListener("click", closeCheckinModal);
+var _epCloseBtn = document.getElementById("entry-pass-close-btn");
+if (_epCloseBtn) _epCloseBtn.addEventListener("click", closeEntryPass);
 
 async function submitHostReply(e) {
   e.preventDefault();

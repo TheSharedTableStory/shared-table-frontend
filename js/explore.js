@@ -428,8 +428,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const res = await window.authFetch(`/api/experiences?${params.toString()}`, { method: "GET" });
             if (!res.ok) throw new Error("API Error");
             const data = await res.json().catch(() => null);
+            const unwrapped = window.tstsUnwrap ? window.tstsUnwrap(data) : data;
 
-            const list = Array.isArray(data) ? data : (data && Array.isArray(data.experiences) ? data.experiences : []);
+            const list = Array.isArray(unwrapped) ? unwrapped : (unwrapped && Array.isArray(unwrapped.experiences) ? unwrapped.experiences : []);
             const privateFiltered = filterState.privateBookingOnly ? list.filter(isPrivateBookingAvailable) : list;
             const out = window.TSTS_DEALS_UI_MODE ? privateFiltered.filter(tstsIsDeal) : privateFiltered;
             if (window.TSTS_DEALS_UI_MODE) tstsSetDealsBanner("");

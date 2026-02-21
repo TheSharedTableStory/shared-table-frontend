@@ -69,8 +69,9 @@
       const res = await window.authFetch("/api/my/bookmarks/details", { method: "GET" });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error("load_failed");
+      const unwrapped = window.tstsUnwrap ? window.tstsUnwrap(data) : data;
 
-      const list = Array.isArray(data) ? data : (data && Array.isArray(data.experiences) ? data.experiences : []);
+      const list = Array.isArray(unwrapped) ? unwrapped : (unwrapped && Array.isArray(unwrapped.experiences) ? unwrapped.experiences : []);
 
       if (!gridEl) return;
       gridEl.textContent = "";
