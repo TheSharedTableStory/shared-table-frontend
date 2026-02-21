@@ -21,17 +21,21 @@
 }
 
 .help-center .help-center-hub-tile {
-  min-height: 90px;
-  transition: border-color 160ms ease, background-color 160ms ease;
+  min-height: 220px;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.1);
+  transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
 .help-center .help-center-hub-tile:hover {
-  border-color: rgba(148, 163, 184, 0.65);
+  border-color: rgba(148, 163, 184, 0.7);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 36px rgba(15, 23, 42, 0.14);
 }
 
 .help-center .help-center-hub-tile[data-expanded="true"] {
   border-color: rgba(234, 88, 12, 0.45);
-  background-color: #fff;
+  background-color: #fffdfb;
+  box-shadow: 0 22px 40px rgba(15, 23, 42, 0.16);
 }
 
 .help-center .help-center-chevron {
@@ -62,10 +66,15 @@
 
   .help-center .help-center-hub-tile--wide {
     grid-column: 1 / -1;
+    min-height: 210px;
   }
 }
 
 @media (max-width: 768px) {
+  .help-center .help-center-hub-tile {
+    min-height: 170px;
+  }
+
   .help-center .help-center-sticky-search {
     position: static;
     top: auto;
