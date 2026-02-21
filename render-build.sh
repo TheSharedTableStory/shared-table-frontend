@@ -49,6 +49,10 @@ PUBLIC_FILES=(
   "experience.html"
   "explore.html"
   "feed.html"
+  "help-center.html"
+  "help-guest.html"
+  "help-host.html"
+  "help-platform.html"
   "host.html"
   "host-terms.html"
   "index.html"
@@ -73,6 +77,7 @@ PUBLIC_FILES=(
 PUBLIC_DIRS=(
   "assets"
   "css"
+  "data"
   "js"
   "settings"
   "vendor"
