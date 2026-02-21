@@ -432,9 +432,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const list = Array.isArray(unwrapped) ? unwrapped : (unwrapped && Array.isArray(unwrapped.experiences) ? unwrapped.experiences : []);
             const privateFiltered = filterState.privateBookingOnly ? list.filter(isPrivateBookingAvailable) : list;
-            const out = window.TSTS_DEALS_UI_MODE ? privateFiltered.filter(tstsIsDeal) : privateFiltered;
-            if (window.TSTS_DEALS_UI_MODE) tstsSetDealsBanner("");
-            renderExperiences(out);
+
+            if (window.TSTS_DEALS_UI_MODE) {
+                const deals = privateFiltered.filter(tstsIsDeal);
+                if (deals.length > 0) {
+                    renderExperiences(deals);
+                } else {
+                    // No deals available — show banner then fall back to all experiences
+                    renderDealsEmptyFallback(privateFiltered);
+                }
+            } else {
+                renderExperiences(privateFiltered);
+            }
         } catch (err) {
             experiencesGrid.classList.add("hidden");
             noResultsEl.classList.add("hidden");
@@ -494,8 +503,32 @@ document.addEventListener("DOMContentLoaded", () => {
         fetchExperiences();
     };
 
+    // === DEALS EMPTY FALLBACK ===
+    function renderDealsEmptyFallback(allExperiences) {
+        const El = window.tstsEl;
+        experiencesGrid.textContent = "";
+        experiencesGrid.classList.remove("hidden");
+        noResultsEl.classList.add("hidden");
+        if (loadErrorEl) loadErrorEl.classList.add("hidden");
+
+        // Banner: no deals right now
+        var banner = El("div", { className: "col-span-full text-center py-8 mb-2" }, [
+            El("div", { className: "w-14 h-14 mx-auto mb-3 rounded-full bg-orange-50 flex items-center justify-center text-orange-600" }, [
+                El("i", { className: "fas fa-tags text-xl" })
+            ]),
+            El("h3", { className: "text-lg font-bold text-gray-900 mb-1", textContent: "No deals available right now" }),
+            El("p", { className: "text-sm text-gray-500", textContent: "Check back soon — hosts add deals regularly. Here are all experiences you can explore:" })
+        ]);
+        experiencesGrid.appendChild(banner);
+
+        // Render all experiences below the banner
+        if (allExperiences && allExperiences.length > 0) {
+            renderExperienceCards(allExperiences);
+        }
+    }
+
     // === RENDER LOGIC ===
-    const renderExperiences = (experiences) => {
+    const renderExperienceCards = (experiences) => {
         const El = window.tstsEl;
         const safeUrl = window.tstsSafeUrl;
         const fallbackImg = "/assets/experience-default.jpg";
@@ -510,17 +543,6 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             return node;
         };
-
-        experiencesGrid.textContent = "";
-        if (!experiences || !experiences.length) {
-            experiencesGrid.classList.add("hidden");
-            noResultsEl.classList.remove("hidden");
-            if (loadErrorEl) loadErrorEl.classList.add("hidden");
-            return;
-        }
-        experiencesGrid.classList.remove("hidden");
-        noResultsEl.classList.add("hidden");
-        if (loadErrorEl) loadErrorEl.classList.add("hidden");
 
         experiences.forEach(function(exp) {
             const imgUrl = safeUrl(exp.imageUrl || (exp.images && exp.images[0]), fallbackImg);
@@ -638,6 +660,20 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             experiencesGrid.appendChild(card);
         });
+    };
+
+    const renderExperiences = (experiences) => {
+        experiencesGrid.textContent = "";
+        if (!experiences || !experiences.length) {
+            experiencesGrid.classList.add("hidden");
+            noResultsEl.classList.remove("hidden");
+            if (loadErrorEl) loadErrorEl.classList.add("hidden");
+            return;
+        }
+        experiencesGrid.classList.remove("hidden");
+        noResultsEl.classList.add("hidden");
+        if (loadErrorEl) loadErrorEl.classList.add("hidden");
+        renderExperienceCards(experiences);
     };
 
     // === HELPER: ACTIVE CHIPS ===

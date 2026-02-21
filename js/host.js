@@ -121,15 +121,19 @@
         redirectToLogin();
         return false;
       }
+
+      // If no local session hint at all, skip the API call and redirect immediately.
+      var hasHint = false;
+      try { hasHint = !!localStorage.getItem("tsts_user"); } catch (_) {}
+      if (!hasHint) {
+        redirectToLogin();
+        return false;
+      }
+
       const sess = await window.tstsGetSession({ force: true });
       if (!sess || !sess.ok || !sess.user) {
-        // Fail-closed for protected pages: treat auth probes that are effectively "not authenticated"
-        // (including local rate-limit 429 during UAT) as redirect-to-login.
-        if (sess && (sess.status === 401 || sess.status === 403 || sess.status === 429)) {
-          redirectToLogin();
-          return false;
-        }
-        showNotice("error", "Unable to verify your session. Please refresh and try again.");
+        // Fail-closed: any auth failure redirects to login.
+        redirectToLogin();
         return false;
       }
 

@@ -415,7 +415,9 @@ html[data-auth-pending="1"] body { visibility: hidden; }
    ========================================================================= */
 .tsts-carousel { scroll-snap-type: x mandatory; scroll-padding-left: 1rem; }
 .tsts-carousel > * { scroll-snap-align: start; }
-.tsts-home-hero { height: min(78vh, 46rem); }
+.tsts-home-hero { height: min(78vh, 46rem); overflow: hidden; }
+.tsts-home-hero > img { transition: transform 700ms ease; }
+.tsts-home-hero:hover > img { transform: scale(1.05); }
 .tsts-ways-section { padding-top: 5rem; padding-bottom: 5rem; }
 .tsts-ways-heading { margin-bottom: 3rem; }
 
