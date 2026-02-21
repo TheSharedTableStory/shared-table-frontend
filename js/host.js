@@ -714,6 +714,14 @@
   syncVerifiedUi();
   syncPricingTransparency();
 
+  // DATE-GUARD-001: Prevent past-date selection (local timezone)
+  (function () {
+    var _d = new Date();
+    var _today = new Date(_d.getTime() - _d.getTimezoneOffset() * 60000).toISOString().split("T")[0];
+    if (dateInput) dateInput.min = _today;
+    if (endDateInput) endDateInput.min = _today;
+  })();
+
   if (form) {
     form.addEventListener("submit", async function (e) {
       e.preventDefault();

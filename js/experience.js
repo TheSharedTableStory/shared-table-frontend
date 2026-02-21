@@ -487,7 +487,8 @@
     hydrateTimeSlots(exp);
 
     if (dateInput) {
-      const today = new Date().toISOString().slice(0, 10);
+      const _d = new Date();
+      const today = new Date(_d.getTime() - _d.getTimezoneOffset() * 60000).toISOString().split("T")[0];
       dateInput.min = today;
       if (!dateInput.value) dateInput.value = today;
     }

@@ -1081,6 +1081,19 @@ function injectNavbar() {
   const root = document.getElementById("navbar-placeholder");
   if (!root) return;
 
+  // A11Y: Skip-to-main link (first focusable element on every page)
+  if (!document.getElementById("skip-to-main")) {
+    var mainEl = document.querySelector("main");
+    if (mainEl && !mainEl.id) mainEl.id = "main";
+    var skipTarget = (mainEl && mainEl.id) ? mainEl.id : "main";
+    var skipLink = tstsEl("a", {
+      id: "skip-to-main",
+      href: "#" + skipTarget,
+      className: "sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg focus:text-orange-600 focus:font-bold"
+    }, "Skip to main content");
+    document.body.insertBefore(skipLink, document.body.firstChild);
+  }
+
   const logoBadge = tstsEl("span", { className: "inline-flex items-center justify-center h-9 w-9 rounded-full bg-orange-50 border border-orange-100" }, [
     tstsEl("img", { src: "/assets/logo-mark.png", alt: "The Shared Table Story", className: "h-7 w-7 object-contain" })
   ]);
@@ -1318,7 +1331,7 @@ async function applyAuthStateToNav(opts) {
     menuBtn.setAttribute("aria-expanded", "false");
 
     const menuLinks = [
-      { href: "my-bookings.html", text: "Dashboard" },
+      { href: "my-bookings.html", text: "My Bookings" },
       { href: "profile.html", text: "My Profile" },
       { href: "bookmarks.html", text: "Bookmarks" },
       { href: "connections.html", text: "Connections" },
@@ -1345,7 +1358,7 @@ async function applyAuthStateToNav(opts) {
   if (mobileAuth) {
     mobileAuth.textContent = "";
     const mobileLinks = [
-      { href: "my-bookings.html", text: "Dashboard" },
+      { href: "my-bookings.html", text: "My Bookings" },
       { href: "profile.html", text: "My Profile" },
       { href: "settings-data.html", text: "Data & Privacy" }
     ];

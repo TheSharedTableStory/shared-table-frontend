@@ -427,7 +427,7 @@ async function loadTrips() {
     const data = await res.json().catch(() => null);
 
     if (!res.ok) {
-      setError((data && data.message) || "Failed to load experiences.");
+      setError((data && data.message) || "Failed to load bookings.");
       return;
     }
 
@@ -441,7 +441,7 @@ async function loadTrips() {
       contentEl.appendChild(
         El("div", { className: "text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm" }, [
           El("div", { className: "text-5xl mb-4", textContent: "🌏" }),
-          El("h3", { className: "text-xl font-bold text-gray-900 mb-2", textContent: "No experiences yet" }),
+          El("h3", { className: "text-xl font-bold text-gray-900 mb-2", textContent: "No bookings yet" }),
           El("p", { className: "text-gray-500 mb-6", textContent: "You haven't booked any experiences yet." }),
           El("a", { href: "explore.html", className: "inline-block bg-orange-600 text-white px-8 py-3 rounded-full font-bold shadow hover:bg-orange-700 transition", textContent: "Find an Adventure" })
         ])
@@ -456,7 +456,7 @@ async function loadTrips() {
     data.forEach(function(b) { contentEl.appendChild(renderTripCard(b)); });
     focusDashboardDeepLinkPanel();
   } catch (_) {
-    setError("Failed to load experiences.");
+    setError("Failed to load bookings.");
   }
 }
 
@@ -654,7 +654,7 @@ function openReviewModal(bookingId, expId) {
       reviewWindowHintEl.textContent = "";
       reviewWindowHintEl.classList.add("hidden");
     }
-    if (reviewModal) reviewModal.classList.remove("hidden");
+    _openModal(reviewModal);
 
     try {
       const cached = getGuestBookingById(bookingId);
@@ -827,7 +827,7 @@ async function loadActivePolicySnapshot() {
 }
 
 function closeCancelReviewModal() {
-  if (cancelReviewModal) cancelReviewModal.classList.add("hidden");
+  _closeModal(cancelReviewModal);
 }
 
 async function openCancelReviewModalById(bookingId) {
@@ -860,7 +860,7 @@ async function openCancelReviewModalById(bookingId) {
     cancelReviewConfirmBtn.textContent = preview.canCancel ? "Cancel Booking" : "Cancellation Unavailable";
   }
 
-  if (cancelReviewModal) cancelReviewModal.classList.remove("hidden");
+  _openModal(cancelReviewModal);
 }
 
 async function handleCancelReviewConfirm() {
@@ -905,11 +905,11 @@ function openComplaintModalById(bookingId) {
     setComplaintStatus("Window closes on " + fmtTripDate(endAt) + ".", "info");
   }
 
-  if (complaintModal) complaintModal.classList.remove("hidden");
+  _openModal(complaintModal);
 }
 
 function closeComplaintModal() {
-  if (complaintModal) complaintModal.classList.add("hidden");
+  _closeModal(complaintModal);
 }
 
 async function uploadComplaintEvidence(file) {
@@ -1919,12 +1919,12 @@ function openHostReplyModal(reviewId, existingReply, replyAt) {
     if (windowHint) { windowHint.textContent = ""; windowHint.classList.add("hidden"); }
   }
 
-  modal.classList.remove("hidden");
+  _openModal(modal);
 }
 
 function closeHostReplyModal() {
   var modal = document.getElementById("host-reply-modal");
-  if (modal) modal.classList.add("hidden");
+  _closeModal(modal);
   var textInput = document.getElementById("host-reply-text");
   if (textInput) { textInput.value = ""; textInput.disabled = false; }
   var errorEl = document.getElementById("host-reply-error");
@@ -2504,11 +2504,11 @@ function openGuestModalById(bookingId) {
     );
   }
 
-  if (guestModal) guestModal.classList.remove("hidden");
+  _openModal(guestModal);
 }
 
 function closeGuestModal() {
-  if (guestModal) guestModal.classList.add("hidden");
+  _closeModal(guestModal);
 }
 
 function closeReviewModal() {
@@ -2547,7 +2547,47 @@ function closeReviewModal() {
     hostReplyContainer.textContent = "";
     hostReplyContainer.classList.add("hidden");
   }
-  if (reviewModal) reviewModal.classList.add("hidden");
+  _closeModal(reviewModal);
+}
+
+/* ====================== A11Y: MODAL FOCUS TRAP ====================== */
+
+var _modalTrigger = null;
+var _FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function _openModal(modal) {
+  if (!modal) return;
+  _modalTrigger = document.activeElement;
+  modal.classList.remove("hidden");
+  var first = modal.querySelector(_FOCUSABLE);
+  if (first) first.focus();
+}
+
+function _closeModal(modal) {
+  if (!modal) return;
+  modal.classList.add("hidden");
+  if (_modalTrigger && typeof _modalTrigger.focus === "function") {
+    try { _modalTrigger.focus(); } catch (_) {}
+  }
+  _modalTrigger = null;
+}
+
+function _trapFocus(e) {
+  var hostReplyModalEl = document.getElementById("host-reply-modal");
+  var allModals = [guestModal, reviewModal, complaintModal, cancelReviewModal, hostReplyModalEl];
+  var modal = allModals.find(function(m) {
+    return m && !m.classList.contains("hidden");
+  });
+  if (!modal || e.key !== "Tab") return;
+  var focusable = Array.from(modal.querySelectorAll(_FOCUSABLE));
+  if (!focusable.length) return;
+  var first = focusable[0];
+  var last = focusable[focusable.length - 1];
+  if (e.shiftKey) {
+    if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+  } else {
+    if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
 }
 
 /* ====================== EVENT WIRING ====================== */
@@ -2650,14 +2690,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (hostReplyModalEl && !hostReplyModalEl.classList.contains("hidden") && e.target === hostReplyModalEl) closeHostReplyModal();
   });
 
-  // ESC to close
+  // ESC to close + Tab to trap focus in modals
   document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    closeGuestModal();
-    closeReviewModal();
-    closeComplaintModal();
-    closeCancelReviewModal();
-    closeHostReplyModal();
+    if (e.key === "Escape") {
+      closeGuestModal();
+      closeReviewModal();
+      closeComplaintModal();
+      closeCancelReviewModal();
+      closeHostReplyModal();
+      return;
+    }
+    _trapFocus(e);
   });
 
   // Default load

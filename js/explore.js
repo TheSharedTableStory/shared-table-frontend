@@ -680,6 +680,12 @@ document.addEventListener("DOMContentLoaded", () => {
     setFilterPanelOpen(false);
     refreshFilterUi();
 
+    // DATE-GUARD-001: Prevent past-date selection (local timezone)
+    if (elDate) {
+        var _d = new Date();
+        elDate.min = new Date(_d.getTime() - _d.getTimezoneOffset() * 60000).toISOString().split("T")[0];
+    }
+
     if (elFilterBtn) {
         elFilterBtn.addEventListener("click", () => {
             if (!elFilterPanel) return;
