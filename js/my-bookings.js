@@ -35,6 +35,31 @@ const cancelReviewNoteEl = document.getElementById("cancel-review-note");
 const cancelReviewCloseBtn = document.getElementById("cancel-review-close-btn");
 const cancelReviewConfirmBtn = document.getElementById("cancel-review-confirm-btn");
 
+// === Star rating widget ===
+const STAR_LABELS = { 1: "Terrible", 2: "Poor", 3: "Average", 4: "Good", 5: "Excellent" };
+const starContainer = document.getElementById("star-rating-container");
+const starRatingLabel = document.getElementById("star-rating-label");
+function syncStars(val) {
+  const v = parseInt(val, 10) || 5;
+  if (starContainer) {
+    starContainer.querySelectorAll(".star-btn").forEach(function (btn) {
+      const bv = parseInt(btn.getAttribute("data-value"), 10);
+      btn.className = btn.className.replace(/text-amber-400|text-gray-300/g, "").trim() + (bv <= v ? " text-amber-400" : " text-gray-300");
+    });
+  }
+  if (starRatingLabel) starRatingLabel.textContent = STAR_LABELS[v] || "";
+}
+if (starContainer) {
+  starContainer.addEventListener("click", function (e) {
+    var btn = e.target.closest(".star-btn");
+    if (!btn || starContainer.classList.contains("pointer-events-none")) return;
+    var v = btn.getAttribute("data-value");
+    var inp = document.getElementById("review-rating");
+    if (inp) inp.value = v;
+    syncStars(v);
+  });
+}
+
 let hostBookingsCache = []; // for modal lookup by booking id
 let guestBookingsCache = []; // for complaint modal lookup by booking id
 let activePolicySnapshot = null;
@@ -526,7 +551,7 @@ function renderTripCard(booking) {
     }
 
     const reviewBtn = El("button", {
-      className: "w-full md:w-auto px-5 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg shadow hover:bg-black transition flex items-center justify-center gap-2",
+      className: "w-full md:w-auto px-5 py-2 bg-tsts-ink text-white text-sm font-bold rounded-xl shadow hover:bg-slate-800 transition flex items-center justify-center gap-2",
       "data-action": "review", "data-booking-id": bookingId, "data-exp-id": expId
     }, [El("i", { className: reviewIcon }), " " + reviewLabel]);
 
@@ -636,6 +661,7 @@ function openReviewModal(bookingId, expId) {
     if (eid) eid.value = expId || "";
     if (reviewIdInput) reviewIdInput.value = "";
     if (ratingEl) ratingEl.value = "5";
+    syncStars(5);
     if (commentEl) commentEl.value = "";
     reviewModalState.mode = "create";
     reviewModalState.reviewId = "";
@@ -648,7 +674,7 @@ function openReviewModal(bookingId, expId) {
       reviewSubmitBtn.disabled = false;
       reviewSubmitBtn.classList.remove("opacity-60", "cursor-not-allowed");
     }
-    if (ratingEl) ratingEl.disabled = false;
+    if (starContainer) starContainer.classList.remove("pointer-events-none", "opacity-60");
     if (commentEl) commentEl.disabled = false;
     if (reviewWindowHintEl) {
       reviewWindowHintEl.textContent = "";
@@ -685,6 +711,7 @@ function applyReviewModalMode(reviewData) {
   reviewModalState.mode = canEdit ? "edit" : "locked";
   if (reviewIdInput) reviewIdInput.value = reviewId;
   if (ratingEl) ratingEl.value = String((reviewData && reviewData.rating) || 5);
+  syncStars((reviewData && reviewData.rating) || 5);
   if (commentEl) commentEl.value = String((reviewData && reviewData.comment) || "");
 
   if (canEdit) {
@@ -695,7 +722,7 @@ function applyReviewModalMode(reviewData) {
       reviewSubmitBtn.disabled = false;
       reviewSubmitBtn.classList.remove("opacity-60", "cursor-not-allowed");
     }
-    if (ratingEl) ratingEl.disabled = false;
+    if (starContainer) starContainer.classList.remove("pointer-events-none", "opacity-60");
     if (commentEl) commentEl.disabled = false;
     if (reviewWindowHintEl) {
       const untilText = editableUntilRaw ? fmtTripDate(editableUntilRaw) : "the 24-hour limit";
@@ -713,7 +740,7 @@ function applyReviewModalMode(reviewData) {
     reviewSubmitBtn.disabled = true;
     reviewSubmitBtn.classList.add("opacity-60", "cursor-not-allowed");
   }
-  if (ratingEl) ratingEl.disabled = true;
+  if (starContainer) starContainer.classList.add("pointer-events-none", "opacity-60");
   if (commentEl) commentEl.disabled = true;
   if (reviewWindowHintEl) {
     reviewWindowHintEl.textContent = "Reviews become immutable after 24 hours from submission.";
@@ -1117,7 +1144,7 @@ function renderConnectionActionPanel(connectionRequests) {
         El("div", { className: "flex flex-wrap items-center gap-2" }, [
           El("button", {
             type: "button",
-            className: "px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-bold hover:bg-black transition",
+            className: "px-3 py-2 rounded-xl bg-tsts-ink text-white text-xs font-bold hover:bg-slate-800 transition",
             "data-action": "connection-request-action",
             "data-request-id": requestId,
             "data-request-status": "accept",
@@ -1125,7 +1152,7 @@ function renderConnectionActionPanel(connectionRequests) {
           }),
           El("button", {
             type: "button",
-            className: "px-3 py-2 rounded-lg border border-red-200 text-red-700 text-xs font-bold hover:bg-red-50 transition",
+            className: "px-3 py-2 rounded-xl border border-red-200 text-red-700 text-xs font-bold hover:bg-red-50 transition",
             "data-action": "connection-request-action",
             "data-request-id": requestId,
             "data-request-status": "reject",
@@ -1133,7 +1160,7 @@ function renderConnectionActionPanel(connectionRequests) {
           }),
           El("a", {
             href: profileUrl,
-            className: "px-3 py-2 rounded-lg border border-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-50 transition",
+            className: "px-3 py-2 rounded-xl border border-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-50 transition",
             textContent: "View Profile"
           })
         ])
@@ -1211,7 +1238,7 @@ function renderHostPrivateRequestActionsPanel(requests) {
         El("div", { className: "flex flex-wrap items-center gap-2" }, [
           El("button", {
             type: "button",
-            className: "px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-bold hover:bg-black transition",
+            className: "px-3 py-2 rounded-xl bg-tsts-ink text-white text-xs font-bold hover:bg-slate-800 transition",
             "data-action": "host-private-request-status",
             "data-request-id": requestId,
             "data-request-status": "approved",
@@ -1219,7 +1246,7 @@ function renderHostPrivateRequestActionsPanel(requests) {
           }),
           El("button", {
             type: "button",
-            className: "px-3 py-2 rounded-lg border border-red-200 text-red-700 text-xs font-bold hover:bg-red-50 transition",
+            className: "px-3 py-2 rounded-xl border border-red-200 text-red-700 text-xs font-bold hover:bg-red-50 transition",
             "data-action": "host-private-request-status",
             "data-request-id": requestId,
             "data-request-status": "declined",
@@ -1227,7 +1254,7 @@ function renderHostPrivateRequestActionsPanel(requests) {
           }),
           El("button", {
             type: "button",
-            className: "px-3 py-2 rounded-lg border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition",
+            className: "px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition",
             "data-action": "host-private-request-status",
             "data-request-id": requestId,
             "data-request-status": "contacted",
@@ -1236,7 +1263,7 @@ function renderHostPrivateRequestActionsPanel(requests) {
           safeMailto
             ? El("a", {
               href: safeMailto,
-              className: "px-3 py-2 rounded-lg border border-blue-200 text-blue-700 text-xs font-bold hover:bg-blue-50 transition",
+              className: "px-3 py-2 rounded-xl border border-blue-200 text-blue-700 text-xs font-bold hover:bg-blue-50 transition",
               textContent: "Email Guest"
             })
             : El("span", { className: "text-xs text-slate-500", textContent: requesterEmail || "Guest email unavailable" })
@@ -1448,7 +1475,7 @@ function renderHostVerificationSection(verificationData) {
 
   const requestBtn = El("button", {
     type: "button",
-    className: "inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold transition " + (canRequest ? "bg-gray-900 text-white hover:bg-black" : "bg-gray-200 text-gray-500 cursor-not-allowed"),
+    className: "inline-flex items-center px-4 py-2 rounded-xl text-sm font-bold transition " + (canRequest ? "bg-tsts-ink text-white hover:bg-slate-800" : "bg-gray-200 text-gray-500 cursor-not-allowed"),
     textContent: canRequest ? "Request host verification" : "Host verification submitted",
     disabled: !canRequest
   });
@@ -1466,7 +1493,7 @@ function renderHostVerificationSection(verificationData) {
 
   const connectBtn = El("button", {
     type: "button",
-    className: "inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold transition " + (stripeConnected ? "bg-emerald-100 text-emerald-700 cursor-not-allowed" : "border border-blue-200 text-blue-700 hover:bg-blue-50"),
+    className: "inline-flex items-center px-4 py-2 rounded-xl text-sm font-bold transition " + (stripeConnected ? "bg-emerald-100 text-emerald-700 cursor-not-allowed" : "border border-blue-200 text-blue-700 hover:bg-blue-50"),
     textContent: stripeConnected ? "Stripe connected" : "Connect Stripe payouts",
     disabled: stripeConnected
   });
@@ -1482,7 +1509,7 @@ function renderHostVerificationSection(verificationData) {
 
   const disconnectBtn = El("button", {
     type: "button",
-    className: "inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold border border-red-200 text-red-700 hover:bg-red-50 transition" + (stripeConnected ? "" : " hidden"),
+    className: "inline-flex items-center px-4 py-2 rounded-xl text-sm font-bold border border-red-200 text-red-700 hover:bg-red-50 transition" + (stripeConnected ? "" : " hidden"),
     textContent: "Disconnect Stripe"
   });
   disconnectBtn.addEventListener("click", async function () {
@@ -1503,11 +1530,11 @@ function renderHostVerificationSection(verificationData) {
   const docSubmitButton = docMailto
     ? El("a", {
       href: docMailto,
-      className: "inline-flex items-center px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-bold hover:bg-slate-50 transition",
+      className: "inline-flex items-center px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-bold hover:bg-slate-50 transition",
       textContent: "Send ID proof by email"
     })
     : El("span", {
-      className: "inline-flex items-center px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-sm font-bold",
+      className: "inline-flex items-center px-4 py-2 rounded-xl border border-slate-200 text-slate-500 text-sm font-bold",
       textContent: "Send ID proof to " + data.adminEmail
     });
 
@@ -1563,12 +1590,12 @@ function renderHostListingsSection(listings, hostBookings) {
         El("div", { className: "flex flex-wrap items-center gap-2" }, [
           El("a", {
             href: "host.html?edit=" + encodeURIComponent(expId),
-            className: "inline-flex items-center px-4 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg shadow hover:bg-black transition",
+            className: "inline-flex items-center px-4 py-2 bg-tsts-ink text-white text-sm font-bold rounded-xl shadow hover:bg-slate-800 transition",
             textContent: "Edit Listing"
           }),
           El("a", {
             href: "experience.html?id=" + encodeURIComponent(expId),
-            className: "inline-flex items-center px-4 py-2 border border-gray-200 text-gray-700 text-sm font-bold rounded-lg hover:bg-gray-50 transition",
+            className: "inline-flex items-center px-4 py-2 border border-gray-200 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-50 transition",
             textContent: "View Public Page"
           })
         ])
@@ -1630,7 +1657,7 @@ function renderHostBookingsSection(bookings) {
     const refundAmountCents = Number(b && b.refundDecision && b.refundDecision.amountCents);
 
     var viewBtn = El("button", {
-      className: "w-full md:w-auto bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition whitespace-nowrap",
+      className: "w-full md:w-auto bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-gray-50 transition whitespace-nowrap",
       "data-action": "guest", "data-booking-id": b._id || "", textContent: "View Details"
     });
 
@@ -1716,8 +1743,8 @@ function renderHostingSectionTabs(activeSection) {
       El("button", {
         type: "button",
         className: (isActive
-          ? "bg-gray-900 text-white border-gray-900"
-          : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50") + " px-4 py-2 rounded-lg border text-sm font-bold transition",
+          ? "bg-tsts-ink text-white border-tsts-ink"
+          : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50") + " px-4 py-2 rounded-xl border text-sm font-bold transition",
         "data-action": "host-switch-section",
         "data-host-section": key,
         textContent: HOSTING_SECTION_LABELS[key] || key
@@ -1743,7 +1770,7 @@ function renderHostSourceError(title, message, retryLabel) {
     El("p", { className: "text-sm text-red-600", textContent: message || "This section could not be loaded. Please retry." }),
     El("button", {
       type: "button",
-      className: "inline-flex items-center px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition",
+      className: "inline-flex items-center px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition",
       "data-action": "host-retry-load",
       textContent: retryLabel || "Retry"
     })
@@ -1766,7 +1793,7 @@ function renderHostOwnershipWarnings(warnings) {
     ]),
     El("a", {
       href: hintUrl,
-      className: "inline-flex items-center px-3 py-2 rounded-lg border border-amber-300 text-amber-900 font-bold hover:bg-amber-100 transition",
+      className: "inline-flex items-center px-3 py-2 rounded-xl border border-amber-300 text-amber-900 font-bold hover:bg-amber-100 transition",
       textContent: "Open Profile Handle Settings"
     })
   ]);
@@ -2304,7 +2331,7 @@ function renderHostingSectionContent() {
         El("div", { className: "text-5xl mb-4", textContent: "🍳" }),
         El("h3", { className: "text-xl font-bold text-gray-900 mb-2", textContent: "No listings yet" }),
         El("p", { className: "text-gray-500 mb-6", textContent: "Create your first experience and it will appear here for editing." }),
-        El("a", { href: "host.html", className: "inline-block bg-gray-900 text-white px-8 py-3 rounded-full font-bold shadow hover:bg-black transition", textContent: "Create Listing" })
+        El("a", { href: "host.html", className: "inline-block bg-tsts-ink text-white px-8 py-3 rounded-full font-bold shadow hover:bg-slate-800 transition", textContent: "Create Listing" })
       ]);
     }
     return renderHostListingsSection(listingRows, bookingsState.status === "ready" ? bookingsState.rows : []);
@@ -2521,10 +2548,9 @@ function closeReviewModal() {
   if (bid) bid.value = "";
   if (eid) eid.value = "";
   if (reviewIdInput) reviewIdInput.value = "";
-  if (ratingEl) {
-    ratingEl.value = "5";
-    ratingEl.disabled = false;
-  }
+  if (ratingEl) ratingEl.value = "5";
+  syncStars(5);
+  if (starContainer) starContainer.classList.remove("pointer-events-none", "opacity-60");
   if (commentEl) {
     commentEl.value = "";
     commentEl.disabled = false;

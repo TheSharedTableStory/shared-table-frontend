@@ -4,12 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Bookings - The Shared Table Story</title>
-    <link rel="stylesheet" href="css/tailwind.css?v=20260216">
-    <link rel="stylesheet" href="css/fonts.css?v=20260221a">
-<style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .font-serif { font-family: 'Playfair Display', serif; }
-    </style>
+    <link rel="stylesheet" href="css/tailwind.css?v=20260221c">
+    <link rel="stylesheet" href="css/fonts.css?v=20260221c">
+
 <link rel="manifest" href="manifest.json">
 </head>
 <body class="bg-tsts-cream text-slate-900 min-h-screen flex flex-col">
@@ -36,18 +33,18 @@
             </nav>
         </div>
 
-        <div id="content-area" class="space-y-6">
-            <div class="text-center py-12">
-                <i class="fas fa-spinner fa-spin text-3xl text-gray-300"></i>
-            </div>
+        <div id="content-area" aria-live="polite" class="space-y-6">
+            <div class="bg-white rounded-3xl shadow-soft-card p-5 flex gap-4"><div class="skeleton h-20 w-20 flex-shrink-0 rounded-xl"></div><div class="flex-1 space-y-2 py-1"><div class="skeleton h-4 w-3/4"></div><div class="skeleton h-3 w-1/2"></div><div class="skeleton h-3 w-1/3"></div></div></div>
+            <div class="bg-white rounded-3xl shadow-soft-card p-5 flex gap-4"><div class="skeleton h-20 w-20 flex-shrink-0 rounded-xl"></div><div class="flex-1 space-y-2 py-1"><div class="skeleton h-4 w-3/4"></div><div class="skeleton h-3 w-1/2"></div><div class="skeleton h-3 w-1/3"></div></div></div>
+            <div class="bg-white rounded-3xl shadow-soft-card p-5 flex gap-4"><div class="skeleton h-20 w-20 flex-shrink-0 rounded-xl"></div><div class="flex-1 space-y-2 py-1"><div class="skeleton h-4 w-3/4"></div><div class="skeleton h-3 w-1/2"></div><div class="skeleton h-3 w-1/3"></div></div></div>
         </div>
 
     </main>
 
     <footer id="footer-placeholder"></footer>
 
-    <div id="guest-modal" role="dialog" aria-modal="true" aria-labelledby="modal-experience-title" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+    <div id="guest-modal" role="dialog" aria-modal="true" aria-labelledby="modal-experience-title" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
             <div class="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                 <h3 class="font-bold text-lg text-gray-900" id="modal-experience-title">Guest Details</h3>
                 <button id="close-modal-btn" type="button" aria-label="Close" class="text-gray-400 hover:text-gray-600">
@@ -72,31 +69,33 @@
                 <input type="hidden" id="review-id">
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for="review-rating">Rating</label>
-                    <select id="review-rating" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-orange-500 focus:ring-orange-500 p-2 border">
-                        <option value="5">⭐⭐⭐⭐⭐ (5 Stars) - Excellent</option>
-                        <option value="4">⭐⭐⭐⭐ (4 Stars) - Good</option>
-                        <option value="3">⭐⭐⭐ (3 Stars) - Average</option>
-                        <option value="2">⭐⭐ (2 Stars) - Poor</option>
-                        <option value="1">⭐ (1 Star) - Terrible</option>
-                    </select>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Rating</label>
+                    <div id="star-rating-container" class="flex gap-1 py-1" role="radiogroup" aria-label="Rating">
+                        <button type="button" class="star-btn text-2xl p-1 transition-transform hover:scale-110 text-amber-400" data-value="1" aria-label="1 star">&#9733;</button>
+                        <button type="button" class="star-btn text-2xl p-1 transition-transform hover:scale-110 text-amber-400" data-value="2" aria-label="2 stars">&#9733;</button>
+                        <button type="button" class="star-btn text-2xl p-1 transition-transform hover:scale-110 text-amber-400" data-value="3" aria-label="3 stars">&#9733;</button>
+                        <button type="button" class="star-btn text-2xl p-1 transition-transform hover:scale-110 text-amber-400" data-value="4" aria-label="4 stars">&#9733;</button>
+                        <button type="button" class="star-btn text-2xl p-1 transition-transform hover:scale-110 text-amber-400" data-value="5" aria-label="5 stars">&#9733;</button>
+                    </div>
+                    <input type="hidden" id="review-rating" value="5">
+                    <p id="star-rating-label" class="text-xs text-gray-500 mt-1">Excellent</p>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Your Review</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" for="review-comment">Your Review</label>
                     <textarea id="review-comment" rows="4" required placeholder="What was the highlight? How was the food?" 
-                        class="w-full border-gray-300 rounded-lg shadow-sm focus:border-orange-500 focus:ring-orange-500 p-3 border"></textarea>
+                        class="w-full border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent p-3 border"></textarea>
                 </div>
                 <p id="review-window-hint" class="text-xs text-gray-500 hidden"></p>
                 <div id="review-host-reply-container" class="hidden"></div>
 
                 <div class="flex justify-end gap-3 pt-2">
                     <button id="review-cancel-btn" type="button"
-                        class="px-4 py-2 text-gray-600 hover:bg-gray-100 font-medium rounded-lg transition">
+                        class="px-4 py-2 text-gray-600 hover:bg-gray-100 font-medium rounded-xl transition">
                         Cancel
                     </button>
-                    <button id="review-submit-btn" type="submit" 
-                        class="px-6 py-2 bg-orange-700 text-white font-bold rounded-lg shadow-md hover:bg-orange-800 transition">
+                    <button id="review-submit-btn" type="submit"
+                        class="px-6 py-2 bg-orange-700 text-white font-bold rounded-xl shadow-md hover:bg-orange-800 transition disabled:opacity-50 disabled:cursor-not-allowed">
                         Post Review
                     </button>
                 </div>
@@ -116,7 +115,7 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1" for="complaint-category">Complaint Type</label>
-                    <select id="complaint-category" required class="w-full border-gray-300 rounded-lg shadow-sm focus:border-orange-500 focus:ring-orange-500 p-2 border">
+                    <select id="complaint-category" required class="w-full border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent p-2 border">
                         <option value="">Select complaint type</option>
                         <option value="safety_issue">Safety issue</option>
                         <option value="host_behavior">Host behavior</option>
@@ -129,18 +128,18 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1" for="complaint-message">Describe the issue (max 200 words)</label>
-                    <textarea id="complaint-message" rows="5" required class="w-full border-gray-300 rounded-lg shadow-sm focus:border-orange-500 focus:ring-orange-500 p-3 border"></textarea>
+                    <textarea id="complaint-message" rows="5" required class="w-full border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent p-3 border"></textarea>
                     <p id="complaint-word-count" class="text-xs text-gray-500 mt-1">0 / 200 words</p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1" for="complaint-contact-email">Contact email</label>
-                        <input id="complaint-contact-email" type="email" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-orange-500 focus:ring-orange-500 p-2 border" placeholder="you@example.com">
+                        <input id="complaint-contact-email" type="email" class="w-full border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent p-2 border" placeholder="you@example.com">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1" for="complaint-contact-phone">Contact phone</label>
-                        <input id="complaint-contact-phone" type="tel" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-orange-500 focus:ring-orange-500 p-2 border" placeholder="+61 ...">
+                        <input id="complaint-contact-phone" type="tel" class="w-full border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent p-2 border" placeholder="+61 ...">
                     </div>
                 </div>
 
@@ -153,10 +152,10 @@
                 <p id="complaint-status" class="text-xs text-gray-500"></p>
 
                 <div class="flex justify-end gap-3 pt-2">
-                    <button id="complaint-cancel-btn" type="button" class="px-4 py-2 text-gray-600 hover:bg-gray-100 font-medium rounded-lg transition">
+                    <button id="complaint-cancel-btn" type="button" class="px-4 py-2 text-gray-600 hover:bg-gray-100 font-medium rounded-xl transition">
                         Cancel
                     </button>
-                    <button id="complaint-submit-btn" type="submit" class="px-6 py-2 bg-orange-700 text-white font-bold rounded-lg shadow-md hover:bg-orange-800 transition">
+                    <button id="complaint-submit-btn" type="submit" class="px-6 py-2 bg-orange-700 text-white font-bold rounded-xl shadow-md hover:bg-orange-800 transition disabled:opacity-50 disabled:cursor-not-allowed">
                         Submit Complaint
                     </button>
                 </div>
@@ -201,10 +200,10 @@
                 <p id="cancel-review-note" class="text-xs text-slate-600">Cancellation may be blocked for terminal booking states.</p>
             </div>
             <div class="p-6 border-t border-gray-100 flex justify-end gap-3">
-                <button id="cancel-review-close-btn" type="button" class="px-4 py-2 text-gray-600 hover:bg-gray-100 font-medium rounded-lg transition">
+                <button id="cancel-review-close-btn" type="button" class="px-4 py-2 text-gray-600 hover:bg-gray-100 font-medium rounded-xl transition">
                     Keep Booking
                 </button>
-                <button id="cancel-review-confirm-btn" type="button" class="px-6 py-2 bg-red-600 text-white font-bold rounded-lg shadow-md hover:bg-red-700 transition">
+                <button id="cancel-review-confirm-btn" type="button" class="px-6 py-2 bg-red-600 text-white font-bold rounded-xl shadow-md hover:bg-red-700 transition">
                     Cancel Booking
                 </button>
             </div>
@@ -220,20 +219,20 @@
             <form id="host-reply-form" class="p-6 space-y-4">
                 <input type="hidden" id="host-reply-review-id">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Your Reply</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" for="host-reply-text">Your Reply</label>
                     <textarea id="host-reply-text" rows="4" required maxlength="800" placeholder="Thank the guest or share your thoughts..."
-                        class="w-full border-gray-300 rounded-lg shadow-sm focus:border-orange-500 focus:ring-orange-500 p-3 border"></textarea>
+                        class="w-full border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent p-3 border"></textarea>
                     <p id="host-reply-char-count" class="text-xs text-gray-500 mt-1">0 / 800 characters</p>
                 </div>
                 <p id="host-reply-window-hint" class="text-xs text-gray-500 hidden"></p>
                 <p id="host-reply-error" class="text-xs text-red-600 hidden"></p>
                 <div class="flex justify-end gap-3 pt-2">
                     <button id="host-reply-cancel-btn" type="button"
-                        class="px-4 py-2 text-gray-600 hover:bg-gray-100 font-medium rounded-lg transition">
+                        class="px-4 py-2 text-gray-600 hover:bg-gray-100 font-medium rounded-xl transition">
                         Cancel
                     </button>
                     <button id="host-reply-submit-btn" type="submit"
-                        class="px-6 py-2 bg-orange-700 text-white font-bold rounded-lg shadow-md hover:bg-orange-800 transition">
+                        class="px-6 py-2 bg-orange-700 text-white font-bold rounded-xl shadow-md hover:bg-orange-800 transition disabled:opacity-50 disabled:cursor-not-allowed">
                         Post Reply
                     </button>
                 </div>
@@ -241,8 +240,8 @@
         </div>
     </div>
 
-    <script src="js/runtime-config.js?v=20260216"></script>
-  <script src="js/common.js?v=20260221a"></script>
-    <script src="js/my-bookings.js?v=20260221b"></script>
+    <script src="js/runtime-config.js?v=20260221c"></script>
+  <script src="js/common.js?v=20260221c"></script>
+    <script src="js/my-bookings.js?v=20260221c"></script>
 </body>
 </html>

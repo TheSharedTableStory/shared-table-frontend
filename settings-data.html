@@ -4,12 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Data & Privacy - The Shared Table Story</title>
-  <link rel="stylesheet" href="css/tailwind.css?v=20260216" />
-  <link rel="stylesheet" href="css/fonts.css?v=20260216" />
-  <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    h1, h2, h3, .font-serif { font-family: 'Playfair Display', serif; }
-  </style>
+  <link rel="stylesheet" href="css/tailwind.css?v=20260221c" />
+  <link rel="stylesheet" href="css/fonts.css?v=20260221c" />
+
   <link rel="manifest" href="manifest.json" />
 </head>
 <body class="bg-tsts-cream text-slate-900 flex flex-col min-h-screen">
@@ -24,41 +21,41 @@
         <i class="fas fa-spinner fa-spin text-3xl text-orange-600"></i>
       </div>
 
-      <div id="state-unauthorized" class="hidden bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+      <div id="state-unauthorized" class="hidden bg-white rounded-3xl border border-gray-100 shadow-soft-card p-8 text-center">
         <h2 class="text-xl font-bold text-gray-900 mb-2">Session expired</h2>
         <p class="text-gray-600 mb-5">Please log in again to access your data controls.</p>
-        <a id="login-link" href="login.html?returnTo=settings-data.html" class="inline-block px-6 py-2.5 rounded-lg bg-gray-900 text-white font-bold hover:bg-black transition">Log in</a>
+        <a id="login-link" href="login.html?returnTo=settings-data.html" class="inline-block px-6 py-2.5 rounded-xl bg-tsts-ink text-white font-bold hover:bg-slate-800 transition">Log in</a>
       </div>
 
-      <div id="state-error" class="hidden bg-white rounded-2xl border border-red-100 shadow-sm p-8 text-center">
+      <div id="state-error" class="hidden bg-white rounded-3xl border border-red-100 shadow-soft-card p-8 text-center">
         <h2 class="text-xl font-bold text-red-700 mb-2">Unable to load data settings</h2>
         <p id="error-message" class="text-red-600 mb-5">Try again in a moment.</p>
-        <button id="retry-btn" type="button" class="px-6 py-2.5 rounded-lg bg-gray-900 text-white font-bold hover:bg-black transition">Retry</button>
+        <button id="retry-btn" type="button" class="px-6 py-2.5 rounded-xl bg-tsts-ink text-white font-bold hover:bg-slate-800 transition">Retry</button>
       </div>
 
       <section id="state-ready" class="hidden space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div class="bg-white rounded-3xl border border-gray-100 shadow-soft-card p-5">
             <p class="text-xs uppercase tracking-wide text-gray-500">Profile Fields</p>
             <p id="profile-fields-count" class="text-2xl font-bold text-gray-900 mt-2">0</p>
           </div>
-          <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div class="bg-white rounded-3xl border border-gray-100 shadow-soft-card p-5">
             <p class="text-xs uppercase tracking-wide text-gray-500">Bookings Stored</p>
             <p id="bookings-count" class="text-2xl font-bold text-gray-900 mt-2">0</p>
           </div>
-          <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div class="bg-white rounded-3xl border border-gray-100 shadow-soft-card p-5">
             <p class="text-xs uppercase tracking-wide text-gray-500">Hosted Listings</p>
             <p id="experiences-count" class="text-2xl font-bold text-gray-900 mt-2">0</p>
           </div>
         </div>
 
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div class="bg-white rounded-3xl border border-gray-100 shadow-soft-card p-6">
           <h2 class="text-xl font-bold mb-3">What data is stored</h2>
           <ul id="data-categories" class="space-y-2 text-sm text-gray-700"></ul>
           <p id="exported-at" class="text-xs text-gray-500 mt-4"></p>
         </div>
 
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div class="bg-white rounded-3xl border border-gray-100 shadow-soft-card p-6">
           <h2 class="text-xl font-bold mb-3">Retention window</h2>
           <p class="text-sm text-gray-700 leading-relaxed">
             Account profile data is kept while your account is active. When you request deletion, personal profile fields are scrubbed and account access is disabled.
@@ -69,14 +66,14 @@
           <p id="retention-meta" class="text-xs text-gray-500 mt-4"></p>
         </div>
 
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div class="bg-white rounded-3xl border border-gray-100 shadow-soft-card p-6">
           <h2 class="text-xl font-bold mb-3">Self-serve actions</h2>
           <div class="flex flex-col sm:flex-row gap-3">
-            <button id="export-btn" type="button" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gray-900 text-white font-bold hover:bg-black transition">
+            <button id="export-btn" type="button" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-tsts-ink text-white font-bold hover:bg-slate-800 transition">
               <i class="fas fa-download"></i>
               Export My Data
             </button>
-            <button id="delete-btn" type="button" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border border-red-200 text-red-700 font-bold hover:bg-red-50 transition">
+            <button id="delete-btn" type="button" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition">
               <i class="fas fa-trash-alt"></i>
               Delete My Account
             </button>
@@ -90,8 +87,8 @@
 
   <footer id="footer-placeholder"></footer>
 
-  <script src="js/runtime-config.js?v=20260216"></script>
-  <script src="js/common.js?v=20260219f"></script>
-  <script src="js/settings-data.js?v=20260217"></script>
+  <script src="js/runtime-config.js?v=20260221c"></script>
+  <script src="js/common.js?v=20260221c"></script>
+  <script src="js/settings-data.js?v=20260221c"></script>
 </body>
 </html>

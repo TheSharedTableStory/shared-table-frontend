@@ -90,9 +90,9 @@
         var wrap = El("div", { className: "p-4 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-between gap-3" }, [
           userRowEl(r.from),
           El("div", { className: "flex items-center gap-2" }, [
-            El("button", { className: "px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-bold hover:bg-black", "data-action": "accept", "data-id": r._id || "", textContent: "Accept" }),
-            El("button", { className: "px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs font-bold hover:bg-gray-50", "data-action": "reject", "data-id": r._id || "", textContent: "Reject" }),
-            El("button", { className: "px-3 py-2 rounded-lg border border-red-200 bg-white text-xs font-bold text-red-600 hover:bg-red-50", "data-action": "block", "data-id": r._id || "", textContent: "Block" })
+            El("button", { className: "px-3 py-2 rounded-xl bg-tsts-ink text-white text-xs font-bold hover:bg-slate-800", "data-action": "accept", "data-id": r._id || "", textContent: "Accept" }),
+            El("button", { className: "px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-bold hover:bg-gray-50", "data-action": "reject", "data-id": r._id || "", textContent: "Reject" }),
+            El("button", { className: "px-3 py-2 rounded-xl border border-red-200 bg-white text-xs font-bold text-red-600 hover:bg-red-50", "data-action": "block", "data-id": r._id || "", textContent: "Block" })
           ])
         ]);
         reqList.appendChild(wrap);

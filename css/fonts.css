@@ -322,3 +322,163 @@
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0; }
 .focus\:not-sr-only:focus { position: static; width: auto; height: auto; padding: 0; margin: 0; overflow: visible; clip: auto; white-space: normal; }
 
+/* =========================================================================
+   GLOBAL: Body font
+   Previously duplicated as inline <style> in every HTML file.
+   ========================================================================= */
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* =========================================================================
+   GLOBAL: Serif headings (unified from .heading-serif, .font-serif, .serif,
+   and bare h1/h2/h3 rules that appeared across many files).
+   The class .heading-serif is the canonical utility; h1-h3 also get serif
+   as a base rule. .font-serif and .serif kept as aliases for compatibility.
+   ========================================================================= */
+h1, h2, h3,
+.heading-serif,
+.font-serif,
+.serif {
+  font-family: 'Playfair Display', Georgia, "Times New Roman", serif;
+}
+
+/* =========================================================================
+   SHARED: Scrollbar-hide utility (used on explore.html, index.html)
+   ========================================================================= */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* =========================================================================
+   SHARED: Details/summary SVG rotate (policy, privacy, terms, host-terms,
+   cookie-policy)
+   ========================================================================= */
+details[open] > summary svg { transform: rotate(180deg); }
+details > summary svg { transition: transform 0.2s ease; }
+
+/* =========================================================================
+   PAGE: host.html — auth-pending visibility gate
+   ========================================================================= */
+html[data-auth-pending="1"] body { visibility: hidden; }
+
+/* =========================================================================
+   PAGE: profile.html — Toggle Switch
+   ========================================================================= */
+.toggle-checkbox:checked {
+  right: 0;
+  border-color: #ea580c;
+}
+.toggle-checkbox:checked + .toggle-label {
+  background-color: #ea580c;
+}
+
+/* =========================================================================
+   PAGE: explore.html — noUiSlider overrides & filter panel
+   ========================================================================= */
+.noUi-target { border-radius: 9999px; border: 1px solid #e5e7eb; background: #f9fafb; box-shadow: none; }
+.noUi-connect { background: #ea580c; }
+.noUi-handle { border-radius: 9999px; border: 1px solid #ea580c; width: 18px; height: 18px; top: -7px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: grab; }
+.noUi-handle::before, .noUi-handle::after { display: none; }
+
+.filter-shell {
+  background: linear-gradient(180deg, #ffffff 0%, #fff9f3 100%);
+  border-color: #f3e7d8;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+}
+.filter-panel-elevated {
+  background: #ffffff;
+  border: 1px solid #f2e8dc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+.filter-btn-active {
+  background: #ea580c !important;
+  color: #ffffff !important;
+  border-color: #ea580c !important;
+}
+.filter-count-badge {
+  min-width: 1.45rem;
+  height: 1.45rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* =========================================================================
+   PAGE: index.html — Carousel, hero, category cards, responsive overrides
+   ========================================================================= */
+.tsts-carousel { scroll-snap-type: x mandatory; scroll-padding-left: 1rem; }
+.tsts-carousel > * { scroll-snap-align: start; }
+.tsts-home-hero { height: min(78vh, 46rem); }
+.tsts-ways-section { padding-top: 5rem; padding-bottom: 5rem; }
+.tsts-ways-heading { margin-bottom: 3rem; }
+
+.tsts-cat-card {
+  width: clamp(17rem, 86vw, 24rem);
+  min-width: clamp(17rem, 86vw, 24rem);
+}
+@media (min-width: 768px) {
+  .tsts-cat-card {
+    width: clamp(18rem, 46vw, 25rem);
+    min-width: clamp(18rem, 46vw, 25rem);
+  }
+}
+@media (min-width: 1280px) {
+  .tsts-cat-card {
+    width: clamp(19rem, 31vw, 25rem);
+    min-width: clamp(19rem, 31vw, 25rem);
+  }
+}
+.tsts-cat-card summary { list-style: none; }
+.tsts-cat-card summary::-webkit-details-marker { display: none; }
+.tsts-cat-header { transition: opacity 220ms ease, transform 220ms ease; }
+.tsts-cat-card[open] .tsts-cat-header { opacity: 0; transform: translateY(8px); pointer-events: none; }
+.tsts-cat-more { opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity 220ms ease, transform 220ms ease; }
+.tsts-cat-card[open] .tsts-cat-more { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.tsts-cat-card[open] .tsts-cat-overlay { background: rgba(0,0,0,0.55); }
+
+@media (max-height: 900px) {
+  .tsts-home-hero { height: min(62vh, 34rem); }
+  .tsts-ways-section { padding-top: 3.25rem; padding-bottom: 3.25rem; }
+  .tsts-ways-heading { margin-bottom: 1.75rem; }
+}
+@media (max-height: 800px) {
+  .tsts-home-hero { height: min(56vh, 30rem); }
+  .tsts-ways-section { padding-top: 2.5rem; padding-bottom: 2.75rem; }
+  .tsts-ways-heading { margin-bottom: 1.25rem; }
+}
+@media (max-height: 700px) {
+  .tsts-home-hero { height: min(50vh, 25rem); }
+  .tsts-ways-section { padding-top: 2rem; padding-bottom: 2.25rem; }
+  .tsts-ways-heading { margin-bottom: 1rem; }
+  .tsts-home-hero h1 {
+    font-size: clamp(1.85rem, 5vw, 2.6rem);
+    line-height: 1.12;
+    margin-bottom: 0.9rem;
+  }
+  .tsts-home-hero p {
+    font-size: clamp(0.98rem, 2.2vw, 1.2rem);
+    margin-bottom: 1rem;
+  }
+}
+
+/* =========================================================================
+   SHARED: Skeleton loading animation
+   ========================================================================= */
+@keyframes tsts-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #e8e2db 25%, #f2ece5 50%, #e8e2db 75%);
+  background-size: 200% 100%;
+  animation: tsts-shimmer 1.5s ease-in-out infinite;
+  border-radius: 0.75rem;
+}
+

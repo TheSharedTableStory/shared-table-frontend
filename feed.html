@@ -4,12 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Friends Feed – The Shared Table Story</title>
-  <link rel="stylesheet" href="css/tailwind.css?v=20260216">
-  <link rel="stylesheet" href="css/fonts.css?v=20260216">
-  <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    h1, h2, h3, .font-serif { font-family: 'Playfair Display', serif; }
-  </style>
+  <link rel="stylesheet" href="css/tailwind.css?v=20260221c">
+  <link rel="stylesheet" href="css/fonts.css?v=20260221c">
+
   <link rel="manifest" href="manifest.json">
 </head>
 <body class="bg-tsts-cream text-slate-900 flex flex-col min-h-screen">
@@ -28,29 +25,31 @@
       <strong>Privacy note:</strong> This feed is private to you. Only accepted connections appear, and only if they enabled sharing in their profile. No public discovery or broadcast.
     </div>
 
-    <div id="state-loading" class="text-center py-12">
-      <i class="fas fa-spinner fa-spin text-3xl text-orange-500"></i>
+    <div id="state-loading" class="space-y-4">
+      <div class="bg-white rounded-3xl shadow-soft-card p-5 flex gap-4"><div class="skeleton h-10 w-10 flex-shrink-0 rounded-full"></div><div class="flex-1 space-y-2"><div class="skeleton h-4 w-2/3"></div><div class="skeleton h-3 w-1/2"></div></div></div>
+      <div class="bg-white rounded-3xl shadow-soft-card p-5 flex gap-4"><div class="skeleton h-10 w-10 flex-shrink-0 rounded-full"></div><div class="flex-1 space-y-2"><div class="skeleton h-4 w-2/3"></div><div class="skeleton h-3 w-1/2"></div></div></div>
+      <div class="bg-white rounded-3xl shadow-soft-card p-5 flex gap-4"><div class="skeleton h-10 w-10 flex-shrink-0 rounded-full"></div><div class="flex-1 space-y-2"><div class="skeleton h-4 w-2/3"></div><div class="skeleton h-3 w-1/2"></div></div></div>
     </div>
 
-    <div id="state-empty" class="hidden text-center py-12 bg-white rounded-2xl border border-gray-100 shadow-sm">
+    <div id="state-empty" aria-live="polite" class="hidden text-center py-12 bg-white rounded-3xl border border-gray-100 shadow-soft-card">
       <div class="text-5xl mb-3">👥</div>
       <h2 class="text-xl font-bold mb-2">No shared bookings yet</h2>
       <p class="text-gray-600 mb-6">Only accepted connections who opt-in to sharing will appear here.</p>
       <a href="connections.html" class="inline-block px-8 py-3 rounded-full bg-orange-700 text-white font-bold hover:bg-orange-800 transition">Manage connections</a>
     </div>
 
-    <div id="state-error" class="hidden text-center py-12">
+    <div id="state-error" aria-live="polite" class="hidden text-center py-12">
       <p class="text-red-600 font-bold">Unable to load feed.</p>
-      <button id="retry-btn" type="button" class="mt-4 px-6 py-2 rounded-xl bg-gray-900 text-white font-bold hover:bg-black transition">Retry</button>
+      <button id="retry-btn" type="button" class="mt-4 px-6 py-2 rounded-xl bg-tsts-ink text-white font-bold hover:bg-slate-800 transition">Retry</button>
     </div>
 
-    <div id="list" class="hidden space-y-4"></div>
+    <div id="list" aria-live="polite" class="hidden space-y-4"></div>
   </main>
 
   <footer id="footer-placeholder"></footer>
 
-  <script src="js/runtime-config.js?v=20260216"></script>
-  <script src="js/common.js?v=20260219f"></script>
-  <script src="js/feed.js?v=20260216"></script>
+  <script src="js/runtime-config.js?v=20260221c"></script>
+  <script src="js/common.js?v=20260221c"></script>
+  <script src="js/feed.js?v=20260221c"></script>
 </body>
 </html>

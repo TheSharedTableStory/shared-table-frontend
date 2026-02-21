@@ -22,7 +22,7 @@
 	  const addressLineInput = document.getElementById("addressLine");
 	  const addressNotesInput = document.getElementById("addressNotes");
 	  const maxGuestsInput = document.getElementById("maxGuests");
-	  const availableDaysInput = document.getElementById("availableDays");
+	  // availableDays is now a checkbox group, not a single text input
 	  const privateEnabledInput = document.getElementById("privateEnabled");
 	  const privateConfigFields = document.getElementById("private-config-fields");
 	  const privatePriceInput = document.getElementById("privatePrice");
@@ -645,7 +645,13 @@
       if (addressLineInput) addressLineInput.value = exp.addressLine || "";
       if (addressNotesInput) addressNotesInput.value = exp.addressNotes || "";
       if (maxGuestsInput) maxGuestsInput.value = (exp.maxGuests != null ? String(exp.maxGuests) : (exp.capacity != null ? String(exp.capacity) : ""));
-      if (availableDaysInput) availableDaysInput.value = Array.isArray(exp.availableDays) ? exp.availableDays.join(", ") : String(exp.availableDays || "");
+      // Populate availableDays checkboxes from stored data
+      (function () {
+        var rawDays = Array.isArray(exp.availableDays) ? exp.availableDays : parseAvailableDays(exp.availableDays);
+        var daySet = new Set(rawDays.map(function (d) { return String(d || "").trim(); }));
+        var cbs = document.querySelectorAll('input[name="availableDays"]');
+        for (var i = 0; i < cbs.length; i++) { cbs[i].checked = daySet.has(cbs[i].value); }
+      })();
       const privateCap = safeNum(exp.privateCapacity);
       const privateBase = safeNum(exp.privatePrice);
       const privateEnabled = (privateCap != null && privateCap > 0 && privateBase != null && privateBase > 0);
@@ -681,6 +687,13 @@
         if (!f) return;
         const localUrl = URL.createObjectURL(f);
         setPreview(localUrl);
+        // Show a local file preview via FileReader
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          var previewImg = document.getElementById("upload-preview-img");
+          if (previewImg) previewImg.src = e.target.result;
+        };
+        reader.readAsDataURL(f);
       } catch (_) {}
     });
   }
@@ -745,7 +758,7 @@
         const addressLine = addressLineInput ? String(addressLineInput.value || "").trim() : "";
         const addressNotes = addressNotesInput ? String(addressNotesInput.value || "").trim() : "";
         const capacity = maxGuestsInput ? safeNum(maxGuestsInput.value) : null;
-        const availableDays = availableDaysInput ? parseAvailableDays(availableDaysInput.value) : [];
+        const availableDays = Array.from(document.querySelectorAll('input[name="availableDays"]:checked')).map(function (cb) { return cb.value; });
         const tags = getSelectedTags();
         const privateEnabled = !!(privateEnabledInput && privateEnabledInput.checked);
         const privatePrice = privatePriceInput ? safeNum(privatePriceInput.value) : null;
@@ -1006,7 +1019,13 @@
       if (addressLineInput) addressLineInput.value = String(exp.addressLine || "");
       if (addressNotesInput) addressNotesInput.value = String(exp.addressNotes || "");
       if (maxGuestsInput) maxGuestsInput.value = String(exp.maxGuests != null ? exp.maxGuests : "");
-      if (availableDaysInput) availableDaysInput.value = Array.isArray(exp.availableDays) ? exp.availableDays.join(", ") : String(exp.availableDays || "");
+      // Populate availableDays checkboxes from stored data
+      (function () {
+        var rawDays = Array.isArray(exp.availableDays) ? exp.availableDays : parseAvailableDays(exp.availableDays);
+        var daySet = new Set(rawDays.map(function (d) { return String(d || "").trim(); }));
+        var cbs = document.querySelectorAll('input[name="availableDays"]');
+        for (var i = 0; i < cbs.length; i++) { cbs[i].checked = daySet.has(cbs[i].value); }
+      })();
       var tagCheckboxes = document.querySelectorAll('input[name="tags"]');
       var expTags = Array.isArray(exp.tags) ? exp.tags : [];
       tagCheckboxes.forEach(function (cb) { cb.checked = expTags.includes(cb.value); });

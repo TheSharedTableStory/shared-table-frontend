@@ -9,9 +9,9 @@
   <meta property="og:title" content="Log In | The Shared Table Story">
   <meta property="og:image" content="/assets/og-image.jpg">
 
-  <link rel="stylesheet" href="css/tailwind.css?v=20260216">
-  <link rel="stylesheet" href="css/fonts.css?v=20260221a">
-  <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
+  <link rel="stylesheet" href="css/tailwind.css?v=20260221c">
+  <link rel="stylesheet" href="css/fonts.css?v=20260221c">
+
   <link rel="icon" type="image/png" href="/assets/icon-192.png">
   <link rel="apple-touch-icon" href="/assets/icon-192.png">
   <link rel="manifest" href="manifest.json">
@@ -22,7 +22,7 @@
   <main class="flex-grow">
   <div class="flex-grow flex flex-col items-center justify-center p-4">
     
-    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+    <div class="max-w-md w-full bg-white rounded-3xl shadow-soft-card p-8 border border-gray-100">
       
       <div class="flex border-b border-gray-200 mb-8" role="tablist" aria-label="Account actions">
         <button id="tab-login" type="button" aria-label="Switch to login form" role="tab" aria-selected="true" class="flex-1 pb-3 font-bold text-orange-600 border-b-2 border-orange-600 transition-colors">Log In</button>
@@ -36,15 +36,15 @@
         </div>
 
         <label for="login-email" class="sr-only">Email Address</label>
-        <input id="login-email" type="email" maxlength="254" autocomplete="email" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-100 transition" placeholder="Email Address" required />
+        <input id="login-email" type="email" maxlength="254" autocomplete="email" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Email Address" required />
         <label for="login-password" class="sr-only">Password</label>
-        <input id="login-password" type="password" autocomplete="current-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-100 transition" placeholder="Password" required />
+        <input id="login-password" type="password" autocomplete="current-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Password" required />
         
         <div class="text-right">
             <button id="btn-forgot-password" type="button" class="text-xs text-orange-600 hover:underline font-bold">Forgot Password?</button>
         </div>
 
-        <button type="submit" class="w-full py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition transform active:scale-95 shadow-lg">Log In</button>
+        <button type="submit" class="w-full py-3 bg-tsts-ink text-white font-bold rounded-xl hover:bg-slate-800 transition transform active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">Log In</button>
       </form>
 
       <form id="form-signup" class="space-y-5 hidden" autocomplete="on">
@@ -54,13 +54,13 @@
         </div>
         
         <label for="signup-name" class="sr-only">Full Name</label>
-        <input id="signup-name" type="text" maxlength="100" autocomplete="name" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-100 transition" placeholder="Full Name" required />
+        <input id="signup-name" type="text" maxlength="100" autocomplete="name" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Full Name" required />
         <label for="signup-email" class="sr-only">Email Address</label>
-        <input id="signup-email" type="email" maxlength="254" autocomplete="email" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-100 transition" placeholder="Email Address" required />
+        <input id="signup-email" type="email" maxlength="254" autocomplete="email" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Email Address" required />
         <label for="signup-password" class="sr-only">Create Password</label>
-        <input id="signup-password" type="password" maxlength="128" autocomplete="new-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-100 transition" placeholder="Create Password" minlength="8" required />
+        <input id="signup-password" type="password" maxlength="128" autocomplete="new-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Create Password" minlength="8" required />
         <label for="signup-confirm-password" class="sr-only">Confirm Password</label>
-        <input id="signup-confirm-password" type="password" maxlength="128" autocomplete="new-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-100 transition" placeholder="Confirm Password" minlength="8" required />
+        <input id="signup-confirm-password" type="password" maxlength="128" autocomplete="new-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Confirm Password" minlength="8" required />
 
         <div class="bg-orange-50 p-3 rounded-lg border border-orange-100 h-24 overflow-y-auto text-[11px] text-gray-600 leading-relaxed">
             <strong>Terms & Waiver:</strong> By signing up, I acknowledge that "The Shared Table Story" is a marketplace. I assume all risks associated with experiences (food, travel, etc.) and release the platform from liability. I agree to the Privacy Policy.
@@ -73,7 +73,7 @@
             </label>
         </div>
 
-        <button type="submit" class="w-full py-3 bg-orange-700 text-white font-bold rounded-xl hover:bg-orange-800 transition transform active:scale-95 shadow-lg">Create Account</button>
+        <button type="submit" class="w-full py-3 bg-orange-700 text-white font-bold rounded-xl hover:bg-orange-800 transition transform active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">Create Account</button>
       </form>
 
     </div>
@@ -87,8 +87,8 @@
   </div>
   </main>
   <footer id="footer-placeholder"></footer>
-  <script src="js/runtime-config.js?v=20260216" defer></script>
-  <script src="js/common.js?v=20260221a" defer></script>
-  <script src="js/login.js?v=20260219c" defer></script>
+  <script src="js/runtime-config.js?v=20260221c" defer></script>
+  <script src="js/common.js?v=20260221c" defer></script>
+  <script src="js/login.js?v=20260221c" defer></script>
 </body>
 </html>

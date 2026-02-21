@@ -4,11 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Become a Host - The Shared Table Story</title>
-	    <link rel="stylesheet" href="css/tailwind.css?v=20260216">
-	    <link rel="stylesheet" href="css/fonts.css?v=20260216">
-	    <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
+	    <link rel="stylesheet" href="css/tailwind.css?v=20260221c">
+	    <link rel="stylesheet" href="css/fonts.css?v=20260221c">
 	<link rel="manifest" href="manifest.json">
-	    <style>html[data-auth-pending="1"] body{visibility:hidden;}</style>
+
 	</head>
 	<body class="bg-tsts-cream text-slate-900 flex flex-col min-h-screen">
 
@@ -23,7 +22,7 @@
         <section id="my-listings-section" class="mb-10">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-xl font-bold text-gray-900">My Listings</h2>
-            <button type="button" id="create-new-listing-btn" class="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition">
+            <button type="button" id="create-new-listing-btn" class="inline-flex items-center gap-2 rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:bg-slate-800 transition">
               <i class="fa-solid fa-plus"></i> New Listing
             </button>
           </div>
@@ -33,102 +32,146 @@
           <div id="my-listings-list" class="hidden space-y-3"></div>
         </section>
 
-        <form id="create-experience-form" class="bg-white p-8 rounded-xl shadow-sm border border-gray-100 space-y-6">
+        <form id="create-experience-form" class="bg-white p-8 rounded-3xl shadow-soft-card border border-gray-100 space-y-6">
             <input type="hidden" id="editing-experience-id" value="">
-            
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1" for="title">Experience Title</label>
-                <input type="text" id="title" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="e.g., Sunset Diwali Feast" required>
-            </div>
 
-	            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-	                <div>
-		                    <span class="block text-sm font-bold text-gray-700 mb-2">Categories (Select up to 2)</span>
-	                    <div class="space-y-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
-	                        <label class="flex items-center space-x-2">
-	                            <input type="checkbox" name="tags" value="food-gatherings" class="form-checkbox text-orange-600 h-4 w-4">
-	                            <span>Food & Gatherings</span>
-	                        </label>
-	                        <label class="flex items-center space-x-2">
-	                            <input type="checkbox" name="tags" value="explore-outdoors" class="form-checkbox text-orange-600 h-4 w-4">
-	                            <span>Explore & Outdoors</span>
-	                        </label>
-	                        <label class="flex items-center space-x-2">
-	                            <input type="checkbox" name="tags" value="culture-stories" class="form-checkbox text-orange-600 h-4 w-4">
-	                            <span>Culture & Stories</span>
-	                        </label>
-	                        <label class="flex items-center space-x-2">
-	                            <input type="checkbox" name="tags" value="social-nights" class="form-checkbox text-orange-600 h-4 w-4">
-	                            <span>Social & Nights</span>
-	                        </label>
-	                        <label class="flex items-center space-x-2">
-	                            <input type="checkbox" name="tags" value="move-wellness" class="form-checkbox text-orange-600 h-4 w-4">
-	                            <span>Move & Wellness</span>
-	                        </label>
-	                        <label class="flex items-center space-x-2">
-	                            <input type="checkbox" name="tags" value="create-express" class="form-checkbox text-orange-600 h-4 w-4">
-	                            <span>Create & Express</span>
-	                        </label>
-	                        <label class="flex items-center space-x-2">
-	                            <input type="checkbox" name="tags" value="learn-passion" class="form-checkbox text-orange-600 h-4 w-4">
-	                            <span>Learn & Passion</span>
-	                        </label>
-	                        <label class="flex items-center space-x-2">
-	                            <input type="checkbox" name="tags" value="games-play" class="form-checkbox text-orange-600 h-4 w-4">
-	                            <span>Games & Play</span>
-	                        </label>
-	                    </div>
-	                    <p id="tag-limit-hint" class="text-xs text-gray-500 mt-2">0/2 selected</p>
-	                </div>
-
-	                <div>
-	                    <label class="block text-sm font-bold text-gray-700 mb-1" for="city">City</label>
-	                    <input type="text" id="city" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="e.g. Melbourne" required>
-	                </div>
-	            </div>
-	
-	            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-	                <div>
-	                    <label class="block text-sm font-bold text-gray-700 mb-1" for="suburb">Suburb / Area</label>
-	                    <input type="text" id="suburb" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="e.g. Carlton" required>
-	                </div>
-	
-	                <div>
-	                    <label class="block text-sm font-bold text-gray-700 mb-1" for="postcode">Postcode</label>
-	                    <input type="text" id="postcode" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="e.g. 3053" required>
-	                </div>
-	
-	                <div class="md:col-span-3">
-	                    <label class="block text-sm font-bold text-gray-700 mb-1" for="addressLine">Street Address</label>
-	                    <input type="text" id="addressLine" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="e.g. 12 Lygon St" required>
-	                    <p class="text-xs text-gray-500 mt-1">Exact address is shared after booking confirmation.</p>
-	                </div>
-	
-	                <div class="md:col-span-3">
-	                    <label class="block text-sm font-bold text-gray-700 mb-1" for="addressNotes">Address Notes (Optional)</label>
-	                    <input type="text" id="addressNotes" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="e.g. Ring the left bell, enter via courtyard">
-	                </div>
-	            </div>
-
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1" for="description">The Story (Description)</label>
-                <textarea id="description" rows="5" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="What will guests do? What makes this special?" required></textarea>
-            </div>
-
-            <div class="grid grid-cols-3 gap-4">
+            <!-- Section 1: Basic Details -->
+            <fieldset class="space-y-4 border-0 p-0 m-0">
+                <legend class="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fas fa-pen text-orange-600"></i> Basic Details</legend>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="price">Price (AUD)</label>
-                    <input type="number" id="price" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="85" required>
+                    <label class="block text-sm font-bold text-gray-700 mb-1" for="title">Experience Title</label>
+                    <input type="text" id="title" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="e.g., Sunset Diwali Feast" required>
+                </div>
+            </fieldset>
+
+            <div class="border-t border-slate-200 my-6"></div>
+
+            <!-- Section 2: Category -->
+            <fieldset class="space-y-4 border-0 p-0 m-0">
+                <legend class="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fas fa-tags text-orange-600"></i> Category</legend>
+                <div>
+                    <span class="block text-sm font-bold text-gray-700 mb-2">Categories (Select up to 2)</span>
+                    <div class="space-y-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="tags" value="food-gatherings" class="form-checkbox text-orange-600 h-4 w-4">
+                            <span>Food & Gatherings</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="tags" value="explore-outdoors" class="form-checkbox text-orange-600 h-4 w-4">
+                            <span>Explore & Outdoors</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="tags" value="culture-stories" class="form-checkbox text-orange-600 h-4 w-4">
+                            <span>Culture & Stories</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="tags" value="social-nights" class="form-checkbox text-orange-600 h-4 w-4">
+                            <span>Social & Nights</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="tags" value="move-wellness" class="form-checkbox text-orange-600 h-4 w-4">
+                            <span>Move & Wellness</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="tags" value="create-express" class="form-checkbox text-orange-600 h-4 w-4">
+                            <span>Create & Express</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="tags" value="learn-passion" class="form-checkbox text-orange-600 h-4 w-4">
+                            <span>Learn & Passion</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="tags" value="games-play" class="form-checkbox text-orange-600 h-4 w-4">
+                            <span>Games & Play</span>
+                        </label>
+                    </div>
+                    <p id="tag-limit-hint" class="text-xs text-gray-500 mt-2">0/2 selected</p>
+                </div>
+            </fieldset>
+
+            <div class="border-t border-slate-200 my-6"></div>
+
+            <!-- Section 3: Location -->
+            <fieldset class="space-y-4 border-0 p-0 m-0">
+                <legend class="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fas fa-map-marker-alt text-orange-600"></i> Location</legend>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1" for="city">City</label>
+                    <input type="text" id="city" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="e.g. Melbourne" required>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" for="suburb">Suburb / Area</label>
+                        <input type="text" id="suburb" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="e.g. Carlton" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" for="postcode">Postcode</label>
+                        <input type="text" id="postcode" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="e.g. 3053" required>
+                    </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="maxGuests">Max Guests</label>
-                    <input type="number" id="maxGuests" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="6" required>
+                    <label class="block text-sm font-bold text-gray-700 mb-1" for="addressLine">Street Address</label>
+                    <input type="text" id="addressLine" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="e.g. 12 Lygon St" required>
+                    <p class="text-xs text-gray-500 mt-1">Exact address is shared after booking confirmation.</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="availableDays">Days</label>
-                    <input type="text" id="availableDays" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="Fri, Sat" value="Fri, Sat, Sun">
+                    <label class="block text-sm font-bold text-gray-700 mb-1" for="addressNotes">Address Notes (Optional)</label>
+                    <input type="text" id="addressNotes" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="e.g. Ring the left bell, enter via courtyard">
                 </div>
-            </div>
+            </fieldset>
+
+            <div class="border-t border-slate-200 my-6"></div>
+
+            <!-- Section 4: Description -->
+            <fieldset class="space-y-4 border-0 p-0 m-0">
+                <legend class="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fas fa-align-left text-orange-600"></i> Description</legend>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1" for="description">The Story (Description)</label>
+                    <textarea id="description" rows="5" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="What will guests do? What makes this special?" required></textarea>
+                </div>
+            </fieldset>
+
+            <div class="border-t border-slate-200 my-6"></div>
+
+            <!-- Section 5: Pricing & Capacity -->
+            <fieldset class="space-y-4 border-0 p-0 m-0">
+                <legend class="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fas fa-dollar-sign text-orange-600"></i> Pricing & Capacity</legend>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" for="price">Price (AUD)</label>
+                        <input type="number" id="price" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="85" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" for="maxGuests">Max Guests</label>
+                        <input type="number" id="maxGuests" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="6" required>
+                    </div>
+                </div>
+                <div>
+                    <span class="block text-sm font-bold text-gray-700 mb-2">Available Days</span>
+                    <div class="flex flex-wrap gap-2" id="availableDays-group">
+                        <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-500 transition text-sm has-[:checked]:bg-orange-50 has-[:checked]:border-orange-500 has-[:checked]:text-orange-700">
+                            <input type="checkbox" name="availableDays" value="Mon" class="accent-orange-600"> Mon
+                        </label>
+                        <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-500 transition text-sm has-[:checked]:bg-orange-50 has-[:checked]:border-orange-500 has-[:checked]:text-orange-700">
+                            <input type="checkbox" name="availableDays" value="Tue" class="accent-orange-600"> Tue
+                        </label>
+                        <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-500 transition text-sm has-[:checked]:bg-orange-50 has-[:checked]:border-orange-500 has-[:checked]:text-orange-700">
+                            <input type="checkbox" name="availableDays" value="Wed" class="accent-orange-600"> Wed
+                        </label>
+                        <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-500 transition text-sm has-[:checked]:bg-orange-50 has-[:checked]:border-orange-500 has-[:checked]:text-orange-700">
+                            <input type="checkbox" name="availableDays" value="Thu" class="accent-orange-600"> Thu
+                        </label>
+                        <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-500 transition text-sm has-[:checked]:bg-orange-50 has-[:checked]:border-orange-500 has-[:checked]:text-orange-700">
+                            <input type="checkbox" name="availableDays" value="Fri" class="accent-orange-600" checked> Fri
+                        </label>
+                        <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-500 transition text-sm has-[:checked]:bg-orange-50 has-[:checked]:border-orange-500 has-[:checked]:text-orange-700">
+                            <input type="checkbox" name="availableDays" value="Sat" class="accent-orange-600" checked> Sat
+                        </label>
+                        <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-500 transition text-sm has-[:checked]:bg-orange-50 has-[:checked]:border-orange-500 has-[:checked]:text-orange-700">
+                            <input type="checkbox" name="availableDays" value="Sun" class="accent-orange-600" checked> Sun
+                        </label>
+                    </div>
+                </div>
+            </fieldset>
 
             <section class="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
                 <div class="flex items-center justify-between gap-3">
@@ -145,19 +188,19 @@
                 <div id="private-config-fields" class="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-60 pointer-events-none">
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1" for="privatePrice">Base private price (AUD)</label>
-                        <input type="number" id="privatePrice" min="0" step="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="240">
+                        <input type="number" id="privatePrice" min="0" step="1" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="240">
                     </div>
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1" for="privateCapacity">Max private guests</label>
-                        <input type="number" id="privateCapacity" min="1" step="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="10">
+                        <input type="number" id="privateCapacity" min="1" step="1" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="10">
                     </div>
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1" for="privateIncludedGuests">Included guests at base price</label>
-                        <input type="number" id="privateIncludedGuests" min="1" step="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="6">
+                        <input type="number" id="privateIncludedGuests" min="1" step="1" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="6">
                     </div>
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1" for="privateExtraGuestPrice">Extra guest price (AUD)</label>
-                        <input type="number" id="privateExtraGuestPrice" min="0" step="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="35">
+                        <input type="number" id="privateExtraGuestPrice" min="0" step="1" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="35">
                     </div>
                 </div>
             </section>
@@ -168,7 +211,7 @@
                         <h3 class="text-sm font-bold text-gray-800">Event verification</h3>
                         <p class="text-xs text-gray-500 mt-1">Only verified hosts can request event verification. Guests do not pay extra; approved verified events apply a host payout deduction based on the snapshotted verification fee policy.</p>
                     </div>
-                    <button type="button" id="verified-request-btn" class="inline-flex items-center rounded-lg border border-orange-300 bg-white px-3 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-50 transition">
+                    <button type="button" id="verified-request-btn" class="inline-flex items-center rounded-xl border border-orange-300 bg-white px-3 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-50 transition">
                         Request event verification
                     </button>
                 </div>
@@ -207,30 +250,38 @@
                 <p id="pricing-policy-reference" class="text-xs text-slate-600">Policy reference: loading…</p>
             </section>
 
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="startDate">Start Date</label>
-                    <input type="date" id="startDate" class="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500" required>
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="endDate">End Date</label>
-                    <input type="date" id="endDate" class="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500" required>
-                </div>
-            </div>
+            <div class="border-t border-slate-200 my-6"></div>
 
-	            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-	                <div>
-	                    <label class="block text-sm font-bold text-gray-700 mb-1" for="startTime">Start Time</label>
-	                    <input type="time" id="startTime" class="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500" required>
-	                </div>
-	                <div>
-	                    <label class="block text-sm font-bold text-gray-700 mb-1" for="endTime">End Time (Optional)</label>
-	                    <input type="time" id="endTime" class="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
-	                </div>
-	            </div>
+            <!-- Section 6: Schedule -->
+            <fieldset class="space-y-4 border-0 p-0 m-0">
+                <legend class="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fas fa-calendar text-orange-600"></i> Schedule</legend>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" for="startDate">Start Date</label>
+                        <input type="date" id="startDate" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" for="endDate">End Date</label>
+                        <input type="date" id="endDate" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" required>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" for="startTime">Start Time</label>
+                        <input type="time" id="startTime" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" for="endTime">End Time (Optional)</label>
+                        <input type="time" id="endTime" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent">
+                    </div>
+                </div>
+            </fieldset>
 
-            <div>
-                <span class="block text-sm font-bold text-gray-700 mb-2">Cover Photo</span>
+            <div class="border-t border-slate-200 my-6"></div>
+
+            <!-- Section 7: Cover Photo -->
+            <fieldset class="space-y-4 border-0 p-0 m-0">
+                <legend class="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fas fa-image text-orange-600"></i> Cover Photo</legend>
                 <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 transition cursor-pointer relative">
                     <input type="file" id="imageInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*">
                     <div id="upload-placeholder">
@@ -238,13 +289,14 @@
                         <p class="text-sm text-gray-500">Click to upload image</p>
                     </div>
                     <div id="upload-preview" class="hidden">
-                        <p class="text-sm text-green-600 font-bold"><i class="fas fa-check"></i> Image Selected</p>
+                        <img id="upload-preview-img" class="mx-auto max-h-32 rounded-lg object-cover" alt="Upload preview">
+                        <p class="text-sm text-green-600 font-bold mt-2"><i class="fas fa-check"></i> Image Selected</p>
                     </div>
                 </div>
-            </div>
+            </fieldset>
 
             <div class="pt-4">
-                <button type="submit" id="submit-btn" class="w-full bg-gray-900 text-white py-3 rounded-lg font-bold hover:bg-gray-800 transition shadow-lg">
+                <button type="submit" id="submit-btn" class="w-full bg-tsts-ink text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
                     Publish Experience
                 </button>
             </div>
@@ -253,8 +305,8 @@
     </main>
 
     <footer id="footer-placeholder"></footer>
-    <script src="js/runtime-config.js?v=20260216"></script>
-  <script src="js/common.js?v=20260221a"></script>
-    <script src="js/host.js?v=20260221a"></script>
+    <script src="js/runtime-config.js?v=20260221c"></script>
+  <script src="js/common.js?v=20260221c"></script>
+    <script src="js/host.js?v=20260221c"></script>
 </body>
 </html>
