@@ -473,7 +473,7 @@
     const hostCtaEl = document.getElementById("host-profile-cta");
     const hostId = normalizeHostId(exp);
     if (hostLinkEl) {
-      if (hostId) {
+      if (hostId && exp.hostDiscoverable === true) {
         hostLinkEl.href = "public-profile.html?id=" + encodeURIComponent(hostId);
         hostLinkEl.classList.remove("cursor-default", "pointer-events-none");
         hostLinkEl.removeAttribute("aria-disabled");
@@ -482,7 +482,7 @@
         hostLinkEl.removeAttribute("href");
         hostLinkEl.classList.add("cursor-default", "pointer-events-none");
         hostLinkEl.setAttribute("aria-disabled", "true");
-        if (hostCtaEl) hostCtaEl.textContent = "Profile unavailable";
+        if (hostCtaEl) hostCtaEl.textContent = "";
       }
     }
 
@@ -590,7 +590,7 @@
     }
     // Check initial waitlist status
     try {
-      var session = window.tstsGetSession ? window.tstsGetSession() : null;
+      var session = window.tstsGetSession ? await window.tstsGetSession() : null;
       if (session && session.token) {
         var wlRes = await af("/api/experiences/" + encodeURIComponent(experienceId) + "/waitlist/status", { method: "GET" });
         if (wlRes.ok) {

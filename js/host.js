@@ -450,9 +450,10 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({})
     });
-    const vrPayload = await vr.json().catch(() => ({}));
+    const vrRaw = await vr.json().catch(() => ({}));
+    const vrPayload = (vrRaw && vrRaw.data) ? vrRaw.data : vrRaw;
     if (!vr.ok) {
-      throw new Error(String((vrPayload && vrPayload.message) || "Verification request failed."));
+      throw new Error(String((vrPayload && vrPayload.message) || (vrRaw && vrRaw.message) || "Verification request failed."));
     }
     const updated = (vrPayload && vrPayload.experience) ? vrPayload.experience : vrPayload;
     currentVerifiedStatus = normalizeVerifiedStatus(updated && updated.verifiedStatus);
