@@ -93,7 +93,8 @@ async function fetchBookingDetails(bookingId) {
     throw new Error("Unable to load your bookings. Please try again.");
   }
 
-  const bookings = await res.json();
+  const envelope = await res.json();
+  const bookings = (envelope && Array.isArray(envelope.data)) ? envelope.data : (Array.isArray(envelope) ? envelope : []);
 
   // Find booking by id (schema-safe: booking._id OR booking.bookingId)
   const booking = bookings.find(b => {

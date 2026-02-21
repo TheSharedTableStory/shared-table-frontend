@@ -264,7 +264,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!res || !res.ok) return;
 
         const payload = await res.json();
-        const collections = payload && Array.isArray(payload.collections) ? payload.collections : [];
+        const data = (payload && payload.data) ? payload.data : payload;
+        const collections = data && Array.isArray(data.collections) ? data.collections : [];
         if (collections.length <= 0) return;
 
         elExploreCurations.classList.remove("hidden");

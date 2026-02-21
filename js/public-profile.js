@@ -67,7 +67,8 @@ async function loadReviews() {
     if (!reviewsContainer || !reviewsList) return;
     const res = await window.authFetch(`/api/reviews?hostId=${encodeURIComponent(userId)}&limit=6&sort=recent`, { method: "GET" });
     const payload = await res.json().catch(() => null);
-    const list = (payload && payload.ok === true && Array.isArray(payload.reviews)) ? payload.reviews : [];
+    const unwrapped = (payload && payload.data) ? payload.data : payload;
+    const list = Array.isArray(unwrapped) ? unwrapped : (unwrapped && Array.isArray(unwrapped.reviews) ? unwrapped.reviews : []);
     if (!res.ok || list.length === 0) return;
 
     const El = window.tstsEl;
@@ -80,13 +81,13 @@ async function loadReviews() {
         const comment = (r.comment == null) ? "" : String(r.comment);
         const authorName = r.authorName || 'Guest';
 
-        var card = El('div', { className: 'bg-gray-50 p-4 rounded-xl border border-gray-100' }, [
+        var card = El('div', { className: 'bg-white/80 p-4 rounded-xl border border-slate-100 shadow-soft-card' }, [
             El('div', { className: 'flex justify-between items-center mb-2' }, [
-                El('span', { className: 'font-bold text-gray-900 text-sm', textContent: authorName }),
-                El('span', { className: 'text-xs text-gray-500', textContent: dateStr })
+                El('span', { className: 'font-bold text-tsts-ink text-sm', textContent: authorName }),
+                El('span', { className: 'text-xs text-slate-500', textContent: dateStr })
             ]),
             El('div', { className: 'text-yellow-500 text-xs mb-2', textContent: '★'.repeat(rating) + '☆'.repeat(5 - rating) }),
-            El('p', { className: 'text-gray-600 text-sm italic', textContent: '"' + comment + '"' })
+            El('p', { className: 'text-slate-600 text-sm italic', textContent: '"' + comment + '"' })
         ]);
         reviewsList.appendChild(card);
     });
@@ -106,7 +107,8 @@ async function loadHostExperiences() {
     params.set("hostId", userId);
     const res = await window.authFetch(`/api/experiences?${params.toString()}`, { method: "GET" });
     const payload = await res.json().catch(() => null);
-    const list = Array.isArray(payload) ? payload : (payload && Array.isArray(payload.experiences) ? payload.experiences : []);
+    const unwrapped = (payload && payload.data) ? payload.data : payload;
+    const list = Array.isArray(unwrapped) ? unwrapped : (unwrapped && Array.isArray(unwrapped.experiences) ? unwrapped.experiences : []);
 
     gridEl.textContent = "";
     if (!res.ok) {

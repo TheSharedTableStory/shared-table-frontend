@@ -105,7 +105,8 @@
   async function getSignature() {
     const res = await window.authFetch("/api/uploads/cloudinary-signature", { method: "POST" });
     if (!res.ok) throw new Error("signature_failed");
-    const data = await res.json();
+    const envelope = await res.json();
+    const data = (envelope && envelope.data) ? envelope.data : envelope;
     const need = ["timestamp", "signature", "apiKey", "cloudName", "folder"];
     for (const k of need) {
       if (!data || !data[k]) throw new Error("signature_bad_shape");
@@ -149,7 +150,8 @@
       if (handleUnauthorized(res)) throw new Error("unauthorized");
       const out = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((out && out.message) ? out.message : "upload_failed");
-      const images = (out && Array.isArray(out.images)) ? out.images : [];
+      const unwrapped = (out && out.data) ? out.data : out;
+      const images = (unwrapped && Array.isArray(unwrapped.images)) ? unwrapped.images : [];
       const url = String(images[0] || "");
       if (!url) throw new Error("upload_no_url");
       return url;

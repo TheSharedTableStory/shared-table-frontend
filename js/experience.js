@@ -416,7 +416,8 @@
     }
 
     const raw = await res.json();
-    exp = normalizeExperience(raw);
+    const unwrappedExp = (raw && raw.data !== undefined) ? raw.data : raw;
+    exp = normalizeExperience(unwrappedExp);
     if (!exp) {
       showNotFound("This experience could not be loaded.");
       return;
@@ -451,7 +452,8 @@
       try {
         const profileRes = await af("/api/users/" + encodeURIComponent(String(exp.hostId || "")) + "/profile", { method: "GET" });
         if (profileRes && profileRes.ok) {
-          const profile = await profileRes.json().catch(() => ({}));
+          const profileRaw = await profileRes.json().catch(() => ({}));
+          const profile = (profileRaw && profileRaw.data) ? profileRaw.data : profileRaw;
           if (!hostName) {
             const profileName = String((profile && (profile.name || profile.displayName || profile.fullName)) || "").trim();
             if (profileName && !looksLikeEmail(profileName)) hostName = profileName;
@@ -716,7 +718,7 @@
       }
       const data = await res.json().catch(() => null);
       if (!res.ok) return;
-      const list = Array.isArray(data) ? data : [];
+      const list = (data && Array.isArray(data.data)) ? data.data : (Array.isArray(data) ? data : []);
       const isOn = list.some((x) => String((x && (x._id || x.id)) || "") === String(experienceId));
       setBookmarkUI(isOn);
     } catch (_) {}
@@ -807,7 +809,7 @@
     try {
       const res = await af("/api/experiences/" + encodeURIComponent(experienceId) + "/reviews", { method: "GET" });
       const data = await res.json().catch(() => null);
-      const list = Array.isArray(data) ? data : [];
+      const list = (data && Array.isArray(data.data)) ? data.data : (Array.isArray(data) ? data : []);
       if (!res.ok || list.length === 0) return;
 
       reviewsList.textContent = "";
@@ -852,7 +854,7 @@
     try {
       const res = await af("/api/experiences/" + encodeURIComponent(experienceId) + "/similar", { method: "GET" });
       const data = await res.json().catch(() => null);
-      const list = Array.isArray(data) ? data : [];
+      const list = (data && Array.isArray(data.data)) ? data.data : (Array.isArray(data) ? data : []);
       if (!res.ok || list.length === 0) return;
 
       const El = window.tstsEl;
@@ -1114,7 +1116,7 @@
         return;
       }
 
-      const list = Array.isArray(data) ? data : [];
+      const list = (data && Array.isArray(data.data)) ? data.data : (Array.isArray(data) ? data : []);
       commentsList.textContent = "";
 
       const postHostReply = async function (parentCommentId, text) {

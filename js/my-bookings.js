@@ -1062,7 +1062,8 @@ async function cancelBooking(id, skipInlineConfirm) {
 
   try {
     const res = await window.authFetch(`/api/bookings/${id}/cancel`, { method: "POST" });
-    const data = await res.json().catch(() => ({}));
+    const envelope = await res.json().catch(() => ({}));
+    const data = (envelope && envelope.data) ? envelope.data : envelope;
 
     if (res.ok) {
       const refundCents = Number(data && data.refund && data.refund.amountCents);
@@ -1071,7 +1072,7 @@ async function cancelBooking(id, skipInlineConfirm) {
       await loadTrips();
       return true;
     } else {
-      window.tstsNotify("Error: " + (data.message || "Unable to cancel."), "error");
+      window.tstsNotify("Error: " + ((data && data.message) || "Unable to cancel."), "error");
       return false;
     }
   } catch (_) {
@@ -1195,7 +1196,8 @@ async function loadHostPrivateBookingRequests() {
   const res = await window.authFetch("/api/host/private-booking-requests?status=pending&limit=100", { method: "GET" });
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) return [];
-  const rows = Array.isArray(payload && payload.requests) ? payload.requests : [];
+  const unwrapped = (payload && payload.data) ? payload.data : payload;
+  const rows = Array.isArray(unwrapped && unwrapped.requests) ? unwrapped.requests : [];
   return rows;
 }
 
@@ -2572,7 +2574,8 @@ async function fetchHostPrivateRequestsSource() {
     if (!res.ok) {
       return { status: "error", rows: [], message: String((payload && payload.message) || "Failed to load private requests.") };
     }
-    const rows = Array.isArray(payload && payload.requests) ? payload.requests : [];
+    const unwrapped = (payload && payload.data) ? payload.data : payload;
+    const rows = Array.isArray(unwrapped && unwrapped.requests) ? unwrapped.requests : [];
     return { status: "ready", rows: rows, message: "" };
   } catch (_) {
     return { status: "error", rows: [], message: "Failed to load private requests." };

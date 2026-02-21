@@ -582,7 +582,8 @@
   async function getSignature() {
     const res = await window.authFetch("/api/uploads/cloudinary-signature", { method: "POST" });
     if (!res.ok) throw new Error("signature_failed");
-    const data = await res.json();
+    const envelope = await res.json();
+    const data = (envelope && envelope.data) ? envelope.data : envelope;
     const need = ["timestamp", "signature", "apiKey", "cloudName", "folder"];
     for (const k of need) {
       if (!data || !data[k]) throw new Error("signature_bad_shape");
@@ -1022,7 +1023,8 @@
       var res = await window.authFetch("/api/host/experiences");
       if (!res.ok) { throw new Error("Failed"); }
       var data = await res.json().catch(function () { return {}; });
-      var exps = Array.isArray(data) ? data : (data.experiences || data.data || []);
+      var unwrapped = (data && data.data !== undefined) ? data.data : data;
+      var exps = Array.isArray(unwrapped) ? unwrapped : (unwrapped && unwrapped.experiences ? unwrapped.experiences : []);
       if (loadingEl) loadingEl.classList.add("hidden");
       if (!exps || exps.length === 0) {
         if (emptyEl) emptyEl.classList.remove("hidden");

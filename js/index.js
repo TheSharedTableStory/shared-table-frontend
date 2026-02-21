@@ -288,8 +288,9 @@ async function updateMaxDiscountBanner() {
 
   try {
       const res = await window.authFetch("/api/experiences");
-      const experiences = await res.json();
-      
+      const envelope = await res.json();
+      const experiences = (envelope && Array.isArray(envelope.data)) ? envelope.data : (Array.isArray(envelope) ? envelope : []);
+
       let maxDiscount = 0;
       experiences.forEach(exp => {
           if (exp.dynamicDiscounts) {
@@ -321,7 +322,8 @@ async function loadHomeRecommendations() {
     }
 
     const payload = await res.json();
-    const items = Array.isArray(payload) ? payload : (payload && payload.experiences) ? payload.experiences : (payload && payload.items) ? payload.items : [];
+    const unwrapped = (payload && payload.data !== undefined) ? payload.data : payload;
+    const items = Array.isArray(unwrapped) ? unwrapped : (unwrapped && unwrapped.experiences) ? unwrapped.experiences : (unwrapped && unwrapped.items) ? unwrapped.items : [];
     const recs = items.slice(0, 4);
     if (recs.length > 0) {
       section.classList.remove("hidden");
