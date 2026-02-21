@@ -1159,7 +1159,7 @@
         setCommentComposerState({
           hideComposer: false,
           hideInputs: true,
-          hint: "Reply to guest comments below. Guests leave ratings from My Bookings after completion."
+          hint: "Reply to guest comments below. Guests leave ratings from My Experiences after completion."
         });
       } else {
         setCommentComposerState({

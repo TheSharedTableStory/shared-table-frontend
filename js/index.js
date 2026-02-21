@@ -62,7 +62,7 @@ function renderWaysToConnectCarousel() {
         El("div", { className: "mt-4 flex items-center gap-3" }, [
           El("a", {
             href: "explore.html?category=" + encodeURIComponent(slug),
-            className: "inline-flex items-center gap-2 bg-orange-700 hover:bg-orange-800 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition shadow-sm"
+            className: "inline-flex items-center gap-2 tsts-btn-primary px-4 py-2.5 rounded-xl font-bold text-sm transition shadow-sm"
           }, [
             El("span", { textContent: "Explore" }),
             El("i", { className: "fas fa-arrow-right" })

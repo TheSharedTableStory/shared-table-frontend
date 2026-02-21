@@ -476,7 +476,7 @@ async function loadTrips() {
           El("div", { className: "text-5xl mb-4", textContent: "🌏" }),
           El("h3", { className: "text-xl font-bold text-gray-900 mb-2", textContent: "No bookings yet" }),
           El("p", { className: "text-gray-500 mb-6", textContent: "You haven't booked any experiences yet." }),
-          El("a", { href: "explore.html", className: "inline-block bg-orange-700 text-white px-8 py-3 rounded-full font-bold shadow hover:bg-orange-800 transition", textContent: "Find an Adventure" })
+          El("a", { href: "explore.html", className: "inline-block tsts-btn-primary px-8 py-3 rounded-full font-bold shadow transition", textContent: "Find an Adventure" })
         ])
       );
       focusDashboardDeepLinkPanel();

@@ -1331,7 +1331,7 @@ async function applyAuthStateToNav(opts) {
     menuBtn.setAttribute("aria-expanded", "false");
 
     const menuLinks = [
-      { href: "my-bookings.html", text: "My Bookings" },
+      { href: "my-bookings.html", text: "My Experiences" },
       { href: "profile.html", text: "My Profile" },
       { href: "bookmarks.html", text: "Bookmarks" },
       { href: "connections.html", text: "Connections" },
@@ -1358,7 +1358,7 @@ async function applyAuthStateToNav(opts) {
   if (mobileAuth) {
     mobileAuth.textContent = "";
     const mobileLinks = [
-      { href: "my-bookings.html", text: "My Bookings" },
+      { href: "my-bookings.html", text: "My Experiences" },
       { href: "profile.html", text: "My Profile" },
       { href: "settings-data.html", text: "Data & Privacy" }
     ];
