@@ -1831,6 +1831,21 @@ function wireAdminEvents() {
   const refreshAdminInvitesBtn = $("btn-refresh-admin-invites");
   const couponCreateForm = $("coupon-create-form");
 
+  // Dashboard stat tiles → navigate to relevant tab on click
+  var statsTiles = $("stats-tiles");
+  if (statsTiles) {
+    statsTiles.addEventListener("click", function (e) {
+      var tile = e.target.closest("[data-nav-tab]");
+      if (tile) switchTab(tile.getAttribute("data-nav-tab"));
+    });
+    statsTiles.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") {
+        var tile = e.target.closest("[data-nav-tab]");
+        if (tile) { e.preventDefault(); switchTab(tile.getAttribute("data-nav-tab")); }
+      }
+    });
+  }
+
   if (tabDashboard) tabDashboard.addEventListener("click", () => switchTab("dashboard"));
   if (tabListings) tabListings.addEventListener("click", () => switchTab("listings"));
   if (tabVerification) tabVerification.addEventListener("click", () => switchTab("verification"));

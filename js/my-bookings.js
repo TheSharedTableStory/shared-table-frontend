@@ -1689,6 +1689,9 @@ function renderHostBookingsSection(bookings) {
       "data-action": "guest", "data-booking-id": b._id || "", textContent: "View Details"
     });
 
+    // Booking lifecycle status — must be computed BEFORE check-in button logic
+    var bookingStatusNorm = normalizeState(b.status);
+
     // Check-in / attendance controls for host
     var hostActionBtns = [viewBtn];
     var attStatus = b.attendanceStatus || null;
@@ -1704,7 +1707,6 @@ function renderHostBookingsSection(bookings) {
     }
 
     // Booking lifecycle status badge for host view
-    var bookingStatusNorm = normalizeState(b.status);
     var bookingStatusColors = { confirmed: "bg-green-100 text-green-700", completed: "bg-blue-100 text-blue-700", cancelled: "bg-red-100 text-red-700", cancelled_by_host: "bg-red-100 text-red-700", disputed: "bg-amber-100 text-amber-700", pending_payment: "bg-gray-100 text-gray-600" };
     var bookingStatusBadgeClass = bookingStatusColors[bookingStatusNorm] || "bg-slate-100 text-slate-700";
     var bookingStatusBadge = El("span", { className: "inline-block rounded-full px-2 py-0.5 text-[11px] font-bold " + bookingStatusBadgeClass, textContent: stateLabel(bookingStatusNorm) });

@@ -65,16 +65,16 @@
       </div>
 
       <div id="view-dashboard" class="space-y-8">
-          <section class="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            <article class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <section id="stats-tiles" class="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <article data-nav-tab="users" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 cursor-pointer hover:border-tsts-clay hover:shadow-md transition" role="button" tabindex="0" aria-label="View all users">
               <span class="text-xs uppercase tracking-widest text-slate-500">Total Users</span>
               <p id="stats-total-users" class="text-3xl font-bold text-tsts-ink mt-2">—</p>
             </article>
-            <article class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+            <article data-nav-tab="users" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 cursor-pointer hover:border-tsts-clay hover:shadow-md transition" role="button" tabindex="0" aria-label="View all hosts">
               <span class="text-xs uppercase tracking-widest text-slate-500">Total Hosts</span>
               <p id="stats-total-hosts" class="text-3xl font-bold text-tsts-ink mt-2">—</p>
             </article>
-            <article class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+            <article data-nav-tab="listings" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 cursor-pointer hover:border-tsts-clay hover:shadow-md transition" role="button" tabindex="0" aria-label="View all bookings">
               <span class="text-xs uppercase tracking-widest text-slate-500">Bookings</span>
               <p id="stats-total-bookings" class="text-3xl font-bold text-tsts-ink mt-2">—</p>
             </article>
@@ -441,6 +441,6 @@
 
   <script src="js/runtime-config.js?v=20260222c"></script>
   <script src="js/common.js?v=20260222c"></script>
-  <script src="js/admin.js?v=20260222c"></script>
+  <script src="js/admin.js?v=20260222e"></script>
 </body>
 </html>
