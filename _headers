@@ -1,11 +1,13 @@
 # RENDER DASHBOARD REFERENCE — this file is NOT read by Render.
 # Render static sites require headers to be set via Dashboard > Headers.
-# This file documents the intended policy. Copy values into Render Dashboard.
+# This file documents the LIVE production configuration (validated 2026-02-21).
 #
-# 13 entries total. Security baseline is global (/*), not per-HTML.
+# IMPORTANT: Render does NOT support _headers files or /* wildcard for Cache-Control
+# with precedence. Specific path rules MUST be ordered ABOVE general rules.
+# Do NOT use /* for Cache-Control — it overrides all specific path rules.
 #
 # ═══════════════════════════════════════════════════════════════════════════
-# GLOBAL SECURITY BASELINE (/*) — 7 entries
+# SECURITY HEADERS (Path: /*) — 8 entries, all global
 # ═══════════════════════════════════════════════════════════════════════════
 #
 # Path | Header Name                    | Value
@@ -17,38 +19,35 @@
 # /*   | Cross-Origin-Opener-Policy     | same-origin
 # /*   | Cross-Origin-Resource-Policy   | same-origin
 # /*   | Strict-Transport-Security      | max-age=31536000; includeSubDomains; preload
-#
-# ═══════════════════════════════════════════════════════════════════════════
-# GLOBAL CSP (/*) — 1 entry
-# ═══════════════════════════════════════════════════════════════════════════
-#
-# Path | Header Name                    | Value (single line)
-# ─────┼────────────────────────────────┼──────────────────────────────────
 # /*   | Content-Security-Policy        | default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'
 #
 # ═══════════════════════════════════════════════════════════════════════════
-# HTML CACHE (/*.html) — 1 entry
+# CACHE HEADERS — 6 entries (order matters: specific ABOVE general)
 # ═══════════════════════════════════════════════════════════════════════════
 #
-# Path    | Header Name   | Value
-# ────────┼───────────────┼──────────────────────────────────
-# /*.html | Cache-Control | no-store
+# These MUST be ordered top-to-bottom in Render Dashboard exactly as shown.
+# Render applies first match, not most-specific match.
+#
+# Path      | Header Name   | Value
+# ──────────┼───────────────┼──────────────────────────────────
+# /vendor/* | Cache-Control | public, max-age=31536000, immutable
+# /js/*     | Cache-Control | public, max-age=31536000, immutable
+# /css/*    | Cache-Control | public, max-age=31536000, immutable
+# /assets/* | Cache-Control | public, max-age=31536000, immutable
+# /*.html   | Cache-Control | no-store
+# /         | Cache-Control | no-store
 #
 # ═══════════════════════════════════════════════════════════════════════════
-# STATIC ASSET CACHE — 3 entries (CSS + JS + assets)
+# TOTAL: 14 entries in Render Dashboard
 # ═══════════════════════════════════════════════════════════════════════════
 #
-# Note: /vendor/* also needs long-cache if Render supports it.
-#
-# Path     | Header Name   | Value
-# ─────────┼───────────────┼──────────────────────────────────
-# /css/*   | Cache-Control | public, max-age=31536000, immutable
-# /js/*    | Cache-Control | public, max-age=31536000, immutable
-# /assets/*| Cache-Control | public, max-age=31536000, immutable
-#
-# ═══════════════════════════════════════════════════════════════════════════
-# WHAT'S ENFORCED VIA CODE (meta tags in all 25 HTML files):
+# DEFENSE-IN-DEPTH (meta tags in all 25 HTML files):
 #   - Content-Security-Policy (meta http-equiv)
 #   - Referrer-Policy (meta name="referrer")
-# These meta tags provide defense-in-depth alongside the Dashboard headers.
-# ═══════════════════════════════════════════════════════════════════════════
+# These provide fallback enforcement alongside the Dashboard headers.
+#
+# PRODUCTION VALIDATION (2026-02-21):
+#   / → no-store ✅ | /*.html → no-store ✅
+#   /css/* → immutable ✅ | /js/* → immutable ✅ | /vendor/* → immutable ✅
+#   CSP ✅ | HSTS ✅ | X-Frame-Options ✅ | nosniff ✅
+#   COOP ✅ | CORP ✅ | Permissions-Policy ✅ | Referrer-Policy ✅
