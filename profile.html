@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/assets/icon-192.png">
+    <meta name="theme-color" content="#ea580c">
     <title>My Profile - The Shared Table Story</title>
     <link rel="stylesheet" href="css/tailwind.css?v=20260221c">
     <link rel="stylesheet" href="css/fonts.css?v=20260221c">
@@ -11,11 +13,11 @@
 </head>
 <body class="bg-tsts-cream text-slate-900 flex flex-col min-h-screen">
 
-    <nav id="navbar-placeholder"></nav>
+    <nav id="navbar-placeholder" role="navigation"></nav>
 
-    <main class="flex-grow">
+    <main class="flex-grow" role="main">
     <div class="flex-grow container mx-auto px-4 py-8 max-w-2xl">
-        <h1 class="text-3xl font-bold mb-2">My Profile</h1>
+        <h1 class="text-3xl font-bold mb-2 heading-serif text-tsts-ink">My Profile</h1>
         <p class="text-gray-600 mb-8">Manage your personal details and settings.</p>
 
         <div class="bg-white rounded-3xl shadow-soft-card border border-gray-100 overflow-hidden">
@@ -49,7 +51,7 @@
                 <form id="profile-form" class="space-y-4">
                     <div>
                         <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                        <input type="text" id="name" maxlength="100" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" required>
+                        <input type="text" id="name" maxlength="100" autocomplete="name" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" required>
                     </div>
 
                     <div>
@@ -86,7 +88,7 @@
                                     <p class="text-xs text-gray-600">If enabled, your photo and bio can appear in attendee lists and comments. Off keeps you private by default.</p>
                                 </div>
                                 <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                                    <input type="checkbox" id="public-profile-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                                    <input type="checkbox" id="public-profile-toggle" role="switch" aria-label="Toggle public profile" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
                                     <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
                                 </label>
                             </div>
@@ -106,7 +108,7 @@
                                     <p class="text-xs text-gray-600">If enabled, others can connect to you by searching your handle.</p>
                                 </div>
                                 <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                                    <input type="checkbox" id="allow-handle-search" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                                    <input type="checkbox" id="allow-handle-search" role="switch" aria-label="Toggle handle search" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
                                     <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
                                 </label>
                             </div>
@@ -117,7 +119,7 @@
                                     <p class="text-xs text-gray-600">If enabled, your connections may see bookings you explicitly mark as shareable.</p>
                                 </div>
                                 <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                                    <input type="checkbox" id="share-to-friends" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                                    <input type="checkbox" id="share-to-friends" role="switch" aria-label="Toggle share bookings to friends" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
                                     <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
                                 </label>
                             </div>
@@ -148,7 +150,7 @@
                                     <p class="text-xs text-gray-600">Receive emails about experiences you might enjoy, based on top-rated listings.</p>
                                 </div>
                                 <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                                    <input type="checkbox" id="recommendation-email-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                                    <input type="checkbox" id="recommendation-email-toggle" role="switch" aria-label="Toggle experience recommendations email" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
                                     <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
                                 </label>
                             </div>
@@ -166,7 +168,7 @@
                                 <p class="text-xs text-gray-600">Pause all my listings. No new bookings allowed.</p>
                             </div>
                             <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                                <input type="checkbox" name="vacation-mode" id="vacation-mode" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                                <input type="checkbox" name="vacation-mode" id="vacation-mode" role="switch" aria-label="Toggle vacation mode" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
                                 <label for="vacation-mode" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
                             </div>
                         </div>
@@ -197,7 +199,7 @@
     </div>
     </main>
 
-    <footer id="footer-placeholder"></footer>
+    <footer id="footer-placeholder" role="contentinfo"></footer>
     <script src="js/runtime-config.js?v=20260221c"></script>
   <script src="js/common.js?v=20260221c"></script>
     <script src="js/profile.js?v=20260221c"></script>

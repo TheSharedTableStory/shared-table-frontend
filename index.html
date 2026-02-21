@@ -33,16 +33,16 @@
 </head>
 <body class="bg-tsts-cream text-slate-900 flex flex-col min-h-screen">
 
-    <nav id="navbar-placeholder"></nav>
+    <nav id="navbar-placeholder" role="navigation"></nav>
 
-    <main class="flex-grow">
+    <main class="flex-grow" role="main">
     <section class="relative tsts-home-hero flex items-center justify-center overflow-hidden">
         <div class="absolute inset-0 bg-black/40 z-10"></div>
         <img src="/assets/hero-banner.jpg" 
              alt="Friends sharing a moment around a table" class="absolute inset-0 w-full h-full object-cover">
         
         <div class="relative z-20 text-center text-white px-4 max-w-4xl mx-auto">
-            <h1 class="text-4xl md:text-6xl font-bold mb-6 leading-tight serif">
+            <h1 class="text-4xl md:text-6xl font-bold mb-6 leading-tight heading-serif">
                 Don't Just Visit.<br/>Belong.
             </h1>
 	            <p class="text-xl md:text-2xl mb-8 font-light text-gray-100">
@@ -62,7 +62,7 @@
     <section class="tsts-ways-section px-4 bg-gray-50">
         <div class="max-w-7xl mx-auto">
 	            <div class="text-center tsts-ways-heading">
-	                <h2 class="text-3xl md:text-4xl font-bold mb-4 serif text-gray-900">Ways to Connect</h2>
+	                <h2 class="text-3xl md:text-4xl font-bold mb-4 heading-serif text-tsts-ink">Ways to Connect</h2>
 	                <p class="text-gray-600 max-w-2xl mx-auto">Choose the kind of experience you're in the mood for.</p>
 	            </div>
 	            
@@ -89,7 +89,7 @@
   <div class="max-w-7xl mx-auto">
     <p id="max-discount-banner" class="text-center text-sm text-orange-600 font-medium mb-8"></p>
     <div class="text-center mb-10">
-      <h2 class="text-3xl font-bold mb-4 serif text-gray-900">Shortcuts for you</h2>
+      <h2 class="text-3xl font-bold mb-4 heading-serif text-tsts-ink">Shortcuts for you</h2>
     </div>
     <div id="home-curations-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
   </div>
@@ -98,7 +98,7 @@
     <section id="home-recommend" class="hidden py-12 px-4 bg-gray-50">
         <div class="max-w-7xl mx-auto">
             <div class="text-center mb-10">
-                <h2 class="text-3xl font-bold mb-4 serif text-gray-900">Recommended For You</h2>
+                <h2 class="text-3xl font-bold mb-4 heading-serif text-tsts-ink">Recommended For You</h2>
                 <p class="text-gray-600 max-w-2xl mx-auto">Based on your interests and past experiences.</p>
             </div>
             <div id="home-recommend-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
@@ -107,7 +107,7 @@
 
     <section class="py-16 px-4 bg-white border-b border-gray-100">
         <div class="max-w-6xl mx-auto text-center">
-            <h2 class="text-3xl font-bold mb-12 serif text-gray-900">How It Works</h2>
+            <h2 class="text-3xl font-bold mb-12 heading-serif text-tsts-ink">How It Works</h2>
             <div class="grid md:grid-cols-3 gap-8">
                 <div class="p-6">
                     <div class="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center text-orange-600 text-2xl mb-6 mx-auto">
@@ -141,7 +141,7 @@
                      class="rounded-2xl shadow-xl w-full object-cover h-[400px]" alt="Community gathering at a shared table">
             </div>
             <div class="order-1 md:order-2">
-                <h2 class="text-3xl font-bold mb-6 serif">More Than Just A Meal</h2>
+                <h2 class="text-3xl font-bold mb-6 heading-serif">More Than Just A Meal</h2>
                 <div class="space-y-6">
                     <div class="flex gap-4">
                         <div class="mt-1 text-orange-600"><i class="fas fa-globe-asia"></i></div>
@@ -170,7 +170,7 @@
     </section>
     </main>
 
-    <footer id="footer-placeholder"></footer>
+    <footer id="footer-placeholder" role="contentinfo"></footer>
 
     <script src="js/runtime-config.js?v=20260221c"></script>
   <script src="js/common.js?v=20260221c"></script>

@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/assets/icon-192.png">
+    <meta name="theme-color" content="#ea580c">
     <title>My Bookings - The Shared Table Story</title>
     <link rel="stylesheet" href="css/tailwind.css?v=20260221c">
     <link rel="stylesheet" href="css/fonts.css?v=20260221c">
@@ -11,13 +13,13 @@
 </head>
 <body class="bg-tsts-cream text-slate-900 min-h-screen flex flex-col">
 
-    <nav id="navbar-placeholder"></nav>
+    <nav id="navbar-placeholder" role="navigation"></nav>
 
-    <main class="flex-grow max-w-5xl mx-auto w-full px-4 py-8">
+    <main class="flex-grow max-w-5xl mx-auto w-full px-4 py-8" role="main">
         
         <div class="flex flex-col md:flex-row justify-between items-end mb-8">
             <div>
-                <h1 class="font-serif text-3xl md:text-4xl font-bold text-gray-900">My Bookings</h1>
+                <h1 class="heading-serif text-3xl md:text-4xl font-bold text-tsts-ink">My Bookings</h1>
                 <p class="text-gray-500 mt-2">Manage your experiences and hosting activities.</p>
             </div>
         </div>
@@ -41,7 +43,7 @@
 
     </main>
 
-    <footer id="footer-placeholder"></footer>
+    <footer id="footer-placeholder" role="contentinfo"></footer>
 
     <div id="guest-modal" role="dialog" aria-modal="true" aria-labelledby="modal-experience-title" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
@@ -59,7 +61,7 @@
     <div id="review-modal" role="dialog" aria-modal="true" aria-labelledby="review-modal-title" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden transform transition-all">
             <div class="p-6 border-b border-gray-100">
-                <h3 id="review-modal-title" class="font-serif text-2xl font-bold text-gray-900">How was it?</h3>
+                <h3 id="review-modal-title" class="heading-serif text-2xl font-bold text-gray-900">How was it?</h3>
                 <p id="review-modal-subtitle" class="text-sm text-gray-500">Share your experience with the community.</p>
             </div>
             
@@ -106,7 +108,7 @@
     <div id="complaint-modal" role="dialog" aria-modal="true" aria-labelledby="complaint-modal-title" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden transform transition-all">
             <div class="p-6 border-b border-gray-100">
-                <h3 id="complaint-modal-title" class="font-serif text-2xl font-bold text-gray-900">Report an Issue</h3>
+                <h3 id="complaint-modal-title" class="heading-serif text-2xl font-bold text-gray-900">Report an Issue</h3>
                 <p class="text-sm text-gray-500">Share what went wrong. You can submit within 24 hours after completion.</p>
             </div>
 
@@ -166,7 +168,7 @@
     <div id="cancel-review-modal" role="dialog" aria-modal="true" aria-labelledby="cancel-review-modal-title" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
             <div class="p-6 border-b border-gray-100">
-                <h3 id="cancel-review-modal-title" class="font-serif text-2xl font-bold text-gray-900">Review Cancellation</h3>
+                <h3 id="cancel-review-modal-title" class="heading-serif text-2xl font-bold text-gray-900">Review Cancellation</h3>
                 <p class="text-sm text-gray-500 mt-1">Refund estimate and policy reference before you cancel.</p>
             </div>
             <div class="p-6 space-y-4">
@@ -213,7 +215,7 @@
     <div id="host-reply-modal" role="dialog" aria-modal="true" aria-labelledby="host-reply-modal-title" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden transform transition-all">
             <div class="p-6 border-b border-gray-100">
-                <h3 id="host-reply-modal-title" class="font-serif text-2xl font-bold text-gray-900">Reply to Review</h3>
+                <h3 id="host-reply-modal-title" class="heading-serif text-2xl font-bold text-gray-900">Reply to Review</h3>
                 <p class="text-sm text-gray-500 mt-1">Your reply will be visible to all visitors on the experience page.</p>
             </div>
             <form id="host-reply-form" class="p-6 space-y-4">

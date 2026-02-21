@@ -962,34 +962,44 @@
   }
 
   function renderListingCard(exp) {
+    var El = window.tstsEl;
     var id = String((exp && (exp._id || exp.id)) || "");
     var rawTitle = String((exp && exp.title) || "Untitled");
-    var title = window.tstsText ? window.tstsText(rawTitle) : rawTitle;
     var status = String((exp && exp.status) || "ACTIVE");
-    var badge = statusBadge(status);
-    var actionHtml = "";
-    if (status === "ACTIVE") {
-      actionHtml = '<button type="button" class="listing-action text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition" data-id="' + id + '" data-action="edit">Edit</button>' +
-        '<button type="button" class="listing-action text-xs px-3 py-1.5 rounded-lg border border-orange-300 text-orange-700 hover:bg-orange-50 transition" data-id="' + id + '" data-action="pause">Pause</button>';
-    } else if (status === "PAUSED") {
-      actionHtml = '<button type="button" class="listing-action text-xs px-3 py-1.5 rounded-lg bg-green-600 text-white hover:bg-green-700 transition" data-id="' + id + '" data-action="resume">Resume</button>' +
-        '<button type="button" class="listing-action text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition" data-id="' + id + '" data-action="edit">Edit</button>';
-    } else if (status === "DRAFT" || status === "PENDING_REVIEW") {
-      // Legacy/edge-case: show edit only
-      actionHtml = '<button type="button" class="listing-action text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition" data-id="' + id + '" data-action="edit">Edit</button>';
-    }
-    var li = document.createElement("div");
-    li.className = "flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm";
-    li.innerHTML = '<div class="flex items-center gap-3 min-w-0"><span class="font-semibold text-gray-900 text-sm truncate">' + title + '</span>' + badge + '</div>' +
-      '<div class="flex items-center gap-2 flex-shrink-0">' + actionHtml + '</div>';
-    li.querySelectorAll(".listing-action").forEach(function (btn) {
+    var labels = { ACTIVE: "Active", PAUSED: "Paused", DRAFT: "Draft", PENDING_REVIEW: "In Review", DELETED_SOFT: "Deleted" };
+    var badgeClasses = {
+      ACTIVE: "bg-green-100 text-green-800",
+      PAUSED: "bg-yellow-100 text-yellow-800",
+      DRAFT: "bg-gray-100 text-gray-600",
+      PENDING_REVIEW: "bg-blue-100 text-blue-800",
+      DELETED_SOFT: "bg-red-100 text-red-800"
+    };
+    var badgeEl = El("span", { className: "inline-block rounded-full px-2 py-0.5 text-xs font-semibold " + (badgeClasses[status] || "bg-gray-100 text-gray-600"), textContent: labels[status] || status });
+    var titleEl = El("span", { className: "font-semibold text-gray-900 text-sm truncate", textContent: rawTitle });
+
+    var actionBtns = [];
+    function makeBtn(label, cls, action) {
+      var btn = El("button", { type: "button", className: "text-xs px-3 py-1.5 rounded-lg transition " + cls, textContent: label });
       btn.addEventListener("click", function () {
-        var a = btn.getAttribute("data-action");
-        var eid = btn.getAttribute("data-id");
-        if (a === "edit") { loadListingForEdit(eid); }
-        else { doStatusAction(eid, a); }
+        if (action === "edit") loadListingForEdit(id);
+        else doStatusAction(id, action);
       });
-    });
+      return btn;
+    }
+    if (status === "ACTIVE") {
+      actionBtns.push(makeBtn("Edit", "border border-gray-300 text-gray-600 hover:bg-gray-50", "edit"));
+      actionBtns.push(makeBtn("Pause", "border border-orange-300 text-orange-700 hover:bg-orange-50", "pause"));
+    } else if (status === "PAUSED") {
+      actionBtns.push(makeBtn("Resume", "bg-green-600 text-white hover:bg-green-700", "resume"));
+      actionBtns.push(makeBtn("Edit", "border border-gray-300 text-gray-600 hover:bg-gray-50", "edit"));
+    } else if (status === "DRAFT" || status === "PENDING_REVIEW") {
+      actionBtns.push(makeBtn("Edit", "border border-gray-300 text-gray-600 hover:bg-gray-50", "edit"));
+    }
+
+    var li = El("div", { className: "flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm" }, [
+      El("div", { className: "flex items-center gap-3 min-w-0" }, [titleEl, badgeEl]),
+      El("div", { className: "flex items-center gap-2 flex-shrink-0" }, actionBtns)
+    ]);
     return li;
   }
 
@@ -1003,7 +1013,7 @@
     if (emptyEl) emptyEl.classList.add("hidden");
     if (errorEl) errorEl.classList.add("hidden");
     listEl.classList.add("hidden");
-    listEl.innerHTML = "";
+    listEl.textContent = "";
     try {
       var res = await window.authFetch("/api/host/experiences");
       if (!res.ok) { throw new Error("Failed"); }
@@ -1031,21 +1041,21 @@
       });
       var payload = await res.json().catch(function () { return {}; });
       if (!res.ok) {
-        alert(String((payload && payload.message) || "Action failed. Please try again."));
+        if (window.tstsNotify) window.tstsNotify(String((payload && payload.message) || "Action failed. Please try again."), "error");
         return;
       }
       await loadHostListings();
     } catch (_) {
-      alert("Action failed. Please try again.");
+      if (window.tstsNotify) window.tstsNotify("Action failed. Please try again.", "error");
     }
   }
 
   async function loadListingForEdit(id) {
     try {
       var res = await window.authFetch("/api/experiences/" + encodeURIComponent(id));
-      if (!res.ok) { alert("Could not load listing."); return; }
+      if (!res.ok) { if (window.tstsNotify) window.tstsNotify("Could not load listing.", "error"); return; }
       var exp = await res.json().catch(function () { return null; });
-      if (!exp) { alert("Could not load listing."); return; }
+      if (!exp) { if (window.tstsNotify) window.tstsNotify("Could not load listing.", "error"); return; }
       isEditing = true;
       editId = id;
       existingImageUrl = exp.imageUrl || "";
@@ -1096,7 +1106,7 @@
       syncPricingTransparency();
       if (form) form.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (_) {
-      alert("Could not load listing for editing.");
+      if (window.tstsNotify) window.tstsNotify("Could not load listing for editing.", "error");
     }
   }
 

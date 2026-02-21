@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="/assets/icon-192.png">
+  <meta name="theme-color" content="#ea580c">
   <title>Page Not Found – The Shared Table Story</title>
   <link rel="stylesheet" href="css/tailwind.css?v=20260221c">
   <link rel="stylesheet" href="css/fonts.css?v=20260221c">
@@ -10,14 +12,14 @@
 <link rel="manifest" href="manifest.json">
 </head>
 <body class="bg-tsts-cream text-slate-900 min-h-screen flex flex-col">
-  <nav id="navbar-placeholder"></nav>
+  <nav id="navbar-placeholder" role="navigation"></nav>
 
-  <main class="flex-grow flex flex-col justify-center items-center text-center px-4 py-12">
+  <main class="flex-grow flex flex-col justify-center items-center text-center px-4 py-12" role="main">
     <div class="h-24 w-24 bg-orange-100 rounded-full flex items-center justify-center text-4xl mb-6 shadow-sm">
         🧭
     </div>
 
-    <h1 class="text-4xl md:text-6xl font-bold mb-4 text-gray-900">404</h1>
+    <h1 class="text-4xl md:text-6xl font-bold mb-4 text-tsts-ink heading-serif">404</h1>
     <p class="text-xl text-gray-500 mb-8 max-w-md">Looks like you've wandered off the map. This table hasn't been set yet.</p>
 
     <div class="flex flex-col md:flex-row gap-4">
@@ -30,7 +32,7 @@
     </div>
   </main>
 
-  <footer id="footer-placeholder"></footer>
+  <footer id="footer-placeholder" role="contentinfo"></footer>
   <script src="js/runtime-config.js?v=20260221c"></script>
   <script src="js/common.js?v=20260221c"></script>
 </body>

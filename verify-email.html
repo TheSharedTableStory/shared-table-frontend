@@ -13,16 +13,16 @@
   <meta name="theme-color" content="#ea580c">
 </head>
 <body class="bg-tsts-cream text-slate-900 flex flex-col min-h-screen">
-  <nav id="navbar-placeholder"></nav>
+  <nav id="navbar-placeholder" role="navigation"></nav>
 
-  <main class="flex-grow flex flex-col items-center justify-center px-4 py-12">
+  <main class="flex-grow flex flex-col items-center justify-center px-4 py-12" role="main">
     <div class="max-w-md w-full text-center">
       
       <div id="state-loading" class="py-12">
         <div class="h-16 w-16 bg-orange-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-6 shadow-sm">
           <i class="fas fa-spinner fa-spin text-orange-600"></i>
         </div>
-        <h1 class="text-2xl font-bold text-gray-900 mb-2">Verifying your email...</h1>
+        <h1 class="text-2xl font-bold text-tsts-ink mb-2 heading-serif">Verifying your email...</h1>
         <p class="text-gray-500">Please wait while we confirm your email address.</p>
       </div>
 
@@ -30,7 +30,7 @@
         <div class="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-6 shadow-sm">
           ✓
         </div>
-        <h1 class="text-2xl font-bold text-gray-900 mb-2">Email Verified!</h1>
+        <h1 class="text-2xl font-bold text-tsts-ink mb-2 heading-serif">Email Verified!</h1>
         <p class="text-gray-500 mb-8">Your email has been successfully verified. You can now log in to your account.</p>
         <a href="login.html" class="inline-block px-8 py-3 bg-tsts-ink text-white font-bold rounded-xl shadow-lg hover:bg-slate-800 transition transform hover:scale-105">
           Log In
@@ -41,7 +41,7 @@
         <div class="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-6 shadow-sm">
           ✗
         </div>
-        <h1 class="text-2xl font-bold text-gray-900 mb-2">Verification Failed</h1>
+        <h1 class="text-2xl font-bold text-tsts-ink mb-2 heading-serif">Verification Failed</h1>
         <p id="error-message" class="text-gray-500 mb-8">The verification link is invalid or has expired.</p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
           <a href="login.html" class="px-8 py-3 bg-tsts-ink text-white font-bold rounded-xl shadow-lg hover:bg-slate-800 transition">
@@ -56,7 +56,7 @@
     </div>
   </main>
 
-  <footer id="footer-placeholder"></footer>
+  <footer id="footer-placeholder" role="contentinfo"></footer>
 
   <script src="js/runtime-config.js?v=20260221c"></script>
   <script src="js/common.js?v=20260221c"></script>

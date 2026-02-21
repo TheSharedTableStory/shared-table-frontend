@@ -74,7 +74,7 @@
       const res = await window.authFetch("/api/social/requests", { method: "GET" });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error("requests");
-      const list = Array.isArray(data) ? data : [];
+      const list = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
 
       if (!reqList) return;
       reqList.textContent = "";
@@ -115,7 +115,7 @@
       const res = await window.authFetch("/api/social/connections", { method: "GET" });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error("connections");
-      const list = Array.isArray(data) ? data : [];
+      const list = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
 
       if (!connList) return;
       connList.textContent = "";
