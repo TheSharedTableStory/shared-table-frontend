@@ -32,14 +32,14 @@ function renderWaysToConnectCarousel() {
     img.alt = String(c.label || "Category");
     safeImg(img, String(c.image || ""), "/assets/hero-banner.jpg");
 
-    const overlay = El("div", { className: "tsts-cat-overlay absolute inset-0 bg-black/35 group-hover:bg-black/45 transition z-10" });
+    const overlay = El("div", { className: "tsts-cat-overlay absolute inset-0 z-10" });
 
-    const header = El("div", { className: "tsts-cat-header absolute bottom-0 left-0 p-6 z-20 text-white" }, [
+    const header = El("div", { className: "tsts-cat-header absolute bottom-0 left-0 p-6 z-20 text-white", style: "text-shadow: 0 1px 4px rgba(0,0,0,0.5)" }, [
       El("div", { className: "flex items-center gap-2 mb-2" }, [
         El("span", { className: "inline-flex items-center justify-center w-9 h-9 rounded-full tsts-glass-circle", }, [
           El("i", { className: "fas " + String(c.icon || "fa-compass") })
         ]),
-        El("span", { className: "text-xs font-bold tracking-wide uppercase text-white/90", textContent: "Category" })
+        El("span", { className: "text-xs font-bold tracking-wide uppercase text-white", textContent: "Category" })
       ]),
       El("h3", { className: "text-2xl font-bold serif mb-2", textContent: String(c.label || "") }),
       El("p", { className: "text-sm opacity-90 font-light", textContent: String(c.teaser || "") }),
@@ -57,8 +57,8 @@ function renderWaysToConnectCarousel() {
 
     // z-30 does not exist in our compiled Tailwind; use z-50 so expanded CTA sits above the summary header.
     const more = El("div", { className: "tsts-cat-more absolute inset-x-0 bottom-0 z-50 p-6 text-white" }, [
-      El("div", { className: "rounded-2xl bg-black/55 border border-white/15 backdrop-blur px-5 py-4 shadow-xl" }, [
-        El("p", { className: "text-sm text-white/90 leading-relaxed", textContent: String(c.blurb || "") }),
+      El("div", { className: "rounded-2xl tsts-glass-backdrop px-5 py-4 shadow-xl" }, [
+        El("p", { className: "text-sm text-white leading-relaxed", textContent: String(c.blurb || "") }),
         El("div", { className: "mt-4 flex items-center gap-3" }, [
           El("a", {
             href: "explore.html?category=" + encodeURIComponent(slug),
