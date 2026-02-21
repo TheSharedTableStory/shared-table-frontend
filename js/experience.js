@@ -325,6 +325,11 @@
   const expPriceValueEl = document.getElementById("exp-price");
   const expPriceSuffixEl = document.getElementById("exp-price-suffix");
   const termsBox = document.getElementById("booking-terms");
+  const bookingRulesEl = document.getElementById("booking-rules");
+  const cutoffInfoEl = document.getElementById("cutoff-info");
+  const waitlistCtaEl = document.getElementById("waitlist-cta");
+  const joinWaitlistBtn = document.getElementById("join-waitlist-btn");
+  const waitlistStatusEl = document.getElementById("waitlist-status");
   const bookingTypeLabelEl = document.getElementById("booking-type-label");
   const bookingTypeSublineEl = document.getElementById("booking-type-subline");
   const verifiedFeeNoteEl = document.getElementById("verified-fee-note");
@@ -500,6 +505,102 @@
       dateInput.min = today;
       if (!dateInput.value) dateInput.value = today;
     }
+
+    // === CUTOFF CHECK ===
+    function checkCutoff() {
+      if (!exp || !bookingRulesEl) return;
+      var cutoffEnabled = (exp.bookingCutoffEnabled !== false);
+      var cutoffMins = exp.bookingCutoffMinutes || 1440;
+      var cutoffHrs = Math.round(cutoffMins / 60);
+
+      if (!cutoffEnabled) {
+        bookingRulesEl.classList.add("hidden");
+        if (waitlistCtaEl) waitlistCtaEl.classList.add("hidden");
+        if (submitBtn) submitBtn.disabled = false;
+        return;
+      }
+
+      bookingRulesEl.classList.remove("hidden");
+      if (cutoffInfoEl) cutoffInfoEl.textContent = "Bookings close " + cutoffHrs + "h before start.";
+
+      var dateVal = dateInput ? dateInput.value : "";
+      var slotVal = timeSlotInput ? timeSlotInput.value : "";
+      if (!dateVal || !slotVal) return;
+
+      // Client-side cutoff hint (informational — server enforces)
+      try {
+        var tz = exp.timezone || "Australia/Melbourne";
+        var timePart = String(slotVal).split("-")[0].trim();
+        var parts = timePart.split(":");
+        var hh = parseInt(parts[0], 10);
+        var mm = parseInt(parts[1], 10);
+        var dateParts = dateVal.split("-");
+        var y = parseInt(dateParts[0], 10);
+        var mo = parseInt(dateParts[1], 10);
+        var da = parseInt(dateParts[2], 10);
+        // Approximate: compute local slot time and subtract cutoff
+        var localSlot = new Date(y, mo - 1, da, hh, mm, 0);
+        var cutoffTime = new Date(localSlot.getTime() - cutoffMins * 60000);
+        if (Date.now() >= cutoffTime.getTime()) {
+          if (cutoffInfoEl) cutoffInfoEl.textContent = "Bookings are closed for this slot.";
+          if (submitBtn) submitBtn.disabled = true;
+          if (waitlistCtaEl) waitlistCtaEl.classList.remove("hidden");
+          return;
+        }
+      } catch (_) {}
+      if (submitBtn) submitBtn.disabled = false;
+      if (waitlistCtaEl) waitlistCtaEl.classList.add("hidden");
+    }
+
+    if (dateInput) dateInput.addEventListener("change", checkCutoff);
+    if (timeSlotInput) timeSlotInput.addEventListener("change", checkCutoff);
+    checkCutoff();
+
+    // === WAITLIST ===
+    var _isOnWaitlist = false;
+    if (joinWaitlistBtn) {
+      joinWaitlistBtn.addEventListener("click", async function () {
+        try {
+          if (_isOnWaitlist) {
+            await af("/api/experiences/" + encodeURIComponent(experienceId) + "/waitlist", { method: "DELETE" });
+            _isOnWaitlist = false;
+            joinWaitlistBtn.textContent = "Join waitlist";
+            if (waitlistStatusEl) waitlistStatusEl.classList.add("hidden");
+            if (window.tstsNotify) window.tstsNotify("Removed from waitlist.", "info");
+          } else {
+            var wlBody = {};
+            if (dateInput && dateInput.value) wlBody.bookingDate = dateInput.value;
+            if (timeSlotInput && timeSlotInput.value) wlBody.timeSlot = timeSlotInput.value;
+            await af("/api/experiences/" + encodeURIComponent(experienceId) + "/waitlist", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(wlBody),
+            });
+            _isOnWaitlist = true;
+            joinWaitlistBtn.textContent = "Leave waitlist";
+            if (waitlistStatusEl) { waitlistStatusEl.textContent = "You are on the waitlist."; waitlistStatusEl.classList.remove("hidden"); }
+            if (window.tstsNotify) window.tstsNotify("Added to waitlist!", "success");
+          }
+        } catch (e) {
+          if (window.tstsNotify) window.tstsNotify("Could not update waitlist.", "warning");
+        }
+      });
+    }
+    // Check initial waitlist status
+    try {
+      var session = window.tstsGetSession ? window.tstsGetSession() : null;
+      if (session && session.token) {
+        var wlRes = await af("/api/experiences/" + encodeURIComponent(experienceId) + "/waitlist/status", { method: "GET" });
+        if (wlRes.ok) {
+          var wlData = await wlRes.json();
+          if (wlData && wlData.ok && wlData.data && wlData.data.isOnWaitlist) {
+            _isOnWaitlist = true;
+            if (joinWaitlistBtn) joinWaitlistBtn.textContent = "Leave waitlist";
+            if (waitlistStatusEl) { waitlistStatusEl.textContent = "You are on the waitlist."; waitlistStatusEl.classList.remove("hidden"); }
+          }
+        }
+      }
+    } catch (_) {}
 
     show("experience-content");
 

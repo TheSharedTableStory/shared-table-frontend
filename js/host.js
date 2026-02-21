@@ -44,6 +44,12 @@
   const pricingPrivateSummaryEl = document.getElementById("pricing-private-summary");
   const pricingHostChargeNoteEl = document.getElementById("pricing-host-charge-note");
   const pricingPolicyReferenceEl = document.getElementById("pricing-policy-reference");
+  const timezoneInput = document.getElementById("experienceTimezone");
+  const cutoffEnabledInput = document.getElementById("bookingCutoffEnabled");
+  const cutoffHoursInput = document.getElementById("bookingCutoffHours");
+  const cutoffHoursRow = document.getElementById("cutoff-hours-row");
+  const cutoffPreviewEl = document.getElementById("cutoff-preview");
+  const cutoffLockedBanner = document.getElementById("cutoff-locked-banner");
 
   const CLOUDINARY_URL = (window.CLOUDINARY_URL || "");
 
@@ -666,6 +672,12 @@
         const extra = safeNum(exp.privateExtraGuestPrice);
         privateExtraGuestPriceInput.value = (extra != null && extra >= 0) ? String(extra) : "";
       }
+      // Hydrate booking controls
+      if (timezoneInput) timezoneInput.value = exp.timezone || "Australia/Melbourne";
+      if (cutoffEnabledInput) cutoffEnabledInput.checked = (exp.bookingCutoffEnabled !== false);
+      if (cutoffHoursInput) cutoffHoursInput.value = String(Math.round((exp.bookingCutoffMinutes || 1440) / 60));
+      syncCutoffUi();
+
       currentVerifiedStatus = normalizeVerifiedStatus(exp.verifiedStatus);
       pendingEventVerificationRequest = false;
       syncPrivateConfigUi();
@@ -726,6 +738,24 @@
   syncPrivateConfigUi();
   syncVerifiedUi();
   syncPricingTransparency();
+
+  // Cutoff toggle + preview sync
+  function syncCutoffUi() {
+    var enabled = cutoffEnabledInput ? cutoffEnabledInput.checked : true;
+    if (cutoffHoursRow) cutoffHoursRow.style.display = enabled ? "" : "none";
+    if (cutoffPreviewEl) {
+      if (!enabled) { cutoffPreviewEl.textContent = "Bookings remain open until event start."; return; }
+      var hrs = cutoffHoursInput ? parseInt(cutoffHoursInput.value, 10) || 0 : 24;
+      cutoffPreviewEl.textContent = hrs === 0 ? "Bookings remain open until event start." : "Bookings close " + hrs + "h before each time slot.";
+    }
+  }
+  if (cutoffEnabledInput) {
+    cutoffEnabledInput.addEventListener("change", function () { hideNotice(); syncCutoffUi(); });
+  }
+  if (cutoffHoursInput) {
+    cutoffHoursInput.addEventListener("input", function () { hideNotice(); syncCutoffUi(); });
+  }
+  syncCutoffUi();
 
   // DATE-GUARD-001: Prevent past-date selection (local timezone)
   (function () {
@@ -853,6 +883,11 @@
           body.privateExtraGuestPrice = 0;
         }
 
+        // Booking controls
+        body.timezone = timezoneInput ? timezoneInput.value : "Australia/Melbourne";
+        body.bookingCutoffEnabled = cutoffEnabledInput ? cutoffEnabledInput.checked : true;
+        body.bookingCutoffMinutes = cutoffHoursInput ? Math.max(0, parseInt(cutoffHoursInput.value, 10) || 0) * 60 : 1440;
+
         const url = isEditing ? ("/api/experiences/" + encodeURIComponent(editId)) : "/api/experiences";
         const method = isEditing ? "PUT" : "POST";
 
@@ -864,9 +899,18 @@
         const payload = await res.json().catch(() => ({}));
 
         if (!res.ok) {
+          var errCode = (payload && payload.error) || "";
+          if (errCode === "CUTOFF_EDIT_LOCKED") {
+            if (cutoffLockedBanner) cutoffLockedBanner.classList.remove("hidden");
+          } else if (errCode === "CAPACITY_EXCEEDS_BUFFER_LIMIT" || errCode === "CAPACITY_BELOW_BOOKED") {
+            if (window.tstsNotify) window.tstsNotify(String(payload.message || errCode), "warning");
+          } else if (errCode === "INVALID_TIMEZONE") {
+            if (window.tstsNotify) window.tstsNotify("Invalid timezone selected.", "warning");
+          }
           showNotice("error", String((payload && payload.message) || "Failed to save experience. Please try again."));
           return;
         }
+        if (cutoffLockedBanner) cutoffLockedBanner.classList.add("hidden");
 
         const savedExp = (payload && payload.experience) ? payload.experience : ((payload && payload.data) ? payload.data : payload);
         const savedExperienceId = String((savedExp && (savedExp._id || savedExp.id)) || editId || "").trim();
@@ -1039,6 +1083,12 @@
         if (privateIncludedGuestsInput) privateIncludedGuestsInput.value = String(exp.privateIncludedGuests || "");
         if (privateExtraGuestPriceInput) privateExtraGuestPriceInput.value = String(exp.privateExtraGuestPrice || "");
       }
+      // Hydrate booking controls
+      if (timezoneInput) timezoneInput.value = exp.timezone || "Australia/Melbourne";
+      if (cutoffEnabledInput) cutoffEnabledInput.checked = (exp.bookingCutoffEnabled !== false);
+      if (cutoffHoursInput) cutoffHoursInput.value = String(Math.round((exp.bookingCutoffMinutes || 1440) / 60));
+      syncCutoffUi();
+
       var hiddenId = document.getElementById("editing-experience-id");
       if (hiddenId) hiddenId.value = id;
       if (submitBtn) submitBtn.textContent = "Save Changes";

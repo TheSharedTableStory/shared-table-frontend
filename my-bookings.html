@@ -240,6 +240,44 @@
         </div>
     </div>
 
+    <!-- Check-in modal (host OTP verification) -->
+    <div id="checkin-modal" role="dialog" aria-modal="true" aria-labelledby="checkin-modal-title" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                <h3 id="checkin-modal-title" class="text-lg font-bold text-tsts-ink">Guest Check-In</h3>
+                <button type="button" onclick="closeCheckinModal()" class="text-gray-400 hover:text-gray-600 text-xl" aria-label="Close">&times;</button>
+            </div>
+            <div class="px-6 py-5 space-y-4">
+                <p id="checkin-guest-name" class="text-sm font-semibold text-tsts-ink"></p>
+                <div>
+                    <label for="checkin-otp" class="block text-xs font-medium text-slate-700 mb-1">Entry code (6 digits)</label>
+                    <input type="text" id="checkin-otp" inputmode="numeric" maxlength="6" pattern="[0-9]{6}"
+                        class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none text-center text-2xl tracking-widest font-mono"
+                        placeholder="000000">
+                </div>
+                <div>
+                    <label for="checkin-seats" class="block text-xs font-medium text-slate-700 mb-1">Seats attending</label>
+                    <select id="checkin-seats" class="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent"></select>
+                </div>
+                <p id="checkin-error" class="hidden text-xs text-red-600 font-medium"></p>
+            </div>
+            <div class="flex gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+                <button type="button" onclick="closeCheckinModal()" class="flex-1 px-4 py-2 border border-slate-200 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-100 transition">Cancel</button>
+                <button type="button" id="checkin-confirm-btn" class="flex-1 px-4 py-2 bg-emerald-600 text-white text-sm font-bold rounded-xl shadow hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed">Confirm Check-In</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Entry pass overlay (guest OTP display) -->
+    <div id="entry-pass-overlay" class="hidden fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full text-center px-8 py-10">
+            <p class="text-xs text-slate-500 uppercase tracking-widest mb-2">Entry Code</p>
+            <p id="entry-pass-code" class="text-5xl font-mono font-bold text-tsts-ink tracking-[0.3em] mb-4"></p>
+            <p class="text-sm text-slate-600 mb-6">Show this code to your host on arrival.</p>
+            <button type="button" onclick="closeEntryPass()" class="px-6 py-2 bg-slate-100 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-200 transition">Close</button>
+        </div>
+    </div>
+
     <script src="js/runtime-config.js?v=20260221c"></script>
   <script src="js/common.js?v=20260221c"></script>
     <script src="js/my-bookings.js?v=20260221c"></script>

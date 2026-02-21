@@ -9,6 +9,8 @@ const guestModal = document.getElementById("guest-modal");
 const reviewModal = document.getElementById("review-modal");
 const complaintModal = document.getElementById("complaint-modal");
 const cancelReviewModal = document.getElementById("cancel-review-modal");
+const checkinModal = document.getElementById("checkin-modal");
+const entryPassOverlay = document.getElementById("entry-pass-overlay");
 
 const closeGuestBtn = document.getElementById("close-modal-btn");
 const reviewCancelBtn = document.getElementById("review-cancel-btn");
@@ -607,6 +609,13 @@ function renderTripCard(booking) {
       className: "w-full md:w-auto px-5 py-2 border border-red-200 text-red-600 text-sm font-bold rounded-lg hover:bg-red-50 transition",
       "data-action": "cancel", "data-booking-id": bookingId, textContent: "Cancel Booking"
     })];
+    // Entry code button for confirmed+paid upcoming bookings
+    if (paymentStatus === "paid" && !isPast) {
+      nodes.push(El("button", {
+        className: "w-full md:w-auto px-5 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-bold rounded-lg hover:bg-emerald-100 transition",
+        "data-action": "view-otp", "data-booking-id": bookingId, textContent: "View Entry Code"
+      }));
+    }
     if (visibilityToggleBtn) nodes.push(visibilityToggleBtn);
     actionArea = El("div", { className: "w-full md:w-auto flex flex-col gap-2 md:items-end" }, nodes);
   } else {
@@ -1661,6 +1670,20 @@ function renderHostBookingsSection(bookings) {
       "data-action": "guest", "data-booking-id": b._id || "", textContent: "View Details"
     });
 
+    // Check-in / attendance controls for host
+    var hostActionBtns = [viewBtn];
+    var attStatus = b.attendanceStatus || null;
+    if (attStatus === "checked_in") {
+      hostActionBtns.push(El("span", { className: "px-3 py-1.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700", textContent: "Checked in" }));
+    } else if (attStatus === "no_show") {
+      hostActionBtns.push(El("span", { className: "px-3 py-1.5 text-xs font-bold rounded-full bg-gray-100 text-gray-500", textContent: "No show" }));
+    } else if (bookingStatusNorm === "confirmed" && (b.paymentStatus === "paid")) {
+      hostActionBtns.push(El("button", {
+        className: "w-full md:w-auto bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-700 transition whitespace-nowrap",
+        "data-action": "otp-checkin", "data-booking-id": b._id || "", textContent: "Check In"
+      }));
+    }
+
     // Booking lifecycle status badge for host view
     var bookingStatusNorm = normalizeState(b.status);
     var bookingStatusColors = { confirmed: "bg-green-100 text-green-700", completed: "bg-blue-100 text-blue-700", cancelled: "bg-red-100 text-red-700", cancelled_by_host: "bg-red-100 text-red-700", disputed: "bg-amber-100 text-amber-700", pending_payment: "bg-gray-100 text-gray-600" };
@@ -1700,7 +1723,7 @@ function renderHostBookingsSection(bookings) {
           ])
         ])
       ]),
-      viewBtn
+      El("div", { className: "flex flex-col gap-2 items-end flex-shrink-0" }, hostActionBtns)
     ]);
     wrap.appendChild(card);
   });
@@ -1959,6 +1982,90 @@ function closeHostReplyModal() {
   var submitBtn = document.getElementById("host-reply-submit-btn");
   if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove("opacity-60", "cursor-not-allowed"); }
 }
+
+// === CHECK-IN MODAL (host) ===
+function openCheckinModal(bookingId) {
+  var b = hostBookingsCache.find(function (x) { return (x._id || "") === bookingId; });
+  if (!b) return;
+  var nameEl = document.getElementById("checkin-guest-name");
+  if (nameEl) nameEl.textContent = "Guest: " + (b.guestName || "—") + " (" + (b.numGuests || 1) + " pax)";
+  var otpInput = document.getElementById("checkin-otp");
+  if (otpInput) otpInput.value = "";
+  var seatsSelect = document.getElementById("checkin-seats");
+  if (seatsSelect) {
+    seatsSelect.textContent = "";
+    for (var i = 1; i <= (b.numGuests || 1); i++) {
+      var opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = String(i);
+      if (i === (b.numGuests || 1)) opt.selected = true;
+      seatsSelect.appendChild(opt);
+    }
+  }
+  var errorEl = document.getElementById("checkin-error");
+  if (errorEl) { errorEl.textContent = ""; errorEl.classList.add("hidden"); }
+
+  var confirmBtn = document.getElementById("checkin-confirm-btn");
+  if (confirmBtn) {
+    confirmBtn.disabled = false;
+    confirmBtn.onclick = async function () {
+      confirmBtn.disabled = true;
+      var otp = otpInput ? otpInput.value.trim() : "";
+      var seats = seatsSelect ? parseInt(seatsSelect.value, 10) : (b.numGuests || 1);
+      if (!otp || otp.length !== 6) {
+        if (errorEl) { errorEl.textContent = "Enter a 6-digit code."; errorEl.classList.remove("hidden"); }
+        confirmBtn.disabled = false;
+        return;
+      }
+      try {
+        var res = await window.authFetch("/api/host/bookings/" + encodeURIComponent(bookingId) + "/check-in", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ otp: otp, checkedInSeats: seats }),
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok) {
+          if (errorEl) { errorEl.textContent = (data && data.message) || (data && data.error) || "Check-in failed."; errorEl.classList.remove("hidden"); }
+          confirmBtn.disabled = false;
+          return;
+        }
+        closeCheckinModal();
+        if (window.tstsNotify) window.tstsNotify("Guest checked in!", "success");
+        // Refresh host bookings
+        try { await loadHostBookings(); } catch (_) {}
+      } catch (e) {
+        if (errorEl) { errorEl.textContent = "Network error."; errorEl.classList.remove("hidden"); }
+        confirmBtn.disabled = false;
+      }
+    };
+  }
+
+  _openModal(checkinModal);
+}
+function closeCheckinModal() { _closeModal(checkinModal); }
+
+// === ENTRY CODE VIEWER (guest) ===
+async function viewEntryCode(bookingId) {
+  try {
+    var res = await window.authFetch("/api/bookings/" + encodeURIComponent(bookingId) + "/entry-code", { method: "GET" });
+    var data = await res.json().catch(function () { return {}; });
+    if (!res.ok) {
+      if (window.tstsNotify) window.tstsNotify((data && data.message) || "Entry code not available yet.", "warning");
+      return;
+    }
+    var code = (data && data.data && data.data.otpCode) || "";
+    var codeEl = document.getElementById("entry-pass-code");
+    if (codeEl) codeEl.textContent = code;
+    if (entryPassOverlay) entryPassOverlay.classList.remove("hidden");
+  } catch (e) {
+    if (window.tstsNotify) window.tstsNotify("Could not load entry code.", "warning");
+  }
+}
+function closeEntryPass() { if (entryPassOverlay) entryPassOverlay.classList.add("hidden"); }
+
+// Make close functions globally accessible for onclick handlers
+window.closeCheckinModal = closeCheckinModal;
+window.closeEntryPass = closeEntryPass;
 
 async function submitHostReply(e) {
   e.preventDefault();
@@ -2602,7 +2709,7 @@ function _closeModal(modal) {
 
 function _trapFocus(e) {
   var hostReplyModalEl = document.getElementById("host-reply-modal");
-  var allModals = [guestModal, reviewModal, complaintModal, cancelReviewModal, hostReplyModalEl];
+  var allModals = [guestModal, reviewModal, complaintModal, cancelReviewModal, hostReplyModalEl, checkinModal];
   var modal = allModals.find(function(m) {
     return m && !m.classList.contains("hidden");
   });
@@ -2664,6 +2771,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (action === "review") openReviewModal(bid, expId);
     if (action === "complaint") openComplaintModalById(bid);
     if (action === "guest") openGuestModalById(bid);
+    if (action === "otp-checkin") openCheckinModal(bid);
+    if (action === "view-otp") viewEntryCode(bid);
     if (action === "toggle-visibility") {
       const toFriends = String(toFriendsRaw || "").toLowerCase() === "true";
       updateBookingVisibility(bid, toFriends);
@@ -2726,6 +2835,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       closeComplaintModal();
       closeCancelReviewModal();
       closeHostReplyModal();
+      closeCheckinModal();
+      closeEntryPass();
       return;
     }
     _trapFocus(e);
