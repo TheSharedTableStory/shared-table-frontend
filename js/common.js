@@ -241,7 +241,7 @@ window.tstsConfirm = function(msg, opts) {
     }, cancelText);
 
     var confirmBtn = window.tstsEl("button", {
-      className: "flex-1 px-4 py-2.5 rounded-xl font-medium transition " + (isDestructive ? "bg-red-600 text-white hover:bg-red-700" : "bg-tsts-ink text-white hover:bg-slate-800"),
+      className: "flex-1 px-4 py-2.5 rounded-xl font-medium transition " + (isDestructive ? "bg-red-600 text-white hover:bg-red-700" : "tsts-btn-primary"),
       type: "button"
     }, confirmText);
 
@@ -328,7 +328,7 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
     }, cancelText);
 
     var submitBtn = window.tstsEl("button", {
-      className: "flex-1 px-4 py-2.5 rounded-xl bg-tsts-ink text-white font-medium hover:bg-slate-800 transition",
+      className: "flex-1 px-4 py-2.5 rounded-xl tsts-btn-primary font-medium transition",
       type: "button"
     }, confirmText);
 
@@ -1107,7 +1107,7 @@ function injectNavbar() {
   const navDeals = tstsEl("a", { href: "explore.html?filter=deals", className: "text-red-600 hover:text-red-700 font-bold transition flex items-center gap-1" }, [dealsIcon, " Deals"]);
   const navHost = tstsEl("a", { href: "host.html", className: "text-gray-600 hover:text-orange-600 font-medium transition" }, "Become a Host");
   const authDesktop = tstsEl("div", { id: "auth-section-desktop" }, [
-    tstsEl("a", { href: "login.html", className: "bg-tsts-ink text-white px-5 py-2 rounded-full font-medium hover:bg-slate-800 transition" }, "Login")
+    tstsEl("a", { href: "login.html", className: "tsts-btn-primary px-5 py-2 rounded-full font-medium transition" }, "Login")
   ]);
   const nav = tstsEl("nav", { className: "hidden md:flex items-center space-x-8" }, [navHome, navExplore, navDeals, navHost, authDesktop]);
 
@@ -1124,7 +1124,7 @@ function injectNavbar() {
   const mobileDeals = tstsEl("a", { href: "explore.html?filter=deals", className: "text-red-600 font-bold flex items-center gap-2" }, [mobileDealsIcon, " Deals"]);
   const mobileHost = tstsEl("a", { href: "host.html", className: "text-gray-700 hover:text-orange-600 font-medium" }, "Become a Host");
   const authMobile = tstsEl("div", { id: "auth-section-mobile", className: "pt-4 border-t border-gray-100" }, [
-    tstsEl("a", { href: "login.html", className: "block w-full text-center bg-tsts-ink text-white px-5 py-3 rounded-xl font-medium hover:bg-slate-800 transition" }, "Login / Sign Up")
+    tstsEl("a", { href: "login.html", className: "block w-full text-center tsts-btn-primary px-5 py-3 rounded-xl font-medium transition" }, "Login / Sign Up")
   ]);
   const mobileMenuInner = tstsEl("div", { className: "flex flex-col p-4 space-y-4" }, [mobileHome, mobileExplore, mobileDeals, mobileHost, authMobile]);
   const mobileMenu = tstsEl("div", { id: "mobile-menu", className: "hidden md:hidden bg-white border-t border-gray-100 absolute w-full left-0 shadow-lg" }, [mobileMenuInner]);

@@ -154,9 +154,9 @@
 
   function applyBookingModeButtonState(btn, active, disabled) {
     if (!btn) return;
-    btn.classList.remove("bg-tsts-ink", "text-white", "shadow-sm", "bg-white", "text-slate-600", "hover:bg-slate-50", "opacity-50", "cursor-not-allowed");
+    btn.classList.remove("tsts-indicator-ink", "shadow-sm", "bg-white", "text-slate-600", "hover:bg-slate-50", "opacity-50", "cursor-not-allowed");
     if (active) {
-      btn.classList.add("bg-tsts-ink", "text-white", "shadow-sm");
+      btn.classList.add("tsts-indicator-ink", "shadow-sm");
     } else {
       btn.classList.add("bg-white", "text-slate-600", "hover:bg-slate-50");
     }

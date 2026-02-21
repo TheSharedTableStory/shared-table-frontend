@@ -559,7 +559,7 @@ function renderTripCard(booking) {
     }
 
     const reviewBtn = El("button", {
-      className: "w-full md:w-auto px-5 py-2 bg-tsts-ink text-white text-sm font-bold rounded-xl shadow hover:bg-slate-800 transition flex items-center justify-center gap-2",
+      className: "w-full md:w-auto px-5 py-2 tsts-btn-primary text-sm font-bold rounded-xl shadow transition flex items-center justify-center gap-2",
       "data-action": "review", "data-booking-id": bookingId, "data-exp-id": expId
     }, [El("i", { className: reviewIcon }), " " + reviewLabel]);
 
@@ -1159,7 +1159,7 @@ function renderConnectionActionPanel(connectionRequests) {
         El("div", { className: "flex flex-wrap items-center gap-2" }, [
           El("button", {
             type: "button",
-            className: "px-3 py-2 rounded-xl bg-tsts-ink text-white text-xs font-bold hover:bg-slate-800 transition",
+            className: "px-3 py-2 rounded-xl tsts-btn-primary text-xs font-bold transition",
             "data-action": "connection-request-action",
             "data-request-id": requestId,
             "data-request-status": "accept",
@@ -1253,7 +1253,7 @@ function renderHostPrivateRequestActionsPanel(requests) {
         El("div", { className: "flex flex-wrap items-center gap-2" }, [
           El("button", {
             type: "button",
-            className: "px-3 py-2 rounded-xl bg-tsts-ink text-white text-xs font-bold hover:bg-slate-800 transition",
+            className: "px-3 py-2 rounded-xl tsts-btn-primary text-xs font-bold transition",
             "data-action": "host-private-request-status",
             "data-request-id": requestId,
             "data-request-status": "approved",
@@ -1500,7 +1500,7 @@ function renderHostVerificationSection(verificationData) {
 
   const requestBtn = El("button", {
     type: "button",
-    className: "inline-flex items-center px-4 py-2 rounded-xl text-sm font-bold transition " + (canRequest ? "bg-tsts-ink text-white hover:bg-slate-800" : "bg-gray-200 text-gray-500 cursor-not-allowed"),
+    className: "inline-flex items-center px-4 py-2 rounded-xl text-sm font-bold transition " + (canRequest ? "tsts-btn-primary" : "bg-gray-200 text-gray-500 cursor-not-allowed"),
     textContent: canRequest ? "Request host verification" : "Host verification submitted",
     disabled: !canRequest
   });
@@ -1615,7 +1615,7 @@ function renderHostListingsSection(listings, hostBookings) {
         El("div", { className: "flex flex-wrap items-center gap-2" }, [
           El("a", {
             href: "host.html?edit=" + encodeURIComponent(expId),
-            className: "inline-flex items-center px-4 py-2 bg-tsts-ink text-white text-sm font-bold rounded-xl shadow hover:bg-slate-800 transition",
+            className: "inline-flex items-center px-4 py-2 tsts-btn-primary text-sm font-bold rounded-xl shadow transition",
             textContent: "Edit Listing"
           }),
           El("a", {
@@ -1782,7 +1782,7 @@ function renderHostingSectionTabs(activeSection) {
       El("button", {
         type: "button",
         className: (isActive
-          ? "bg-tsts-ink text-white border-tsts-ink"
+          ? "tsts-indicator-ink border-tsts-ink"
           : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50") + " px-4 py-2 rounded-xl border text-sm font-bold transition",
         "data-action": "host-switch-section",
         "data-host-section": key,
@@ -2462,7 +2462,7 @@ function renderHostingSectionContent() {
         El("div", { className: "text-5xl mb-4", textContent: "🍳" }),
         El("h3", { className: "text-xl font-bold text-gray-900 mb-2", textContent: "No listings yet" }),
         El("p", { className: "text-gray-500 mb-6", textContent: "Create your first experience and it will appear here for editing." }),
-        El("a", { href: "host.html", className: "inline-block bg-tsts-ink text-white px-8 py-3 rounded-full font-bold shadow hover:bg-slate-800 transition", textContent: "Create Listing" })
+        El("a", { href: "host.html", className: "inline-block tsts-btn-primary px-8 py-3 rounded-full font-bold shadow transition", textContent: "Create Listing" })
       ]);
     }
     return renderHostListingsSection(listingRows, bookingsState.status === "ready" ? bookingsState.rows : []);

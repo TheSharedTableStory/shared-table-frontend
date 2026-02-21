@@ -36,14 +36,14 @@ function renderWaysToConnectCarousel() {
 
     const header = El("div", { className: "tsts-cat-header absolute bottom-0 left-0 p-6 z-20 text-white" }, [
       El("div", { className: "flex items-center gap-2 mb-2" }, [
-        El("span", { className: "inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/10 border border-white/20 backdrop-blur", }, [
+        El("span", { className: "inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/25 border border-white/30 backdrop-blur", }, [
           El("i", { className: "fas " + String(c.icon || "fa-compass") })
         ]),
         El("span", { className: "text-xs font-bold tracking-wide uppercase text-white/90", textContent: "Category" })
       ]),
       El("h3", { className: "text-2xl font-bold serif mb-2", textContent: String(c.label || "") }),
       El("p", { className: "text-sm opacity-90 font-light", textContent: String(c.teaser || "") }),
-      El("div", { className: "mt-4 inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur", }, [
+      El("div", { className: "mt-4 inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full bg-white/90 text-tsts-ink shadow-sm", }, [
         El("i", { className: "fas fa-info-circle" }),
         El("span", { textContent: "Read more" })
       ])
@@ -69,7 +69,7 @@ function renderWaysToConnectCarousel() {
           ]),
           El("button", {
             type: "button",
-            className: "inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition border border-white/15",
+            className: "inline-flex items-center gap-2 bg-white/90 hover:bg-white text-tsts-ink px-4 py-2.5 rounded-xl font-bold text-sm transition shadow-sm",
             onclick: function() { details.open = false; }
           }, [
             El("span", { textContent: "Close" })
