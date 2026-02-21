@@ -443,7 +443,7 @@ async function loadTrips() {
           El("div", { className: "text-5xl mb-4", textContent: "🌏" }),
           El("h3", { className: "text-xl font-bold text-gray-900 mb-2", textContent: "No bookings yet" }),
           El("p", { className: "text-gray-500 mb-6", textContent: "You haven't booked any experiences yet." }),
-          El("a", { href: "explore.html", className: "inline-block bg-orange-600 text-white px-8 py-3 rounded-full font-bold shadow hover:bg-orange-700 transition", textContent: "Find an Adventure" })
+          El("a", { href: "explore.html", className: "inline-block bg-orange-700 text-white px-8 py-3 rounded-full font-bold shadow hover:bg-orange-800 transition", textContent: "Find an Adventure" })
         ])
       );
       focusDashboardDeepLinkPanel();
@@ -2398,7 +2398,9 @@ async function fetchHostBookingsSource() {
     if (!res.ok) {
       return { status: "error", rows: [], message: String((payload && payload.message) || "Failed to load booking requests.") };
     }
-    const rows = Array.isArray(payload) ? payload : [];
+    var unwrapped = (payload && payload.data) ? payload.data : payload;
+    if (unwrapped && unwrapped.bookings && Array.isArray(unwrapped.bookings)) unwrapped = unwrapped.bookings;
+    var rows = Array.isArray(unwrapped) ? unwrapped : [];
     return { status: "ready", rows: rows, message: "" };
   } catch (_) {
     return { status: "error", rows: [], message: "Failed to load booking requests." };

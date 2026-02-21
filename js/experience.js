@@ -171,7 +171,13 @@
   function restoreSharedGuestOptions() {
     if (!guestInput) return;
     guestInput.disabled = false;
-    if (defaultGuestOptionsMarkup) guestInput.innerHTML = defaultGuestOptionsMarkup;
+    guestInput.textContent = "";
+    defaultGuestOptions.forEach(function (item) {
+      var opt = document.createElement("option");
+      opt.value = item.value;
+      opt.textContent = item.text;
+      guestInput.appendChild(opt);
+    });
 
     const target = String(lastSharedGuestCount || "1");
     const hasTarget = Array.from(guestInput.options).some((opt) => String(opt.value || "") === target);
@@ -363,7 +369,9 @@
   let activePolicyVersion = "";
   let activePolicyCancelCap = null;
   const TERMS_VERSION = "tsts_terms_v1";
-  const defaultGuestOptionsMarkup = guestInput ? String(guestInput.innerHTML || "") : "";
+  const defaultGuestOptions = guestInput
+    ? Array.from(guestInput.options).map(function (o) { return { value: o.value, text: o.textContent }; })
+    : [];
   let bookingMode = "shared";
   let privateBookingEnabled = false;
   let privateCapacity = 0;

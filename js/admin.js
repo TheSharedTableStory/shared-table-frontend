@@ -100,13 +100,15 @@ function renderDashboardSummary(data) {
 async function loadStats() {
   const res = await adminFetch("/api/admin/stats", { method: "GET" });
   if (!res.ok) throw new Error("stats");
-  return res.json();
+  const body = await res.json();
+  return (body && body.data) ? body.data : body;
 }
 
 async function loadBookings() {
   const res = await adminFetch("/api/admin/bookings", { method: "GET" });
   if (!res.ok) throw new Error("bookings");
-  return res.json();
+  const body = await res.json();
+  return (body && body.data) ? body.data : body;
 }
 
 async function loadExperiences() {
@@ -118,7 +120,8 @@ async function loadExperiences() {
 async function loadUsers() {
   const res = await adminFetch("/api/admin/users", { method: "GET" });
   if (!res.ok) throw new Error("users");
-  return res.json();
+  const body = await res.json();
+  return (body && body.data) ? body.data : body;
 }
 
 async function loadHostVerifications(status) {
@@ -1729,36 +1732,37 @@ function switchTab(tabName) {
   if (selectedTab) selectedTab.className = activeClass;
 
   if (tabName === 'users') {
-    loadUsers().then(renderUsers).catch(() => renderUsers([]));
-    refreshAdminInvites().catch(() => renderAdminInvites([]));
+    loadUsers().then(renderUsers).catch(function () { window.tstsNotify("Failed to load users.", "error"); renderUsers([]); });
+    refreshAdminInvites().catch(function () { window.tstsNotify("Failed to load invites.", "error"); renderAdminInvites([]); });
   }
   if (tabName === 'listings') {
-    loadExperiences().then(renderExperiences).catch(() => renderExperiences([]));
+    loadExperiences().then(renderExperiences).catch(function () { window.tstsNotify("Failed to load experiences.", "error"); renderExperiences([]); });
   }
   if (tabName === 'verification') {
     refreshVerificationViews().catch(function () {
+      window.tstsNotify("Failed to load verifications.", "error");
       renderVerificationPolicy({ data: { policy: { feePercent: 0, policyVersion: "Unavailable", effectiveFrom: null } } });
       renderHostVerifications({ data: { items: [] } });
       renderEventVerifications({ data: { items: [] } });
     });
   }
   if (tabName === 'action-items') {
-    refreshActionItemsView().catch(() => renderActionItems({ data: { items: [] } }));
+    refreshActionItemsView().catch(function () { window.tstsNotify("Failed to load action items.", "error"); renderActionItems({ data: { items: [] } }); });
   }
   if (tabName === 'coupons') {
-    loadCoupons().then(renderCoupons).catch(() => renderCoupons([]));
+    loadCoupons().then(renderCoupons).catch(function () { window.tstsNotify("Failed to load coupons.", "error"); renderCoupons([]); });
   }
   if (tabName === 'moderation') {
-    loadReports().then(renderReports).catch(() => renderReports([]));
+    loadReports().then(renderReports).catch(function () { window.tstsNotify("Failed to load reports.", "error"); renderReports([]); });
   }
   if (tabName === 'private-requests') {
-    loadPrivateBookingRequests().then(renderPrivateRequests).catch(() => renderPrivateRequests([]));
+    loadPrivateBookingRequests().then(renderPrivateRequests).catch(function () { window.tstsNotify("Failed to load private requests.", "error"); renderPrivateRequests([]); });
   }
   if (tabName === 'dashboard') {
     Promise.all([
-      loadStats().catch(() => ({})),
-      loadBookings().catch(() => ([])),
-      loadDashboardSummary().catch(() => ({}))
+      loadStats().catch(function () { window.tstsNotify("Failed to load stats.", "error"); return {}; }),
+      loadBookings().catch(function () { window.tstsNotify("Failed to load bookings.", "error"); return []; }),
+      loadDashboardSummary().catch(function () { return {}; })
     ]).then(function(results) {
       renderStats(results[0]);
       renderBookings(results[1]);
@@ -1766,7 +1770,7 @@ function switchTab(tabName) {
     });
   }
   if (tabName === 'audit') {
-    refreshAuditLogs().catch(() => renderAuditLogs([]));
+    refreshAuditLogs().catch(function () { window.tstsNotify("Failed to load audit logs.", "error"); renderAuditLogs([]); });
   }
 };
 
@@ -1830,23 +1834,23 @@ function wireAdminEvents() {
   if (tabModeration) tabModeration.addEventListener("click", () => switchTab("moderation"));
   if (tabPrivateRequests) tabPrivateRequests.addEventListener("click", () => switchTab("private-requests"));
   if (tabAudit) tabAudit.addEventListener("click", () => switchTab("audit"));
-  if (refreshListings) refreshListings.addEventListener("click", () => loadExperiences().then(renderExperiences).catch(() => renderExperiences([])));
-  if (refreshVerificationPolicy) refreshVerificationPolicy.addEventListener("click", () => refreshVerificationViews().catch(() => {}));
+  if (refreshListings) refreshListings.addEventListener("click", () => loadExperiences().then(renderExperiences).catch(function () { window.tstsNotify("Failed to refresh listings.", "error"); renderExperiences([]); }));
+  if (refreshVerificationPolicy) refreshVerificationPolicy.addEventListener("click", () => refreshVerificationViews().catch(function () { window.tstsNotify("Failed to refresh verification policy.", "error"); }));
   if (saveVerificationPolicyBtn) saveVerificationPolicyBtn.addEventListener("click", () => handleSaveVerificationPolicy());
-  if (refreshHostVerifications) refreshHostVerifications.addEventListener("click", () => loadHostVerifications("all").then(renderHostVerifications).catch(() => renderHostVerifications({ data: { items: [] } })));
-  if (refreshEventVerifications) refreshEventVerifications.addEventListener("click", () => loadEventVerifications("all").then(renderEventVerifications).catch(() => renderEventVerifications({ data: { items: [] } })));
-  if (refreshActionItems) refreshActionItems.addEventListener("click", () => refreshActionItemsView().catch(() => renderActionItems({ data: { items: [] } })));
-  if (actionItemsStatusFilter) actionItemsStatusFilter.addEventListener("change", () => refreshActionItemsView().catch(() => renderActionItems({ data: { items: [] } })));
-  if (refreshUsers) refreshUsers.addEventListener("click", () => loadUsers().then(renderUsers).catch(() => renderUsers([])));
-  if (refreshCoupons) refreshCoupons.addEventListener("click", () => loadCoupons().then(renderCoupons).catch(() => renderCoupons([])));
-  if (refreshReports) refreshReports.addEventListener("click", () => loadReports().then(renderReports).catch(() => renderReports([])));
-  if (refreshPrivateRequests) refreshPrivateRequests.addEventListener("click", () => loadPrivateBookingRequests().then(renderPrivateRequests).catch(() => renderPrivateRequests([])));
+  if (refreshHostVerifications) refreshHostVerifications.addEventListener("click", () => loadHostVerifications("all").then(renderHostVerifications).catch(function () { window.tstsNotify("Failed to refresh host verifications.", "error"); renderHostVerifications({ data: { items: [] } }); }));
+  if (refreshEventVerifications) refreshEventVerifications.addEventListener("click", () => loadEventVerifications("all").then(renderEventVerifications).catch(function () { window.tstsNotify("Failed to refresh event verifications.", "error"); renderEventVerifications({ data: { items: [] } }); }));
+  if (refreshActionItems) refreshActionItems.addEventListener("click", () => refreshActionItemsView().catch(function () { window.tstsNotify("Failed to refresh action items.", "error"); renderActionItems({ data: { items: [] } }); }));
+  if (actionItemsStatusFilter) actionItemsStatusFilter.addEventListener("change", () => refreshActionItemsView().catch(function () { window.tstsNotify("Failed to filter action items.", "error"); renderActionItems({ data: { items: [] } }); }));
+  if (refreshUsers) refreshUsers.addEventListener("click", () => loadUsers().then(renderUsers).catch(function () { window.tstsNotify("Failed to refresh users.", "error"); renderUsers([]); }));
+  if (refreshCoupons) refreshCoupons.addEventListener("click", () => loadCoupons().then(renderCoupons).catch(function () { window.tstsNotify("Failed to refresh coupons.", "error"); renderCoupons([]); }));
+  if (refreshReports) refreshReports.addEventListener("click", () => loadReports().then(renderReports).catch(function () { window.tstsNotify("Failed to refresh reports.", "error"); renderReports([]); }));
+  if (refreshPrivateRequests) refreshPrivateRequests.addEventListener("click", () => loadPrivateBookingRequests().then(renderPrivateRequests).catch(function () { window.tstsNotify("Failed to refresh private requests.", "error"); renderPrivateRequests([]); }));
   if (refreshAudit) refreshAudit.addEventListener("click", () => handleRefreshAudit());
   if (applyAuditFilters) applyAuditFilters.addEventListener("click", () => handleRefreshAudit());
   if (exportAuditCsv) exportAuditCsv.addEventListener("click", () => handleExportAudit("csv"));
   if (exportAuditJson) exportAuditJson.addEventListener("click", () => handleExportAudit("json"));
   if (adminInviteForm) adminInviteForm.addEventListener("submit", handleInviteAdminSubmit);
-  if (refreshAdminInvitesBtn) refreshAdminInvitesBtn.addEventListener("click", () => refreshAdminInvites().catch(() => renderAdminInvites([])));
+  if (refreshAdminInvitesBtn) refreshAdminInvitesBtn.addEventListener("click", () => refreshAdminInvites().catch(function () { window.tstsNotify("Failed to refresh admin invites.", "error"); renderAdminInvites([]); }));
   if (couponCreateForm) couponCreateForm.addEventListener("submit", handleCreateCoupon);
 }
 
@@ -1857,22 +1861,25 @@ async function boot() {
 
   // basic skeleton if containers exist
   try {
+    var _bootFailed = false;
+    function _bootCatch(fallback) { return function () { _bootFailed = true; return fallback; }; }
     const [stats, bookings, exps, users, promos, reports, privateRequests, auditData, inviteData, verificationPolicy, hostVerifications, eventVerifications, actionItems, dashSummary] = await Promise.all([
-      loadStats().catch(() => ({})),
-      loadBookings().catch(() => ([])),
-      loadExperiences().catch(() => ([])),
-      loadUsers().catch(() => ([])),
-      loadCoupons().catch(() => ([])),
-      loadReports().catch(() => ([])),
-      loadPrivateBookingRequests().catch(() => ([])),
-      loadAuditLogs({ limit: 100, skip: 0 }).catch(() => ({ total: 0, items: [] })),
-      loadAdminInvites("all").catch(() => ({ items: [] })),
-      loadVerificationFeePolicy().catch(() => ({ data: { policy: { feePercent: 0, policyVersion: "Unavailable", effectiveFrom: null } } })),
-      loadHostVerifications("all").catch(() => ({ data: { items: [] } })),
-      loadEventVerifications("all").catch(() => ({ data: { items: [] } })),
-      loadAdminActionItems("pending").catch(() => ({ data: { items: [] } })),
-      loadDashboardSummary().catch(() => ({}))
+      loadStats().catch(_bootCatch({})),
+      loadBookings().catch(_bootCatch([])),
+      loadExperiences().catch(_bootCatch([])),
+      loadUsers().catch(_bootCatch([])),
+      loadCoupons().catch(_bootCatch([])),
+      loadReports().catch(_bootCatch([])),
+      loadPrivateBookingRequests().catch(_bootCatch([])),
+      loadAuditLogs({ limit: 100, skip: 0 }).catch(_bootCatch({ total: 0, items: [] })),
+      loadAdminInvites("all").catch(_bootCatch({ items: [] })),
+      loadVerificationFeePolicy().catch(_bootCatch({ data: { policy: { feePercent: 0, policyVersion: "Unavailable", effectiveFrom: null } } })),
+      loadHostVerifications("all").catch(_bootCatch({ data: { items: [] } })),
+      loadEventVerifications("all").catch(_bootCatch({ data: { items: [] } })),
+      loadAdminActionItems("pending").catch(_bootCatch({ data: { items: [] } })),
+      loadDashboardSummary().catch(_bootCatch({}))
     ]);
+    if (_bootFailed) window.tstsNotify("Some admin data failed to load. Sections may be incomplete.", "error");
 
     renderStats(stats);
     renderBookings(bookings);
