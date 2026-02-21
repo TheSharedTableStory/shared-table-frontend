@@ -518,3 +518,30 @@ html[data-auth-pending="1"] body { visibility: hidden; }
   color: rgb(248 250 252);
 }
 
+/* GLASS BUTTON — frosted glass CTA for dark photo/hero contexts */
+.tsts-btn-glass {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.tsts-btn-glass:hover { background-color: rgba(255, 255, 255, 0.22); }
+
+/* GLASS PILL — subtle glass for small UI elements on dark backgrounds */
+.tsts-glass-pill {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* GLASS CIRCLE — decorative glass for icons on dark backgrounds */
+.tsts-glass-circle {
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
