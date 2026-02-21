@@ -53,7 +53,8 @@ var allExperiencesCache = [];
 async function loadDashboardSummary() {
   const res = await adminFetch("/api/admin/dashboard-summary", { method: "GET" });
   if (!res.ok) throw new Error("dashboard-summary");
-  return res.json();
+  const raw = await res.json();
+  return (raw && raw.data) ? raw.data : raw;
 }
 
 function renderDashboardSummary(data) {
@@ -63,9 +64,9 @@ function renderDashboardSummary(data) {
   if (!expSection || !expCards || !bkCards) return;
   const El = window.tstsEl;
 
-  var _d = (data && data.data) || data || {};
-  var expByStatus = (_d && _d.expByStatus) || (data && data.expByStatus) || {};
-  var bookingByStatus = (_d && _d.bookingByStatus) || (data && data.bookingByStatus) || {};
+  var _d = data || {};
+  var expByStatus = _d.expByStatus || {};
+  var bookingByStatus = _d.bookingByStatus || {};
 
   var expDefs = [
     { key: "ACTIVE", label: "Active", color: "text-green-700", bg: "bg-green-50 border-green-200" },

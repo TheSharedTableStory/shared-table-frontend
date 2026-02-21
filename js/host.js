@@ -958,14 +958,6 @@
     });
   }
 
-  function statusBadge(status) {
-    var badges = { DRAFT: "bg-gray-100 text-gray-600", PENDING_REVIEW: "bg-amber-100 text-amber-700", ACTIVE: "bg-green-100 text-green-700", PAUSED: "bg-orange-100 text-orange-700", DELETED_SOFT: "bg-red-100 text-red-700" };
-    var labels = { DRAFT: "Draft", PENDING_REVIEW: "Pending Review", ACTIVE: "Active", PAUSED: "Paused", DELETED_SOFT: "Deleted" };
-    var cls = badges[status] || "bg-gray-100 text-gray-600";
-    var label = labels[status] || status;
-    return '<span class="inline-block rounded-full px-2 py-0.5 text-xs font-semibold ' + cls + '">' + (window.tstsText ? window.tstsText(label) : label) + '</span>';
-  }
-
   function renderListingCard(exp) {
     var El = window.tstsEl;
     var id = String((exp && (exp._id || exp.id)) || "");
