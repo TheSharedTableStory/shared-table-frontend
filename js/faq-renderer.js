@@ -90,10 +90,12 @@
 
   function getHubItems(hubId) {
     const state = getFaqState();
+    const targetHub = String(hubId || "");
     return state.catalog.filter((item) => {
       if (!item || typeof item !== "object") return false;
       if (String(item.status || "") !== "active") return false;
-      if (String(item.hub || "") !== String(hubId || "")) return false;
+      if (String(item.hub || "") !== targetHub) return false;
+      if (targetHub === "trust") return true;
       return Array.isArray(item.contexts) && item.contexts.indexOf("hub") >= 0;
     });
   }
@@ -204,11 +206,8 @@
       root.appendChild(search);
     }
 
-    let count = root.querySelector("[data-faq-count]");
-    if (!count) {
-      count = createEl("p", { className: "text-xs uppercase tracking-[0.14em] text-slate-500", "data-faq-count": "1" });
-      root.appendChild(count);
-    }
+    const count = root.querySelector("[data-faq-count]");
+    if (count) count.classList.add("hidden");
 
     let list = root.querySelector("[data-faq-list]");
     if (!list) {
@@ -235,7 +234,7 @@
       root.appendChild(escalation);
     }
 
-    return { search, list, empty, count, escalation };
+    return { search, list, empty, escalation };
   }
 
   function groupBySection(items, query) {
@@ -263,10 +262,9 @@
 
       skeleton.list.textContent = "";
 
-      let totalVisible = 0;
-      sections.forEach((sectionName, sectionIndex) => {
+      sections.forEach((sectionName) => {
         const sectionItems = grouped.get(sectionName) || [];
-        totalVisible += sectionItems.length;
+        const sectionIcon = createEl("span", { className: "text-slate-500 text-base leading-none", textContent: "+" });
 
         const summary = createEl(
           "summary",
@@ -276,7 +274,7 @@
           },
           [
             createEl("span", { className: "pr-4", textContent: titleizeSection(sectionName) }),
-            createEl("span", { className: "text-gray-500 text-xs font-bold" }, String(sectionItems.length) + " questions")
+            sectionIcon
           ]
         );
 
@@ -293,21 +291,19 @@
           [summary, sectionBody]
         );
 
-        if (sectionIndex === 0) sectionDetails.open = true;
+        sectionDetails.addEventListener("toggle", () => {
+          setText(sectionIcon, sectionDetails.open ? "−" : "+");
+        });
 
         skeleton.list.appendChild(sectionDetails);
       });
 
-      if (totalVisible === 0) {
+      if (sections.length === 0) {
         skeleton.empty.classList.remove("hidden");
       } else {
         skeleton.empty.classList.add("hidden");
       }
 
-      setText(
-        skeleton.count,
-        "Showing " + String(totalVisible) + " question" + (totalVisible === 1 ? "" : "s") + " across " + String(sections.length) + " section" + (sections.length === 1 ? "" : "s")
-      );
     }
 
     skeleton.search.addEventListener("input", renderSections);
