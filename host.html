@@ -11,6 +11,7 @@
     <title>Become a Host - The Shared Table Story</title>
 	    <link rel="stylesheet" href="css/tailwind.css?v=20260222c">
 	    <link rel="stylesheet" href="css/fonts.css?v=20260222c">
+      <link rel="stylesheet" href="css/help-center.css?v=20260222a">
 	<link rel="manifest" href="manifest.json">
 
 	</head>
@@ -22,6 +23,7 @@
 	        <div class="container mx-auto px-4 py-12 max-w-3xl flex-grow">
 	        <h1 class="text-3xl font-bold mb-2 heading-serif text-tsts-ink">Host an Experience</h1>
 	        <p class="text-gray-600 mb-8">Share what you love with travellers.</p>
+        <div id="faq-context-host-onboarding" class="hidden mb-8"></div>
 
         <!-- My Listings section -->
         <section id="my-listings-section" class="mb-10">
@@ -343,12 +345,20 @@
                 </button>
             </div>
         </form>
+        <section class="mt-10">
+            <div id="faq-context-dashboard-host" class="hidden"></div>
+        </section>
     </div>
     </main>
 
     <footer id="footer-placeholder" role="contentinfo"></footer>
     <script src="js/runtime-config.js?v=20260222c"></script>
   <script src="js/common.js?v=20260222c"></script>
+    <script src="data/faq-catalog.js?v=20260222a"></script>
+    <script src="data/faq-trust.js?v=20260222a"></script>
+    <script src="js/faq-renderer.js?v=20260222a"></script>
+    <script src="js/faq-contextual.js?v=20260222a"></script>
+    <script src="js/faq-init.js?v=20260222a"></script>
     <script src="js/host.js?v=20260222d"></script>
 </body>
 </html>

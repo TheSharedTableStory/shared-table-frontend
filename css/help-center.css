@@ -1,0 +1,35 @@
+.help-center {
+  color: inherit;
+}
+
+.help-center .help-center-question-toggle:focus-visible,
+.help-center .help-center-section-btn:focus-visible,
+.help-center .help-center-context-toggle:focus-visible {
+  outline: 2px solid rgba(234, 88, 12, 0.5);
+  outline-offset: 2px;
+}
+
+.help-center .help-center-sticky-search {
+  position: sticky;
+  top: 5.5rem;
+  z-index: 10;
+}
+
+.help-center .help-center-contextual {
+  margin-top: 0.75rem;
+}
+
+.help-center .help-center-card {
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.help-center .help-center-card:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .help-center .help-center-sticky-search {
+    position: static;
+    top: auto;
+  }
+}

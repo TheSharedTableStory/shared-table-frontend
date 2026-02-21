@@ -1155,6 +1155,7 @@ function injectFooter() {
   const col3 = tstsEl("div", {}, [
     tstsEl("h4", { className: "font-bold mb-4" }, "Support"),
     tstsEl("ul", { className: "space-y-2 text-gray-400 text-sm" }, [
+      tstsEl("li", {}, [tstsEl("a", { href: "help-center.html", className: "hover:text-white transition" }, "FAQs")]),
       tstsEl("li", {}, [tstsEl("a", { href: "terms.html", className: "hover:text-white transition" }, "Terms of Service")]),
       tstsEl("li", {}, [tstsEl("a", { href: "host-terms.html", className: "hover:text-white transition" }, "Host Terms")]),
       tstsEl("li", {}, [tstsEl("a", { href: "privacy.html", className: "hover:text-white transition" }, "Privacy Policy")]),
