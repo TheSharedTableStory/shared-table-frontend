@@ -63,8 +63,9 @@ function renderDashboardSummary(data) {
   if (!expSection || !expCards || !bkCards) return;
   const El = window.tstsEl;
 
-  var expByStatus = (data && data.expByStatus) || {};
-  var bookingByStatus = (data && data.bookingByStatus) || {};
+  var _d = (data && data.data) || data || {};
+  var expByStatus = (_d && _d.expByStatus) || (data && data.expByStatus) || {};
+  var bookingByStatus = (_d && _d.bookingByStatus) || (data && data.bookingByStatus) || {};
 
   var expDefs = [
     { key: "ACTIVE", label: "Active", color: "text-green-700", bg: "bg-green-50 border-green-200" },
