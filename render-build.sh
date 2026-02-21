@@ -68,7 +68,6 @@ PUBLIC_FILES=(
   "terms.html"
   "unsubscribe.html"
   "verify-email.html"
-  "_headers"
 )
 
 PUBLIC_DIRS=(

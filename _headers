@@ -1,22 +1,19 @@
-# Render Static Site — Custom Headers
-# Security + cache. CSS/JS with version query strings are immutable; HTML must revalidate.
-
-/*
-  X-Content-Type-Options: nosniff
-  X-Frame-Options: DENY
-  Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: camera=(), microphone=(), geolocation=()
-
-/css/*
-  Cache-Control: public, max-age=31536000, immutable
-
-/js/*
-  Cache-Control: public, max-age=31536000, immutable
-
-/assets/*
-  Cache-Control: public, max-age=31536000, immutable
-
-/*.html
-  Cache-Control: no-cache
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'
-  Strict-Transport-Security: max-age=31536000; includeSubDomains
+# RENDER DASHBOARD REFERENCE — this file is NOT read by Render.
+# Render static sites require headers to be set via Dashboard > Headers.
+# This file documents the intended policy. Copy values into Render Dashboard.
+#
+# Path                  | Header Name                  | Value
+# ──────────────────────┼──────────────────────────────┼──────────────────────────────
+# /*                    | X-Content-Type-Options       | nosniff
+# /*                    | X-Frame-Options              | DENY
+# /*                    | Referrer-Policy              | strict-origin-when-cross-origin
+# /*                    | Permissions-Policy           | camera=(), microphone=(), geolocation=()
+# /*.html               | Cache-Control                | no-cache
+# /*.html               | Content-Security-Policy      | (see below)
+# /*.html               | Strict-Transport-Security    | max-age=31536000; includeSubDomains
+# /css/*                | Cache-Control                | public, max-age=31536000, immutable
+# /js/*                 | Cache-Control                | public, max-age=31536000, immutable
+# /assets/*             | Cache-Control                | public, max-age=31536000, immutable
+#
+# CSP value (single line):
+# default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'
