@@ -4,51 +4,64 @@
 
 .help-center .help-center-question-toggle:focus-visible,
 .help-center .help-center-section-btn:focus-visible,
-.help-center .help-center-context-toggle:focus-visible {
+.help-center .help-center-context-toggle:focus-visible,
+.help-center .help-center-hub-tile:focus-visible {
   outline: 2px solid rgba(234, 88, 12, 0.5);
   outline-offset: 2px;
-}
-
-.help-center .help-center-sticky-search {
-  position: sticky;
-  top: 5.5rem;
-  z-index: 10;
 }
 
 .help-center .help-center-contextual {
   margin-top: 0.75rem;
 }
 
-.help-center .help-center-card {
-  transition: transform 160ms ease, box-shadow 160ms ease;
-}
-
-.help-center .help-center-card:hover {
-  transform: translateY(-1px);
-}
-
-.help-center .help-center-hub-toolbar {
+.help-center .help-center-hub-grid {
   display: grid;
   gap: 0.75rem;
+  grid-template-columns: 1fr;
 }
 
 .help-center .help-center-hub-tile {
-  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease, transform 160ms ease;
+  min-height: 90px;
+  transition: border-color 160ms ease, background-color 160ms ease;
 }
 
 .help-center .help-center-hub-tile:hover {
-  transform: translateY(-1px);
+  border-color: rgba(148, 163, 184, 0.65);
 }
 
 .help-center .help-center-hub-tile[data-expanded="true"] {
   border-color: rgba(234, 88, 12, 0.45);
   background-color: #fff;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 
-@media (min-width: 900px) {
-  .help-center .help-center-hub-toolbar {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+.help-center .help-center-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 160ms ease;
+}
+
+.help-center .help-center-hub-tile[data-expanded="true"] [data-hub-icon] {
+  transform: rotate(180deg);
+}
+
+.help-center details[open] > summary .help-center-chevron {
+  transform: rotate(180deg);
+}
+
+.help-center .help-center-sticky-search {
+  position: sticky;
+  top: 5.25rem;
+  z-index: 10;
+}
+
+@media (min-width: 768px) {
+  .help-center .help-center-hub-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .help-center .help-center-hub-tile--wide {
+    grid-column: 1 / -1;
   }
 }
 

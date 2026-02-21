@@ -44,15 +44,6 @@
     return el;
   }
 
-  function setText(el, value) {
-    if (!el) return;
-    if (window.tstsSetText) {
-      window.tstsSetText(el, value);
-      return;
-    }
-    el.textContent = value == null ? "" : String(value);
-  }
-
   function safeHref(href) {
     if (window.tstsSafeUrl) return window.tstsSafeUrl(String(href || ""), "");
     return String(href || "");
@@ -88,16 +79,43 @@
     return haystack.indexOf(q) >= 0;
   }
 
-  function getHubItems(hubId) {
+  function normalizeQuestion(question) {
+    return String(question || "").trim().toLowerCase();
+  }
+
+  function getHubItems(hubId, options) {
     const state = getFaqState();
     const targetHub = String(hubId || "");
-    return state.catalog.filter((item) => {
+    const includeTrust = Boolean(options && options.includeTrust && targetHub !== "trust");
+    const baseItems = state.catalog.filter((item) => {
       if (!item || typeof item !== "object") return false;
       if (String(item.status || "") !== "active") return false;
       if (String(item.hub || "") !== targetHub) return false;
-      if (targetHub === "trust") return true;
       return Array.isArray(item.contexts) && item.contexts.indexOf("hub") >= 0;
     });
+
+    if (!includeTrust) return baseItems;
+
+    const seenQuestions = new Set(baseItems.map((item) => normalizeQuestion(item.question)));
+    const trustItems = state.catalog
+      .filter((item) => {
+        if (!item || typeof item !== "object") return false;
+        if (String(item.status || "") !== "active") return false;
+        return String(item.hub || "") === "trust";
+      })
+      .filter((item) => {
+        const key = normalizeQuestion(item.question);
+        if (!key || seenQuestions.has(key)) return false;
+        seenQuestions.add(key);
+        return true;
+      })
+      .map((item) =>
+        Object.assign({}, item, {
+          section: "trust-safety"
+        })
+      );
+
+    return baseItems.concat(trustItems);
   }
 
   function createQuestionDetails(item) {
@@ -109,7 +127,7 @@
       },
       [
         createEl("span", { className: "pr-4", textContent: String(item.question || "") }),
-        createEl("span", { className: "text-gray-500 text-base leading-none" }, "+")
+        createEl("span", { className: "help-center-chevron text-gray-500 text-base leading-none" }, "⌄")
       ]
     );
 
@@ -128,12 +146,6 @@
       },
       [summary, body]
     );
-
-    details.addEventListener("toggle", () => {
-      const icon = summary.querySelector("span:last-child");
-      if (!icon) return;
-      setText(icon, details.open ? "−" : "+");
-    });
 
     return details;
   }
@@ -199,8 +211,9 @@
       search = createEl("input", {
         type: "search",
         className:
-          "w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent",
+          "w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-400",
         placeholder: "Search questions...",
+        "aria-label": "Search questions",
         "data-faq-search": "1"
       });
       root.appendChild(search);
@@ -248,11 +261,11 @@
     return grouped;
   }
 
-  function renderFaqHubInternal(hubId, mountSelector) {
+  function renderFaqHubInternal(hubId, mountSelector, options) {
     const root = resolveMount(mountSelector);
     if (!root) return { ok: false, error: "FAQ_MOUNT_NOT_FOUND" };
 
-    const items = getHubItems(hubId);
+    const items = getHubItems(hubId, options || {});
     const skeleton = ensureHubSkeleton(root);
 
     function renderSections() {
@@ -264,8 +277,6 @@
 
       sections.forEach((sectionName) => {
         const sectionItems = grouped.get(sectionName) || [];
-        const sectionIcon = createEl("span", { className: "text-slate-500 text-base leading-none", textContent: "+" });
-
         const summary = createEl(
           "summary",
           {
@@ -274,7 +285,7 @@
           },
           [
             createEl("span", { className: "pr-4", textContent: titleizeSection(sectionName) }),
-            sectionIcon
+            createEl("span", { className: "help-center-chevron text-slate-500 text-base leading-none" }, "⌄")
           ]
         );
 
@@ -290,10 +301,6 @@
           },
           [summary, sectionBody]
         );
-
-        sectionDetails.addEventListener("toggle", () => {
-          setText(sectionIcon, sectionDetails.open ? "−" : "+");
-        });
 
         skeleton.list.appendChild(sectionDetails);
       });

@@ -1,6 +1,21 @@
 (() => {
-  const HUBS = ["guest", "host", "platform", "trust"];
+  const HUBS = ["guest", "host", "platform"];
   const rendered = Object.create(null);
+  const hubMeta = {
+    guest: {
+      title: "Guest FAQ",
+      subtitle: "Booking, payments, cancellations, and trust questions in one place."
+    },
+    host: {
+      title: "Host FAQ",
+      subtitle: "Hosting, payouts, policies, and trust questions in one place."
+    },
+    platform: {
+      title: "How The Platform Works",
+      subtitle: "Platform lifecycle, policies, and trust questions in one place."
+    }
+  };
+  let activeHub = "";
 
   function panelId(hub) {
     return "faq-hub-panel-" + hub;
@@ -14,8 +29,6 @@
     if (!button) return;
     button.setAttribute("aria-expanded", expanded ? "true" : "false");
     button.setAttribute("data-expanded", expanded ? "true" : "false");
-    const icon = button.querySelector("[data-hub-icon]");
-    if (icon) icon.textContent = expanded ? "−" : "+";
   }
 
   function collapseHub(hub) {
@@ -50,7 +63,7 @@
       showRenderError(mount, hub);
       return false;
     }
-    const result = window.renderTheSharedTableStoryFaqHub(hub, mountSelector, {});
+    const result = window.renderTheSharedTableStoryFaqHub(hub, mountSelector, { includeTrust: true });
     if (!result || !result.ok) {
       showRenderError(mount, hub);
       return false;
@@ -59,22 +72,33 @@
     return true;
   }
 
+  function setActiveMeta(hub) {
+    const title = document.getElementById("faq-active-title");
+    const subtitle = document.getElementById("faq-active-subtitle");
+    const meta = hubMeta[hub];
+    if (title) title.textContent = meta ? meta.title : "";
+    if (subtitle) subtitle.textContent = meta ? meta.subtitle : "";
+  }
+
   function toggleHub(hub) {
+    const shell = document.getElementById("faq-active-shell");
     const panel = document.getElementById(panelId(hub));
     const button = document.querySelector('[data-hub-toggle="' + hub + '"]');
-    if (!panel || !button) return;
+    if (!shell || !panel || !button) return;
 
-    const willOpen = panel.classList.contains("hidden");
-    if (!willOpen) {
-      panel.classList.add("hidden");
-      setTileState(button, false);
+    if (activeHub === hub) {
+      collapseHub(hub);
+      shell.classList.add("hidden");
+      activeHub = "";
       return;
     }
 
     collapseAllExcept(hub);
     panel.classList.remove("hidden");
     setTileState(button, true);
-
+    setActiveMeta(hub);
+    shell.classList.remove("hidden");
+    activeHub = hub;
     ensureHubRendered(hub);
   }
 
