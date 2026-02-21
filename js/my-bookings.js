@@ -458,9 +458,15 @@ async function loadTrips() {
       return;
     }
 
+    // Tolerant unwrap: accept raw array OR { ok, data: { bookings: [...] } }
+    var bookings = Array.isArray(data) ? data
+      : (data && data.data && Array.isArray(data.data.bookings)) ? data.data.bookings
+      : (data && Array.isArray(data.bookings)) ? data.bookings
+      : [];
+
     const pendingConnections = await loadPendingConnectionRequests().catch(function () { return []; });
 
-    if (!Array.isArray(data) || data.length === 0) {
+    if (bookings.length === 0) {
       guestBookingsCache = [];
       const El = window.tstsEl;
       contentEl.textContent = "";
@@ -477,10 +483,10 @@ async function loadTrips() {
       return;
     }
 
-    guestBookingsCache = data;
+    guestBookingsCache = bookings;
     contentEl.textContent = "";
     contentEl.appendChild(renderConnectionActionPanel(pendingConnections));
-    data.forEach(function(b) { contentEl.appendChild(renderTripCard(b)); });
+    bookings.forEach(function(b) { contentEl.appendChild(renderTripCard(b)); });
     focusDashboardDeepLinkPanel();
   } catch (_) {
     setError("Failed to load bookings.");
