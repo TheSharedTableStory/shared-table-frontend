@@ -1448,6 +1448,16 @@ async function startStripeConnectStandard() {
   const data = (payload && payload.data && typeof payload.data === "object") ? payload.data : payload;
   const url = String((data && data.url) || "").trim();
   if (!url) throw new Error("Stripe onboarding URL missing.");
+  // Validate redirect — only allow Stripe domains
+  try {
+    var _sParsed = new URL(url);
+    if (!_sParsed.hostname.endsWith("stripe.com")) {
+      throw new Error("Invalid Stripe onboarding URL.");
+    }
+  } catch (_e) {
+    if (_e && _e.message === "Invalid Stripe onboarding URL.") throw _e;
+    throw new Error("Invalid Stripe onboarding URL.");
+  }
   window.location.href = url;
 }
 

@@ -1330,7 +1330,22 @@
         }
 
         if (data && data.url) {
-          location.href = data.url;
+          // Validate redirect URL — only allow same-origin or Stripe checkout
+          var _rUrl = String(data.url || "").trim();
+          try {
+            var _rParsed = new URL(_rUrl);
+            var _isSameOrigin = _rParsed.origin === window.location.origin;
+            var _isStripe = _rParsed.hostname === "checkout.stripe.com";
+            if (!_isSameOrigin && !_isStripe) {
+              _rUrl = "success.html";
+            }
+          } catch (_) {
+            // relative URL or parse failure — allow relative, block absolute
+            if (/^https?:\/\//i.test(_rUrl) || /^\/\//i.test(_rUrl)) {
+              _rUrl = "success.html";
+            }
+          }
+          location.href = _rUrl;
         } else {
           location.href = "success.html";
         }
