@@ -114,7 +114,8 @@ async function loadBookings() {
 async function loadExperiences() {
   const res = await adminFetch("/api/admin/experiences", { method: "GET" });
   if (!res.ok) throw new Error("experiences");
-  return res.json();
+  const payload = await res.json();
+  return (payload && Array.isArray(payload.data)) ? payload.data : (Array.isArray(payload) ? payload : []);
 }
 
 async function loadUsers() {
