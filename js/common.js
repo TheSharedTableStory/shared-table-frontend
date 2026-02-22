@@ -578,7 +578,20 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
     if (payload && payload.data !== undefined) return payload.data;
     return payload;
   };
-  
+
+  window.unwrapApiPayload = function(d) {
+    if (!d || typeof d !== "object") return {};
+    if (d.data && typeof d.data === "object") return d.data;
+    return d;
+  };
+  window.unwrapApiList = function(d, key) {
+    var root = window.unwrapApiPayload(d);
+    if (key && Array.isArray(root[key])) return root[key];
+    if (Array.isArray(root)) return root;
+    if (Array.isArray(d)) return d;
+    return [];
+  };
+
   function __getStoredCsrfToken() {
     try { return String(localStorage.getItem(CSRF_STORAGE_KEY) || ""); } catch (_) { return ""; }
   }

@@ -541,19 +541,7 @@
 
   function availableTimeSlotsForDate(dateStr) {
     if (!isSelectableBookingDate(dateStr)) return [];
-    const slots = Array.isArray(baseTimeSlots) ? baseTimeSlots : [];
-    if (slots.length === 0) return [];
-    const cutoffEnabled = !(exp && exp.bookingCutoffEnabled === false);
-    const cutoffMinutes = Number((exp && exp.bookingCutoffMinutes) || 1440);
-    const nowMs = Date.now();
-    return slots.filter(function (slot) {
-      const slotStart = slotStartFromDateAndSlot(dateStr, slot);
-      if (!slotStart) return true;
-      if (slotStart.getTime() <= nowMs) return false;
-      if (!cutoffEnabled) return true;
-      const cutoffAt = slotStart.getTime() - (Math.max(0, cutoffMinutes) * 60000);
-      return nowMs < cutoffAt;
-    });
+    return Array.isArray(baseTimeSlots) ? baseTimeSlots : [];
   }
 
   function resolveBookableDatesWithSlots() {
@@ -820,12 +808,34 @@
       if (waitlistCtaEl) waitlistCtaEl.classList.add("hidden");
     }
 
-    const onBookingDateChanged = function () {
+    const onBookingDateChanged = async function () {
       let selected = readSelectedBookingDate();
       if (!bookableDateSet.has(selected)) {
         selected = (bookableDates.length > 0) ? String(bookableDates[0]) : "";
         writeSelectedBookingDate(selected);
       }
+      if (!selected) {
+        renderAvailableTimeSlotsForDate(selected);
+        checkCutoff();
+        return;
+      }
+      try {
+        var _stRes = await af("/api/experiences/" + encodeURIComponent(experienceId) + "/slot-times?date=" + encodeURIComponent(selected));
+        if (_stRes.ok) {
+          var _stData = await _stRes.json().catch(function () { return null; });
+          if (_stData && _stData.ok && _stData.data) {
+            var _serverNow = Number(_stData.data.serverNowMs) || Date.now();
+            var _cutoffEnabled = _stData.data.cutoffEnabled !== false;
+            var _stSlots = Array.isArray(_stData.data.slots) ? _stData.data.slots : [];
+            baseTimeSlots = _stSlots.filter(function (s) {
+              if (!s.slotStartEpochMs) return false;
+              if (s.slotStartEpochMs <= _serverNow) return false;
+              if (_cutoffEnabled && s.cutoffEpochMs !== null) return _serverNow < s.cutoffEpochMs;
+              return true;
+            }).map(function (s) { return s.slot; });
+          }
+        }
+      } catch (_) {}
       renderAvailableTimeSlotsForDate(selected);
       checkCutoff();
     };
@@ -979,18 +989,22 @@
       return;
     }
 
-    try {
-      const res = await af("/api/my/bookmarks/details", { method: "GET" });
-      if (res.status === 401 || res.status === 403) {
-        bookmarkBtn.classList.add("hidden");
-        return;
-      }
-      const data = await res.json().catch(() => null);
-      if (!res.ok) return;
-      const list = (data && Array.isArray(data.data)) ? data.data : (Array.isArray(data) ? data : []);
-      const isOn = list.some((x) => String((x && (x._id || x.id)) || "") === String(experienceId));
-      setBookmarkUI(isOn);
-    } catch (_) {}
+    if (exp && typeof exp.isBookmarked === "boolean") {
+      setBookmarkUI(exp.isBookmarked);
+    } else {
+      try {
+        const res = await af("/api/my/bookmarks/details", { method: "GET" });
+        if (res.status === 401 || res.status === 403) {
+          bookmarkBtn.classList.add("hidden");
+          return;
+        }
+        const data = await res.json().catch(() => null);
+        if (!res.ok) return;
+        const list = (data && Array.isArray(data.data)) ? data.data : (Array.isArray(data) ? data : []);
+        const isOn = list.some((x) => String((x && (x._id || x.id)) || "") === String(experienceId));
+        setBookmarkUI(isOn);
+      } catch (_) {}
+    }
 
     bookmarkBtn.addEventListener("click", async () => {
       try {
@@ -999,9 +1013,7 @@
         const bmRaw = await res.json().catch(() => ({}));
         const bmData = (bmRaw && bmRaw.data) ? bmRaw.data : bmRaw;
         if (!res.ok) throw new Error((bmData && bmData.message) ? bmData.message : ((bmRaw && bmRaw.message) ? bmRaw.message : "Failed"));
-        const msg = String((bmData && bmData.message) || (bmRaw && bmRaw.message) || "").toLowerCase();
-        if (msg.includes("removed")) setBookmarkUI(false);
-        else if (msg.includes("added")) setBookmarkUI(true);
+        if (typeof bmData.bookmarked === "boolean") setBookmarkUI(bmData.bookmarked);
       } catch (e) {
         window.tstsNotify((e && e.message) ? e.message : "Bookmark failed", "error");
       }

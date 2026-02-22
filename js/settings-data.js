@@ -91,7 +91,7 @@
     if (experiencesCountEl) experiencesCountEl.textContent = String(experiences.length);
 
     if (dataCategoriesEl) dataCategoriesEl.textContent = "";
-    appendDataCategory("Profile", profileKeys.length > 0 ? profileKeys.join(", ") : "No profile fields returned.");
+    appendDataCategory("Profile", "Your name, handle, profile photo, and bio");
     appendDataCategory("Bookings", bookings.length > 0 ? (String(bookings.length) + " records") : "No bookings stored.");
     appendDataCategory("Hosted listings", experiences.length > 0 ? (String(experiences.length) + " records") : "No hosted listings stored.");
 

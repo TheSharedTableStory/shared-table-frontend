@@ -9,6 +9,7 @@
   const allowHandleSearchToggle = document.getElementById("allow-handle-search");
   const shareToFriendsToggle = document.getElementById("share-to-friends");
   const recommendationEmailToggle = document.getElementById("recommendation-email-toggle");
+  const publicProfileToggle = document.getElementById("public-profile-toggle");
   const hostOwnershipWarning = document.getElementById("host-ownership-warning");
 
   const profilePicInput = document.getElementById("file-upload");
@@ -94,6 +95,7 @@
       try { if (allowHandleSearchToggle) allowHandleSearchToggle.checked = !!user.allowHandleSearch; } catch (_) {}
       try { if (shareToFriendsToggle) shareToFriendsToggle.checked = !!user.showExperiencesToFriends; } catch (_) {}
       try { if (recommendationEmailToggle) recommendationEmailToggle.checked = !user.recommendationEmailOptOut; } catch (_) {}
+      try { if (publicProfileToggle) publicProfileToggle.checked = !!user.publicProfile; } catch (_) {}
 
       if (profilePicPreview && user.profilePic) window.tstsSafeImg(profilePicPreview, user.profilePic, "/assets/avatar-default.svg");
 
@@ -250,12 +252,13 @@
       const allowHandleSearch = !!(allowHandleSearchToggle && allowHandleSearchToggle.checked);
       const showExperiencesToFriends = !!(shareToFriendsToggle && shareToFriendsToggle.checked);
       const recommendationEmailOptOut = !(recommendationEmailToggle && recommendationEmailToggle.checked);
+      const publicProfile = !!(publicProfileToggle && publicProfileToggle.checked);
 
       try {
         const res = await window.authFetch("/api/auth/update", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, mobile, bio, handle, allowHandleSearch, showExperiencesToFriends, recommendationEmailOptOut })
+          body: JSON.stringify({ name, mobile, bio, handle, allowHandleSearch, showExperiencesToFriends, recommendationEmailOptOut, publicProfile })
         });
 
         if (handleUnauthorized(res)) return;

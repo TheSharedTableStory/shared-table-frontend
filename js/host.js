@@ -50,6 +50,8 @@
   const cutoffHoursRow = document.getElementById("cutoff-hours-row");
   const cutoffPreviewEl = document.getElementById("cutoff-preview");
   const cutoffLockedBanner = document.getElementById("cutoff-locked-banner");
+  const requirementsInput = document.getElementById("requirements");
+  const eventDurationMinutesInput = document.getElementById("eventDurationMinutes");
 
   const CLOUDINARY_URL = (window.CLOUDINARY_URL || "");
 
@@ -820,6 +822,8 @@
         const privateCapacity = privateCapacityInput ? safeNum(privateCapacityInput.value) : null;
         const privateIncludedGuests = privateIncludedGuestsInput ? safeNum(privateIncludedGuestsInput.value) : null;
         const privateExtraGuestPrice = privateExtraGuestPriceInput ? safeNum(privateExtraGuestPriceInput.value) : null;
+        const requirements = requirementsInput ? String(requirementsInput.value || "").trim() : "";
+        const eventDurationMinutes = eventDurationMinutesInput ? (parseInt(eventDurationMinutesInput.value, 10) || null) : null;
 
         if (!title || !description || price == null || !startDate || !endDate || !startTime || !city || !suburb || !postcode || !addressLine || capacity == null) {
           showNotice("error", "Please fill all required fields.");
@@ -879,6 +883,7 @@
         const body = {
           title,
           description,
+          requirements,
           price,
           city,
           suburb,
@@ -892,6 +897,7 @@
           availableDays,
           tags
         };
+        if (eventDurationMinutes != null) body.eventDurationMinutes = eventDurationMinutes;
         if (endTime) body.endTime = endTime;
         if (startTime && endTime) body.timeSlots = [startTime + "-" + endTime];
         if (imageUrl) body.imageUrl = imageUrl;
@@ -1099,6 +1105,8 @@
       if (addressLineInput) addressLineInput.value = String(exp.addressLine || "");
       if (addressNotesInput) addressNotesInput.value = String(exp.addressNotes || "");
       if (maxGuestsInput) maxGuestsInput.value = String(exp.maxGuests != null ? exp.maxGuests : "");
+      if (requirementsInput) requirementsInput.value = String(exp.requirements || "");
+      if (eventDurationMinutesInput) eventDurationMinutesInput.value = exp.eventDurationMinutes != null ? String(exp.eventDurationMinutes) : "";
       // Populate availableDays checkboxes from stored data
       (function () {
         var rawDays = Array.isArray(exp.availableDays) ? exp.availableDays : parseAvailableDays(exp.availableDays);

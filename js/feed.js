@@ -84,7 +84,7 @@
       const res = await window.authFetch("/api/social/feed", { method: "GET" });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error("feed");
-      const list = (data && Array.isArray(data.data)) ? data.data : (Array.isArray(data) ? data : []);
+      const list = window.unwrapApiList(data, "items");
 
       if (!listEl) return;
       listEl.textContent = "";

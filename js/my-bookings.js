@@ -707,7 +707,8 @@ function renderTripCard(booking) {
       "data-action": "cancel", "data-booking-id": bookingId, textContent: "Cancel Booking"
     })];
     // Entry code button for confirmed+paid upcoming bookings
-    if (paymentStatus === "paid" && !isPast) {
+    var bookingPayStatus = safeStr(booking.paymentStatus).toLowerCase();
+    if (bookingPayStatus === "paid" && !isPast) {
       nodes.push(El("button", {
         className: "w-full md:w-auto px-5 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-bold rounded-lg hover:bg-emerald-100 transition",
         "data-action": "view-otp", "data-booking-id": bookingId, textContent: "View Entry Code"
@@ -921,7 +922,7 @@ async function submitReview(e) {
       window.tstsNotify(reviewId ? "Review updated successfully." : "Review posted successfully! Thank you.", "success");
       closeReviewModal();
       e.target.reset();
-      loadTrips().catch(() => {});
+      loadTrips(nextDashboardLoadToken("trips")).catch(() => {});
     } else {
       if (String((data && data.error) || "") === "REVIEW_EDIT_WINDOW_CLOSED") {
         applyReviewModalMode({ id: reviewId, rating: payload.rating, comment: payload.comment, canEdit: false });
@@ -1289,7 +1290,7 @@ async function loadHostPrivateBookingRequests() {
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) return [];
   const unwrapped = (payload && payload.data) ? payload.data : payload;
-  const rows = Array.isArray(unwrapped && unwrapped.requests) ? unwrapped.requests : [];
+  const rows = unwrapped != null && Array.isArray(unwrapped.requests) ? unwrapped.requests : [];
   return rows;
 }
 
@@ -2672,7 +2673,7 @@ async function fetchHostPrivateRequestsSource() {
       return { status: "error", rows: [], message: mapHostScopeError(payload, res.status, "Failed to load private requests.") };
     }
     const unwrapped = (payload && payload.data) ? payload.data : payload;
-    const rows = Array.isArray(unwrapped && unwrapped.requests) ? unwrapped.requests : [];
+    const rows = unwrapped != null && Array.isArray(unwrapped.requests) ? unwrapped.requests : [];
     return { status: "ready", rows: rows, message: "" };
   } catch (_) {
     return { status: "error", rows: [], message: "Failed to load private requests." };
