@@ -176,6 +176,15 @@ async function loadVerificationFeePolicy() {
   return data;
 }
 
+async function loadMarketingEmailStatus() {
+  const res = await adminFetch("/api/admin/marketing-email-status", { method: "GET" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to load marketing email status");
+  }
+  return data;
+}
+
 async function saveVerificationFeePolicy(feePercent) {
   const res = await adminFetch("/api/admin/verification-fee-policy", {
     method: "PATCH",
@@ -795,11 +804,11 @@ function renderExperiences(exps) {
     tab.onclick = function() {
       currentListingsFilter = tab.getAttribute("data-filter") || "all";
       tabEls.forEach(function(t) {
-        t.classList.remove("bg-gray-900", "text-white");
-        t.classList.add("bg-white", "text-gray-600");
+        t.classList.remove("bg-tsts-ink", "text-white");
+        t.classList.add("bg-white", "text-slate-500");
       });
-      tab.classList.add("bg-gray-900", "text-white");
-      tab.classList.remove("bg-white", "text-gray-600");
+      tab.classList.add("bg-tsts-ink", "text-white");
+      tab.classList.remove("bg-white", "text-slate-500");
       renderExperiences(allExperiencesCache);
     };
   });
@@ -820,6 +829,28 @@ function renderVerificationPolicy(payload) {
     var version = String(policy.policyVersion || "Unavailable");
     var effective = formatDateValue(policy.effectiveFrom);
     meta.textContent = "Version: " + version + " • Effective: " + effective + " • Active fee: " + feePercent.toFixed(1) + "%";
+  }
+}
+
+function renderMarketingEmailStatus(payload) {
+  var root = (payload && typeof payload === "object") ? payload : {};
+  var data = (root.data && typeof root.data === "object") ? root.data : root;
+  var enabled = data.enabled === true;
+
+  var badge = $("marketing-email-status-badge");
+  var dot = $("marketing-email-status-dot");
+  var label = $("marketing-email-status-label");
+
+  if (badge) {
+    badge.className = enabled
+      ? "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold bg-green-50 text-green-700"
+      : "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold bg-orange-50 text-orange-600";
+  }
+  if (dot) {
+    dot.className = enabled ? "w-2 h-2 rounded-full bg-green-500" : "w-2 h-2 rounded-full bg-orange-500";
+  }
+  if (label) {
+    label.textContent = enabled ? "Sending enabled" : "Paused";
   }
 }
 
@@ -1814,6 +1845,7 @@ function wireAdminEvents() {
   const tabAudit = $("tab-audit");
   const refreshListings = $("btn-refresh-listings");
   const refreshVerificationPolicy = $("btn-refresh-verification-policy");
+  const refreshMarketingStatus = $("btn-refresh-marketing-status");
   const saveVerificationPolicyBtn = $("btn-save-verification-policy");
   const refreshHostVerifications = $("btn-refresh-host-verifications");
   const refreshEventVerifications = $("btn-refresh-event-verifications");
@@ -1857,6 +1889,7 @@ function wireAdminEvents() {
   if (tabAudit) tabAudit.addEventListener("click", () => switchTab("audit"));
   if (refreshListings) refreshListings.addEventListener("click", () => loadExperiences().then(renderExperiences).catch(function () { window.tstsNotify("Failed to refresh listings.", "error"); renderExperiences([]); }));
   if (refreshVerificationPolicy) refreshVerificationPolicy.addEventListener("click", () => refreshVerificationViews().catch(function () { window.tstsNotify("Failed to refresh verification policy.", "error"); }));
+  if (refreshMarketingStatus) refreshMarketingStatus.addEventListener("click", () => loadMarketingEmailStatus().then(renderMarketingEmailStatus).catch(function () { window.tstsNotify("Failed to refresh marketing email status.", "error"); }));
   if (saveVerificationPolicyBtn) saveVerificationPolicyBtn.addEventListener("click", () => handleSaveVerificationPolicy());
   if (refreshHostVerifications) refreshHostVerifications.addEventListener("click", () => loadHostVerifications("all").then(renderHostVerifications).catch(function () { window.tstsNotify("Failed to refresh host verifications.", "error"); renderHostVerifications({ data: { items: [] } }); }));
   if (refreshEventVerifications) refreshEventVerifications.addEventListener("click", () => loadEventVerifications("all").then(renderEventVerifications).catch(function () { window.tstsNotify("Failed to refresh event verifications.", "error"); renderEventVerifications({ data: { items: [] } }); }));
@@ -1884,7 +1917,7 @@ async function boot() {
   try {
     var _bootFailed = false;
     function _bootCatch(fallback) { return function () { _bootFailed = true; return fallback; }; }
-    const [stats, bookings, exps, users, promos, reports, privateRequests, auditData, inviteData, verificationPolicy, hostVerifications, eventVerifications, actionItems, dashSummary] = await Promise.all([
+    const [stats, bookings, exps, users, promos, reports, privateRequests, auditData, inviteData, verificationPolicy, hostVerifications, eventVerifications, actionItems, dashSummary, marketingStatus] = await Promise.all([
       loadStats().catch(_bootCatch({})),
       loadBookings().catch(_bootCatch([])),
       loadExperiences().catch(_bootCatch([])),
@@ -1898,7 +1931,8 @@ async function boot() {
       loadHostVerifications("all").catch(_bootCatch({ data: { items: [] } })),
       loadEventVerifications("all").catch(_bootCatch({ data: { items: [] } })),
       loadAdminActionItems("pending").catch(_bootCatch({ data: { items: [] } })),
-      loadDashboardSummary().catch(_bootCatch({}))
+      loadDashboardSummary().catch(_bootCatch({})),
+      loadMarketingEmailStatus().catch(_bootCatch({ data: { enabled: false } }))
     ]);
     if (_bootFailed) window.tstsNotify("Some admin data failed to load. Sections may be incomplete.", "error");
 
@@ -1914,6 +1948,7 @@ async function boot() {
     renderAuditLogs((auditData && auditData.items) || []);
     renderAdminInvites((inviteData && inviteData.items) || []);
     renderVerificationPolicy(verificationPolicy);
+    renderMarketingEmailStatus(marketingStatus);
     renderHostVerifications(hostVerifications);
     renderEventVerifications(eventVerifications);
     renderActionItems(actionItems);

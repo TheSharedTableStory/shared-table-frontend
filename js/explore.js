@@ -166,13 +166,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const activeSet = new Set(Array.isArray(filterState.categories) ? filterState.categories : []);
         categoryChips.forEach((chip) => {
             chip.classList.remove("active", "tsts-indicator-ink", "border-transparent");
-            chip.classList.add("bg-white", "border-gray-200", "text-gray-600");
+            chip.classList.add("bg-tsts-cream", "border-slate-200", "text-slate-600");
             const key = String(chip.getAttribute("data-category") || "");
             const isAll = key === "all";
             const isActive = (isAll && activeSet.size === 0) || (!isAll && activeSet.has(key));
             if (isActive) {
                 chip.classList.add("active", "tsts-indicator-ink", "border-transparent");
-                chip.classList.remove("bg-white", "border-gray-200", "text-gray-600");
+                chip.classList.remove("bg-tsts-cream", "border-slate-200", "text-slate-600");
             }
         });
         refreshFilterUi();

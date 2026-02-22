@@ -113,10 +113,10 @@
                 <button id="btn-refresh-listings" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
               </div>
               <div class="flex gap-2 flex-wrap" id="listings-filter-tabs">
-                <button data-filter="all" class="listing-filter-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-900 text-white">All</button>
-                <button data-filter="ACTIVE" class="listing-filter-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Active</button>
-                <button data-filter="PAUSED" class="listing-filter-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Paused</button>
-                <button data-filter="DELETED_SOFT" class="listing-filter-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Deleted</button>
+                <button data-filter="all" class="listing-filter-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-tsts-ink text-white">All</button>
+                <button data-filter="ACTIVE" class="listing-filter-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-500 hover:bg-gray-50">Active</button>
+                <button data-filter="PAUSED" class="listing-filter-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-500 hover:bg-gray-50">Paused</button>
+                <button data-filter="DELETED_SOFT" class="listing-filter-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-500 hover:bg-gray-50">Deleted</button>
               </div>
             </div>
             <div class="overflow-x-auto">
@@ -145,6 +145,20 @@
                 <button id="btn-save-verification-policy" type="button" class="inline-flex items-center justify-center rounded-xl bg-tsts-clay px-4 py-2 text-sm font-bold text-white hover:opacity-90">Save Policy</button>
                 <span id="verification-policy-meta" class="text-xs text-slate-500">Policy details could not be loaded.</span>
               </div>
+            </div>
+          </section>
+
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+            <div class="flex items-center justify-between gap-4 mb-4">
+              <h2 class="font-bold text-lg text-tsts-ink">Marketing Emails</h2>
+              <button id="btn-refresh-marketing-status" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh Status</button>
+            </div>
+            <div class="flex flex-wrap items-center gap-4">
+              <div id="marketing-email-status-badge" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold bg-slate-100 text-slate-500">
+                <span id="marketing-email-status-dot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+                <span id="marketing-email-status-label">Loading...</span>
+              </div>
+              <p class="text-xs text-slate-500">To change: set <code class="bg-slate-100 px-1 rounded text-xs font-mono">MARKETING_EMAILS_ENABLED=true</code> or <code class="bg-slate-100 px-1 rounded text-xs font-mono">false</code> on Render backend environment.</p>
             </div>
           </section>
 
@@ -441,6 +455,6 @@
 
   <script src="js/runtime-config.js?v=20260222c"></script>
   <script src="js/common.js?v=20260223a"></script>
-  <script src="js/admin.js?v=20260222e"></script>
+  <script src="js/admin.js?v=20260223a"></script>
 </body>
 </html>
