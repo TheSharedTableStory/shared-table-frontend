@@ -17,9 +17,62 @@ const copyFeedbackEl = document.getElementById("copy-feedback");
 
 // Parse URL params: bookingId, sessionId, (optionally) experienceId
 const urlParams = new URLSearchParams(window.location.search);
-const bookingId = urlParams.get("bookingId") || urlParams.get("booking_id");
+const bookingIdFromUrl = urlParams.get("bookingId") || urlParams.get("booking_id");
 const sessionId = urlParams.get("sessionId") || urlParams.get("session_id");
 const experienceIdFromUrl = urlParams.get("experienceId"); // optional
+
+function resolveBookingId(verifyPayload, fallbackBookingId) {
+  const root = (verifyPayload && typeof verifyPayload === "object") ? verifyPayload : {};
+  const data = (root.data && typeof root.data === "object") ? root.data : root;
+  const nestedBooking = (data.booking && typeof data.booking === "object") ? data.booking : {};
+  return String(
+    fallbackBookingId ||
+    data.bookingId ||
+    data.booking_id ||
+    data.id ||
+    nestedBooking._id ||
+    nestedBooking.id ||
+    ""
+  ).trim();
+}
+
+function collectBookingRows(envelope) {
+  const root = (envelope && typeof envelope === "object") ? envelope : {};
+  const data = (root.data && typeof root.data === "object") ? root.data : root;
+  if (Array.isArray(root)) return root;
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.bookings)) return data.bookings;
+  if (Array.isArray(root.bookings)) return root.bookings;
+  if (Array.isArray(data.items)) return data.items;
+  if (Array.isArray(root.items)) return root.items;
+  if (data.booking && typeof data.booking === "object") return [data.booking];
+  if (root.booking && typeof root.booking === "object") return [root.booking];
+  return [];
+}
+
+function applySummaryFallback(title, dateText, guestsText, inviteUrl) {
+  if (successExpTitleEl) successExpTitleEl.textContent = title;
+  if (successExpDateEl) successExpDateEl.textContent = dateText;
+  if (successExpGuestsEl) successExpGuestsEl.textContent = guestsText || "";
+  if (inviteLinkInputEl) inviteLinkInputEl.value = inviteUrl || (window.location.origin + "/explore.html");
+  applySafeBookingImage("/assets/experience-default.jpg", title || "Experience image");
+}
+
+function applySafeBookingImage(primaryUrl, altText) {
+  if (!successExpImageEl) return;
+  const fallback = "/assets/experience-default.jpg";
+  const resolvedPrimary = String(primaryUrl || "").trim() || fallback;
+  successExpImageEl.alt = altText || "Experience image";
+  successExpImageEl.onerror = function () {
+    if (successExpImageEl.src.indexOf(fallback) !== -1) return;
+    successExpImageEl.src = fallback;
+  };
+  if (window.tstsSafeImg) {
+    window.tstsSafeImg(successExpImageEl, resolvedPrimary, fallback);
+    return;
+  }
+  successExpImageEl.src = resolvedPrimary;
+}
 
 // Utility: show/hide states
 function showLoading() {
@@ -47,22 +100,22 @@ function showError(message) {
 async function verifyBooking(bookingId, sessionId) {
   const url = `/api/bookings/verify`;
 
+  const body = { sessionId };
+  if (bookingId) body.bookingId = bookingId;
+
   const res = await window.authFetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      bookingId,
-      sessionId
-    })
+    body: JSON.stringify(body)
   });
 
   if (!res.ok) {
     throw new Error("Payment verification failed");
   }
 
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   // Gate on ok === true before trusting status
   if (!data || data.ok !== true) {
     var errMsg = (data && data.message) ? String(data.message) : "Payment verification failed";
@@ -78,7 +131,7 @@ async function verifyBooking(bookingId, sessionId) {
 }
 
 // Get bookings for current user and find matching one
-async function fetchBookingDetails(bookingId) {
+async function fetchBookingDetails(bookingId, checkoutSessionId) {
   const url = `/api/bookings/my-bookings`;
 
   const res = await window.authFetch(url, {
@@ -93,13 +146,18 @@ async function fetchBookingDetails(bookingId) {
     throw new Error("Unable to load your bookings. Please try again.");
   }
 
-  const envelope = await res.json();
-  const bookings = (envelope && Array.isArray(envelope.data)) ? envelope.data : (Array.isArray(envelope) ? envelope : []);
+  const envelope = await res.json().catch(() => ({}));
+  const bookings = collectBookingRows(envelope);
 
   // Find booking by id (schema-safe: booking._id OR booking.bookingId)
-  const booking = bookings.find(b => {
-    return b._id === bookingId || b.bookingId === bookingId;
-  });
+  const bookingIdStr = String(bookingId || "").trim();
+  const booking = bookings.find(function (b) {
+    const rowId = String((b && (b._id || b.bookingId || b.id)) || "").trim();
+    if (bookingIdStr && rowId === bookingIdStr) return true;
+    const stripeSession = String((b && (b.sessionId || b.checkoutSessionId || b.stripeCheckoutSessionId)) || "").trim();
+    if (!bookingIdStr && checkoutSessionId && stripeSession && stripeSession === String(checkoutSessionId)) return true;
+    return false;
+  }) || null;
 
   if (!booking) {
     throw new Error("We couldn't find this booking in your account.");
@@ -133,10 +191,11 @@ function populateBookingSummary(booking) {
   const imageUrl =
     experience.imageUrl ||
     (experience.images && experience.images[0]) ||
+    experience.coverImage ||
     booking.imageUrl ||
     "/assets/experience-default.jpg";
 
-  successExpTitleEl.textContent = title;
+  if (successExpTitleEl) successExpTitleEl.textContent = title;
 
   if (dateRaw) {
     try {
@@ -152,28 +211,27 @@ function populateBookingSummary(booking) {
           day: "numeric"
         });
       }
-      successExpDateEl.textContent = `Date: ${formatted}`;
+      if (successExpDateEl) successExpDateEl.textContent = `Date: ${formatted}`;
     } catch (e) {
-      successExpDateEl.textContent = `Date: ${dateRaw}`;
+      if (successExpDateEl) successExpDateEl.textContent = `Date: ${dateRaw}`;
     }
   } else {
-    successExpDateEl.textContent = "Date: —";
+    if (successExpDateEl) successExpDateEl.textContent = "Date: —";
   }
 
   if (guestsRaw) {
     const guestsNum = Number(guestsRaw);
     if (!Number.isNaN(guestsNum) && guestsNum > 0) {
-      successExpGuestsEl.textContent =
+      if (successExpGuestsEl) successExpGuestsEl.textContent =
         `Guests: ${guestsNum} guest${guestsNum > 1 ? "s" : ""}`;
     } else {
-      successExpGuestsEl.textContent = "Guests: —";
+      if (successExpGuestsEl) successExpGuestsEl.textContent = "Guests: —";
     }
   } else {
-    successExpGuestsEl.textContent = "Guests: —";
+    if (successExpGuestsEl) successExpGuestsEl.textContent = "Guests: —";
   }
 
-  window.tstsSafeImg(successExpImageEl, imageUrl, "/assets/experience-default.jpg");
-  successExpImageEl.alt = title || "Experience image";
+  applySafeBookingImage(imageUrl, title || "Experience image");
 
   // Generate viral invite link
   const experienceId =
@@ -233,7 +291,7 @@ async function handleCopyInvite() {
 // Main init
 async function initSuccessPage() {
   // Basic guards
-  if (!bookingId || !sessionId) {
+  if (!sessionId) {
     showError("Missing booking information in the link. Please check your email or try again.");
     return;
   }
@@ -242,25 +300,20 @@ async function initSuccessPage() {
 
   try {
     // 1) Verify with backend (works without auth via sessionId proof)
-    await verifyBooking(bookingId, sessionId);
+    const verifyPayload = await verifyBooking(bookingIdFromUrl, sessionId);
+    const resolvedBookingId = resolveBookingId(verifyPayload, bookingIdFromUrl);
 
     // 2) Try to get booking details (cookie-auth); fall back to generic success for unauthenticated viewers.
     try {
-      const booking = await fetchBookingDetails(bookingId);
+      const booking = await fetchBookingDetails(resolvedBookingId, sessionId);
       populateBookingSummary(booking);
     } catch (e) {
       const code = String((e && e.message) || "");
       if (code === "AUTH_REQUIRED") {
-        successExpTitleEl.textContent = "Booking confirmed!";
-        successExpDateEl.textContent = "Please log in to view full details";
-        successExpGuestsEl.textContent = "";
-        if (inviteLinkInputEl) inviteLinkInputEl.value = window.location.origin + "/explore.html";
+        applySummaryFallback("Booking confirmed!", "Please log in to view full details", "", window.location.origin + "/explore.html");
       } else {
         // Show generic success if details unavailable
-        successExpTitleEl.textContent = "Your experience is booked!";
-        successExpDateEl.textContent = "Check your email for details";
-        successExpGuestsEl.textContent = "";
-        if (inviteLinkInputEl) inviteLinkInputEl.value = window.location.origin + "/explore.html";
+        applySummaryFallback("Your experience is booked!", "Check your email for details", "", window.location.origin + "/explore.html");
       }
     }
 

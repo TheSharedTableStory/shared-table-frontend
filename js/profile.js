@@ -3,6 +3,7 @@
 
   const form = document.getElementById("profile-form");
   const nameInput = document.getElementById("name");
+  const mobileInput = document.getElementById("mobile");
   const bioInput = document.getElementById("bio");
   const handleInput = document.getElementById("handle");
   const allowHandleSearchToggle = document.getElementById("allow-handle-search");
@@ -87,6 +88,7 @@
       const user = sess.user || {};
 
       try { if (nameInput) nameInput.value = user.name || ""; } catch (_) {}
+      try { if (mobileInput) mobileInput.value = user.mobile || ""; } catch (_) {}
       try { if (bioInput) bioInput.value = user.bio || ""; } catch (_) {}
       try { if (handleInput) handleInput.value = user.handle || ""; } catch (_) {}
       try { if (allowHandleSearchToggle) allowHandleSearchToggle.checked = !!user.allowHandleSearch; } catch (_) {}
@@ -241,6 +243,7 @@
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
       const name = nameInput ? String(nameInput.value || "").trim() : "";
+      const mobile = mobileInput ? String(mobileInput.value || "").trim() : "";
       const bio = bioInput ? String(bioInput.value || "").trim() : "";
       const handle = handleInput ? String(handleInput.value || "").trim() : "";
 
@@ -252,7 +255,7 @@
         const res = await window.authFetch("/api/auth/update", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, bio, handle, allowHandleSearch, showExperiencesToFriends, recommendationEmailOptOut })
+          body: JSON.stringify({ name, mobile, bio, handle, allowHandleSearch, showExperiencesToFriends, recommendationEmailOptOut })
         });
 
         if (handleUnauthorized(res)) return;

@@ -278,10 +278,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const p = new URLSearchParams();
             if (c.filters && c.filters.q) p.set("q", String(c.filters.q));
             if (c.filters && c.filters.city) p.set("city", String(c.filters.city));
-            if (c.filters && c.filters.category) {
-              const norm = normalizeCategory(c.filters.category);
-              if (norm) p.set("category", String(norm));
-            }
             if (c.filters && c.filters.minPrice != null) p.set("minPrice", String(c.filters.minPrice));
             if (c.filters && c.filters.maxPrice != null) p.set("maxPrice", String(c.filters.maxPrice));
             if (c.filters && c.filters.date) p.set("date", String(c.filters.date));
@@ -294,12 +290,25 @@ document.addEventListener("DOMContentLoaded", () => {
           const titleDiv = document.createElement("div");
           const h3 = document.createElement("h3");
           h3.className = "text-xl font-bold font-serif text-gray-900";
-          h3.textContent = title || "Explore";
+          const safeTitle = (function () {
+            const raw = String(title || "").trim();
+            if (!raw) return "Recommended experiences";
+            const match = raw.match(/experiences\s+in\s+(.+)$/i);
+            if (match && match[1]) return "Recommended experiences in " + String(match[1]).trim();
+            if (/^(food|explore|culture|social|move|create|learn|games)\b/i.test(raw)) return "Recommended experiences";
+            return raw;
+          })();
+          h3.textContent = safeTitle;
           titleDiv.appendChild(h3);
           if (subtitle) {
             const pSub = document.createElement("p");
             pSub.className = "text-gray-600 text-sm mt-2";
             pSub.textContent = subtitle;
+            titleDiv.appendChild(pSub);
+          } else {
+            const pSub = document.createElement("p");
+            pSub.className = "text-gray-600 text-sm mt-2";
+            pSub.textContent = "Picked from currently available experiences.";
             titleDiv.appendChild(pSub);
           }
           a.appendChild(titleDiv);
@@ -518,7 +527,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 El("i", { className: "fas fa-tags text-xl" })
             ]),
             El("h3", { className: "text-lg font-bold text-gray-900 mb-1", textContent: "No deals available right now" }),
-            El("p", { className: "text-sm text-gray-500", textContent: "Check back soon — hosts add deals regularly. Here are all experiences you can explore:" })
+            El("p", { className: "text-sm text-gray-500", textContent: "While we arrange more deals, feel free to explore all available experiences right now." })
         ]);
         experiencesGrid.appendChild(banner);
 

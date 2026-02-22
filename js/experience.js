@@ -327,6 +327,7 @@
   const termsBox = document.getElementById("booking-terms");
   const bookingRulesEl = document.getElementById("booking-rules");
   const cutoffInfoEl = document.getElementById("cutoff-info");
+  const seatsInfoEl = document.getElementById("seats-info");
   const waitlistCtaEl = document.getElementById("waitlist-cta");
   const joinWaitlistBtn = document.getElementById("join-waitlist-btn");
   const waitlistStatusEl = document.getElementById("waitlist-status");
@@ -386,12 +387,279 @@
   let sharedUnitPrice = 0;
   let lastSharedGuestCount = (guestInput && guestInput.value) ? String(guestInput.value) : "1";
   let lastPrivateGuestCount = "1";
+  let bookingDateRules = {
+    minDate: "",
+    maxDate: "",
+    allowedDays: new Set(),
+    blockedDates: new Set()
+  };
+  let baseTimeSlots = [];
+  let bookableDates = [];
+  let bookableDateSet = new Set();
+  let bookingDateSelect = null;
 
   function normalizeExperience(payload) {
     if (!payload) return null;
     if (payload.experience) return payload.experience;
     if (payload.data && payload.data.experience) return payload.data.experience;
     return payload;
+  }
+
+  function isIsoDateString(v) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(String(v || "").trim());
+  }
+
+  function todayIsoDate() {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  }
+
+  function addDaysIsoUtc(isoDate, days) {
+    if (!isIsoDateString(isoDate)) return "";
+    const dt = new Date(isoDate + "T00:00:00Z");
+    if (Number.isNaN(dt.getTime())) return "";
+    dt.setUTCDate(dt.getUTCDate() + Number(days || 0));
+    return dt.toISOString().slice(0, 10);
+  }
+
+  function formatBookingDateLabel(isoDate) {
+    const d = String(isoDate || "").trim();
+    if (!isIsoDateString(d)) return d;
+    try {
+      if (window.tstsFormatDateShort) {
+        const pretty = String(window.tstsFormatDateShort(d) || "").trim();
+        if (pretty) return pretty;
+      }
+    } catch (_) {}
+    return d;
+  }
+
+  function dayLabelFromIso(isoDate) {
+    if (!isIsoDateString(isoDate)) return "";
+    const dt = new Date(isoDate + "T00:00:00Z");
+    if (Number.isNaN(dt.getTime())) return "";
+    const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return labels[dt.getUTCDay()] || "";
+  }
+
+  function ensureBookingDateSelect() {
+    if (!dateInput) return null;
+    if (bookingDateSelect) return bookingDateSelect;
+
+    const select = document.createElement("select");
+    select.id = "booking-date-select";
+    select.className = dateInput.className;
+    select.setAttribute("aria-label", "Select available booking date");
+
+    dateInput.insertAdjacentElement("afterend", select);
+    dateInput.classList.add("hidden");
+    dateInput.disabled = true;
+    dateInput.required = false;
+
+    const dateLabel = document.querySelector("label[for=\"booking-date\"]");
+    if (dateLabel) dateLabel.setAttribute("for", "booking-date-select");
+
+    bookingDateSelect = select;
+    return bookingDateSelect;
+  }
+
+  function readSelectedBookingDate() {
+    if (bookingDateSelect) return String(bookingDateSelect.value || "").trim();
+    return String((dateInput && dateInput.value) || "").trim();
+  }
+
+  function writeSelectedBookingDate(nextDate) {
+    const v = String(nextDate || "").trim();
+    if (dateInput) dateInput.value = v;
+    if (bookingDateSelect) bookingDateSelect.value = v;
+  }
+
+  function resolveBookingDateRulesForExperience(e) {
+    const expObj = e || {};
+    const today = todayIsoDate();
+    const start = isIsoDateString(expObj.startDate) ? String(expObj.startDate) : "";
+    const end = isIsoDateString(expObj.endDate) ? String(expObj.endDate) : "";
+    const minDate = start && start > today ? start : today;
+    const maxDate = end || "";
+    const allowedDays = new Set(
+      (Array.isArray(expObj.availableDays) ? expObj.availableDays : [])
+        .map((d) => String(d || "").trim())
+        .filter(Boolean)
+    );
+    const blockedDates = new Set(
+      (Array.isArray(expObj.blockedDates) ? expObj.blockedDates : [])
+        .map((d) => String(d || "").trim())
+        .filter((d) => isIsoDateString(d))
+    );
+    return { minDate, maxDate, allowedDays, blockedDates };
+  }
+
+  function isSelectableBookingDate(isoDate) {
+    const d = String(isoDate || "").trim();
+    if (!isIsoDateString(d)) return false;
+    if (bookingDateRules.minDate && d < bookingDateRules.minDate) return false;
+    if (bookingDateRules.maxDate && d > bookingDateRules.maxDate) return false;
+    if (bookingDateRules.blockedDates && bookingDateRules.blockedDates.has(d)) return false;
+    if (bookingDateRules.allowedDays && bookingDateRules.allowedDays.size > 0) {
+      const label = dayLabelFromIso(d);
+      if (!bookingDateRules.allowedDays.has(label)) return false;
+    }
+    return true;
+  }
+
+  function findFirstSelectableBookingDate() {
+    const hasMaxDate = !!bookingDateRules.maxDate;
+    if (bookingDateRules.minDate && hasMaxDate && bookingDateRules.minDate > bookingDateRules.maxDate) return "";
+
+    let probe = bookingDateRules.minDate || todayIsoDate();
+    let guard = 0;
+    while (guard < 400) {
+      if (hasMaxDate && probe > bookingDateRules.maxDate) break;
+      if (isSelectableBookingDate(probe)) return probe;
+      probe = addDaysIsoUtc(probe, 1);
+      if (!probe) break;
+      guard += 1;
+    }
+    return "";
+  }
+
+  function slotStartFromDateAndSlot(dateStr, slotStr) {
+    const d = String(dateStr || "").trim();
+    if (!isIsoDateString(d)) return null;
+    const slot = String(slotStr || "").trim();
+    const startToken = slot.split("-")[0] || "";
+    const hm = startToken.match(/^(\d{1,2}):([0-5]\d)$/);
+    if (!hm) return null;
+    const year = Number(d.slice(0, 4));
+    const month = Number(d.slice(5, 7));
+    const day = Number(d.slice(8, 10));
+    const hour = Number(hm[1]);
+    const minute = Number(hm[2]);
+    const local = new Date(year, month - 1, day, hour, minute, 0, 0);
+    return Number.isNaN(local.getTime()) ? null : local;
+  }
+
+  function availableTimeSlotsForDate(dateStr) {
+    if (!isSelectableBookingDate(dateStr)) return [];
+    const slots = Array.isArray(baseTimeSlots) ? baseTimeSlots : [];
+    if (slots.length === 0) return [];
+    const cutoffEnabled = !(exp && exp.bookingCutoffEnabled === false);
+    const cutoffMinutes = Number((exp && exp.bookingCutoffMinutes) || 1440);
+    const nowMs = Date.now();
+    return slots.filter(function (slot) {
+      const slotStart = slotStartFromDateAndSlot(dateStr, slot);
+      if (!slotStart) return true;
+      if (slotStart.getTime() <= nowMs) return false;
+      if (!cutoffEnabled) return true;
+      const cutoffAt = slotStart.getTime() - (Math.max(0, cutoffMinutes) * 60000);
+      return nowMs < cutoffAt;
+    });
+  }
+
+  function resolveBookableDatesWithSlots() {
+    const out = [];
+    const hasMaxDate = !!bookingDateRules.maxDate;
+    if (bookingDateRules.minDate && hasMaxDate && bookingDateRules.minDate > bookingDateRules.maxDate) return out;
+
+    let probe = bookingDateRules.minDate || todayIsoDate();
+    let guard = 0;
+    while (guard < 400) {
+      if (hasMaxDate && probe > bookingDateRules.maxDate) break;
+      if (isSelectableBookingDate(probe) && availableTimeSlotsForDate(probe).length > 0) out.push(probe);
+      probe = addDaysIsoUtc(probe, 1);
+      if (!probe) break;
+      guard += 1;
+    }
+    return out;
+  }
+
+  function renderBookableDateOptions(selectedDate) {
+    const select = ensureBookingDateSelect();
+    if (!select) return "";
+
+    const wanted = String(selectedDate || "").trim();
+    select.textContent = "";
+
+    if (!Array.isArray(bookableDates) || bookableDates.length === 0) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "No dates available";
+      select.appendChild(opt);
+      select.disabled = true;
+      writeSelectedBookingDate("");
+      return "";
+    }
+
+    bookableDates.forEach(function (d) {
+      const opt = document.createElement("option");
+      opt.value = d;
+      opt.textContent = formatBookingDateLabel(d);
+      select.appendChild(opt);
+    });
+
+    const resolved = bookableDateSet.has(wanted) ? wanted : String(bookableDates[0]);
+    select.disabled = false;
+    writeSelectedBookingDate(resolved);
+    return resolved;
+  }
+
+  function renderAvailableTimeSlotsForDate(dateStr) {
+    if (!timeSlotInput) return;
+    const prior = String(timeSlotInput.value || "").trim();
+    const slots = availableTimeSlotsForDate(dateStr);
+    timeSlotInput.textContent = "";
+    if (slots.length === 0) {
+      const empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = "No available slots for this date";
+      timeSlotInput.appendChild(empty);
+      timeSlotInput.disabled = true;
+      if (seatsInfoEl) seatsInfoEl.textContent = "Select another date to view available time windows.";
+      return;
+    }
+    slots.forEach(function (slot) {
+      const opt = document.createElement("option");
+      opt.value = String(slot);
+      opt.textContent = String(slot);
+      timeSlotInput.appendChild(opt);
+    });
+    const hasPrior = slots.some(function (slot) { return String(slot) === prior; });
+    timeSlotInput.value = hasPrior ? prior : String(slots[0]);
+    timeSlotInput.disabled = false;
+    if (seatsInfoEl) seatsInfoEl.textContent = "Available time windows shown for selected date.";
+  }
+
+  function configureBookingDateInput(e) {
+    if (!dateInput) return;
+    bookingDateRules = resolveBookingDateRulesForExperience(e);
+    if (bookingDateRules.minDate) dateInput.min = bookingDateRules.minDate;
+    else dateInput.removeAttribute("min");
+    if (bookingDateRules.maxDate) dateInput.max = bookingDateRules.maxDate;
+    else dateInput.removeAttribute("max");
+
+    bookableDates = resolveBookableDatesWithSlots();
+    bookableDateSet = new Set(bookableDates);
+
+    let selectedDate = readSelectedBookingDate();
+    if (!bookableDateSet.has(selectedDate)) {
+      selectedDate = (bookableDates.length > 0) ? String(bookableDates[0]) : "";
+    }
+    selectedDate = renderBookableDateOptions(selectedDate);
+
+    if (!selectedDate) {
+      if (bookingDateSelect) bookingDateSelect.disabled = true;
+      if (timeSlotInput) {
+        timeSlotInput.textContent = "";
+        timeSlotInput.disabled = true;
+      }
+      if (submitBtn) submitBtn.disabled = true;
+      if (seatsInfoEl) seatsInfoEl.textContent = "No upcoming event dates are currently available for booking.";
+      return;
+    }
+
+    if (bookingDateSelect) bookingDateSelect.disabled = false;
+    if (seatsInfoEl) seatsInfoEl.textContent = "Only dates with active availability are shown.";
+    renderAvailableTimeSlotsForDate(selectedDate);
   }
 
   async function loadExperience() {
@@ -500,13 +768,7 @@
 
     hydrateBookingMode(exp);
     hydrateTimeSlots(exp);
-
-    if (dateInput) {
-      const _d = new Date();
-      const today = new Date(_d.getTime() - _d.getTimezoneOffset() * 60000).toISOString().split("T")[0];
-      dateInput.min = today;
-      if (!dateInput.value) dateInput.value = today;
-    }
+    configureBookingDateInput(exp);
 
     // === CUTOFF CHECK ===
     function checkCutoff() {
@@ -514,19 +776,23 @@
       var cutoffEnabled = (exp.bookingCutoffEnabled !== false);
       var cutoffMins = exp.bookingCutoffMinutes || 1440;
       var cutoffHrs = Math.round(cutoffMins / 60);
+      var dateVal = readSelectedBookingDate();
+      var slotVal = timeSlotInput ? timeSlotInput.value : "";
+
+      if (!dateVal || !slotVal) {
+        if (submitBtn) submitBtn.disabled = true;
+        if (waitlistCtaEl) waitlistCtaEl.classList.add("hidden");
+      }
 
       if (!cutoffEnabled) {
         bookingRulesEl.classList.add("hidden");
         if (waitlistCtaEl) waitlistCtaEl.classList.add("hidden");
-        if (submitBtn) submitBtn.disabled = false;
+        if (submitBtn) submitBtn.disabled = !(dateVal && slotVal);
         return;
       }
 
       bookingRulesEl.classList.remove("hidden");
       if (cutoffInfoEl) cutoffInfoEl.textContent = "Bookings close " + cutoffHrs + "h before start.";
-
-      var dateVal = dateInput ? dateInput.value : "";
-      var slotVal = timeSlotInput ? timeSlotInput.value : "";
       if (!dateVal || !slotVal) return;
 
       // Client-side cutoff hint (informational — server enforces)
@@ -554,7 +820,17 @@
       if (waitlistCtaEl) waitlistCtaEl.classList.add("hidden");
     }
 
-    if (dateInput) dateInput.addEventListener("change", checkCutoff);
+    const onBookingDateChanged = function () {
+      let selected = readSelectedBookingDate();
+      if (!bookableDateSet.has(selected)) {
+        selected = (bookableDates.length > 0) ? String(bookableDates[0]) : "";
+        writeSelectedBookingDate(selected);
+      }
+      renderAvailableTimeSlotsForDate(selected);
+      checkCutoff();
+    };
+    if (dateInput) dateInput.addEventListener("change", onBookingDateChanged);
+    if (bookingDateSelect) bookingDateSelect.addEventListener("change", onBookingDateChanged);
     if (timeSlotInput) timeSlotInput.addEventListener("change", checkCutoff);
     checkCutoff();
 
@@ -571,7 +847,8 @@
             if (window.tstsNotify) window.tstsNotify("Removed from waitlist.", "info");
           } else {
             var wlBody = {};
-            if (dateInput && dateInput.value) wlBody.bookingDate = dateInput.value;
+            const selectedBookingDate = readSelectedBookingDate();
+            if (selectedBookingDate) wlBody.bookingDate = selectedBookingDate;
             if (timeSlotInput && timeSlotInput.value) wlBody.timeSlot = timeSlotInput.value;
             await af("/api/experiences/" + encodeURIComponent(experienceId) + "/waitlist", {
               method: "POST",
@@ -634,17 +911,9 @@
   function hydrateTimeSlots(e) {
     if (!timeSlotInput) return;
 
-    const slots = (e && Array.isArray(e.timeSlots) && e.timeSlots.length > 0)
+    baseTimeSlots = (e && Array.isArray(e.timeSlots) && e.timeSlots.length > 0)
       ? e.timeSlots
       : ["18:00-20:00"];
-
-    timeSlotInput.textContent = "";
-    for (const s of slots) {
-      const opt = document.createElement("option");
-      opt.value = String(s);
-      opt.textContent = String(s);
-      timeSlotInput.appendChild(opt);
-    }
   }
 
   async function loadPolicyVersion() {
@@ -1267,7 +1536,7 @@
           ? Math.max(1, Number((guestInput && guestInput.value) || 1))
           : Number((guestInput && guestInput.value) || 1);
         const timeSlot = String((timeSlotInput && timeSlotInput.value) || "").trim();
-        const bookingDate = String((dateInput && dateInput.value) || "").trim();
+        const bookingDate = readSelectedBookingDate();
         const promoCode = promoCodeInput ? String(promoCodeInput.value || "").trim().toUpperCase() : "";
         if (promoCodeInput) promoCodeInput.value = promoCode;
 

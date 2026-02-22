@@ -155,6 +155,25 @@
     return Number.isFinite(n) ? n : null;
   }
 
+  function extractApiError(payload, fallbackMessage) {
+    const root = (payload && typeof payload === "object") ? payload : {};
+    const data = (root.data && typeof root.data === "object") ? root.data : root;
+    const code = String(data.error || data.code || root.error || root.code || "").trim().toUpperCase();
+    const message = String(data.message || root.message || fallbackMessage || "Request failed.").trim();
+    return { code: code, message: message };
+  }
+
+  function mapHostListingsError(payload, statusCode) {
+    const err = extractApiError(payload, "Failed to load listings. Please refresh.");
+    if (err.code === "AUTH_REQUIRED" || statusCode === 401) {
+      return "Authentication required. Please log in again.";
+    }
+    if (err.code === "HOST_ROLE_REQUIRED") {
+      return "Host role required. Complete host onboarding to access listings.";
+    }
+    return err.message || "Failed to load listings. Please refresh.";
+  }
+
   function toCents(raw) {
     const n = Number(raw);
     if (!Number.isFinite(n)) return null;
@@ -1014,10 +1033,14 @@
     listEl.textContent = "";
     try {
       var res = await window.authFetch("/api/host/experiences");
-      if (!res.ok) { throw new Error("Failed"); }
       var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) {
+        throw new Error(mapHostListingsError(data, res.status));
+      }
       var unwrapped = (data && data.data !== undefined) ? data.data : data;
-      var exps = Array.isArray(unwrapped) ? unwrapped : (unwrapped && unwrapped.experiences ? unwrapped.experiences : []);
+      var exps = Array.isArray(unwrapped && unwrapped.items)
+        ? unwrapped.items
+        : (Array.isArray(unwrapped) ? unwrapped : (unwrapped && unwrapped.experiences ? unwrapped.experiences : []));
       if (loadingEl) loadingEl.classList.add("hidden");
       if (!exps || exps.length === 0) {
         if (emptyEl) emptyEl.classList.remove("hidden");
@@ -1025,9 +1048,12 @@
       }
       exps.forEach(function (exp) { listEl.appendChild(renderListingCard(exp)); });
       listEl.classList.remove("hidden");
-    } catch (_) {
+    } catch (err) {
       if (loadingEl) loadingEl.classList.add("hidden");
-      if (errorEl) errorEl.classList.remove("hidden");
+      if (errorEl) {
+        errorEl.textContent = String((err && err.message) || "Failed to load listings. Please refresh.");
+        errorEl.classList.remove("hidden");
+      }
     }
   }
 

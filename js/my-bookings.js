@@ -90,6 +90,96 @@ const hostDashboardState = {
   verification: { status: "idle", data: null, message: "" },
   reviews: { status: "idle", data: null, message: "" }
 };
+const dashboardRequestState = {
+  activeTab: resolveDashboardTab(dashboardDeepLink.tab),
+  loadToken: 0
+};
+
+function nextDashboardLoadToken(tabKey) {
+  dashboardRequestState.activeTab = (tabKey === "hosting") ? "hosting" : "trips";
+  dashboardRequestState.loadToken += 1;
+  return dashboardRequestState.loadToken;
+}
+
+function isDashboardLoadActive(tabKey, loadToken) {
+  const key = (tabKey === "hosting") ? "hosting" : "trips";
+  return dashboardRequestState.activeTab === key && dashboardRequestState.loadToken === loadToken;
+}
+
+function unwrapApiPayload(payload) {
+  if (!payload || typeof payload !== "object") return {};
+  if (payload.data && typeof payload.data === "object") return payload.data;
+  return payload;
+}
+
+function extractApiError(payload, fallbackMessage) {
+  const root = (payload && typeof payload === "object") ? payload : {};
+  const unwrapped = unwrapApiPayload(root);
+  const code = String(unwrapped.error || unwrapped.code || root.error || root.code || "").trim().toUpperCase();
+  const message = String(unwrapped.message || root.message || fallbackMessage || "Request failed.").trim();
+  return { code: code, message: message };
+}
+
+function mapGuestScopeError(payload, statusCode, fallbackMessage) {
+  const err = extractApiError(payload, fallbackMessage || "Failed to load bookings.");
+  if (err.code === "AUTH_REQUIRED" || statusCode === 401) {
+    return "Your session has expired. Please log in again.";
+  }
+  return err.message || fallbackMessage || "Failed to load bookings.";
+}
+
+function mapHostScopeError(payload, statusCode, fallbackMessage) {
+  const err = extractApiError(payload, fallbackMessage || "Unable to load host data.");
+  if (err.code === "HOST_ROLE_REQUIRED") {
+    return "Host role required. Complete host onboarding to access hosting tools.";
+  }
+  if (err.code === "AUTH_REQUIRED" || statusCode === 401) {
+    return "Authentication required. Please log in and try again.";
+  }
+  if (statusCode === 403) {
+    return err.message || "Access denied for this host action.";
+  }
+  return err.message || fallbackMessage || "Unable to load host data.";
+}
+
+function mapStripeConnectStartError(payload, statusCode) {
+  const err = extractApiError(payload, "Could not start Stripe onboarding.");
+  if (err.code === "AUTH_REQUIRED" || statusCode === 401) {
+    return "Authentication required. Please log in and retry Stripe Connect.";
+  }
+  if (err.code === "HOST_ROLE_REQUIRED") {
+    return "Host role required. Complete host onboarding before connecting Stripe payouts.";
+  }
+  if (err.code === "STRIPE_CONNECT_NOT_CONFIGURED") {
+    return "Stripe Connect is not configured yet. Please contact support.";
+  }
+  return err.message || "Could not start Stripe onboarding.";
+}
+
+function userHasHostAccess(user) {
+  const u = (user && typeof user === "object") ? user : {};
+  const role = String(u.role || "").trim().toLowerCase();
+  if (role === "host" || role === "admin") return true;
+  if (u.isHost === true || u.isAdmin === true) return true;
+  const hostAppStatus = String(u.hostApplicationStatus || "").trim().toLowerCase();
+  if (hostAppStatus === "approved" || hostAppStatus === "requested" || hostAppStatus === "under_review") return true;
+  if (u.hostHasListings === true) return true;
+  const hostVerificationStatus = String((u.hostVerification && u.hostVerification.status) || "").trim().toLowerCase();
+  if (hostVerificationStatus === "requested" || hostVerificationStatus === "under_review" || hostVerificationStatus === "verified") return true;
+  return false;
+}
+
+async function getSessionSnapshot() {
+  if (!window.tstsGetSession) return { ok: false, reason: "AUTH_REQUIRED" };
+  try {
+    const sess = await window.tstsGetSession({ force: true });
+    if (!sess || !sess.ok || !sess.user) return { ok: false, reason: "AUTH_REQUIRED" };
+    if (sess.status && sess.status !== 200) return { ok: false, reason: "SESSION_UNAVAILABLE" };
+    return { ok: true, session: sess };
+  } catch (_) {
+    return { ok: false, reason: "SESSION_UNAVAILABLE" };
+  }
+}
 
 function resolveDashboardTab(rawTab) {
   const tab = String(rawTab || "").trim().toLowerCase();
@@ -134,25 +224,16 @@ function redirectToLogin() {
 }
 
 async function requireAuthOrRedirect() {
-  try {
-    if (!window.tstsGetSession) {
-      redirectToLogin();
-      return false;
-    }
-    const sess = await window.tstsGetSession({ force: true });
-    if (!sess || !sess.ok || !sess.user) {
-      redirectToLogin();
-      return false;
-    }
-    if (sess.status && sess.status !== 200) {
-      window.tstsNotify("Unable to verify your session. Please refresh and try again.", "error");
-      return false;
-    }
-    return true;
-  } catch (_) {
-    window.tstsNotify("Unable to verify your session. Please refresh and try again.", "error");
+  const snapshot = await getSessionSnapshot();
+  if (snapshot.ok) return true;
+  if (snapshot.reason === "AUTH_REQUIRED") {
+    redirectToLogin();
     return false;
   }
+  try {
+    window.tstsNotify("Unable to verify your session. Please refresh and try again.", "error");
+  } catch (_) {}
+  return false;
 }
 
 function setLoading() {
@@ -440,31 +521,40 @@ function toggleTab(which) {
     tabHost.className = "border-orange-600 text-orange-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm";
     tabTrips.className = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm";
   }
+  const loadToken = nextDashboardLoadToken(which);
   syncDashboardTabQuery(which, hostDashboardState.section);
+  return loadToken;
 }
 
 /* ====================== GUEST TRIPS ====================== */
 
-async function loadTrips() {
+async function loadTrips(loadToken) {
+  const token = Number.isFinite(Number(loadToken)) ? Number(loadToken) : nextDashboardLoadToken("trips");
+  if (!isDashboardLoadActive("trips", token)) return;
   if (!(await requireAuthOrRedirect())) return;
+  if (!isDashboardLoadActive("trips", token)) return;
   setLoading();
 
   try {
     const res = await window.authFetch("/api/bookings/my-bookings");
     const data = await res.json().catch(() => null);
+    if (!isDashboardLoadActive("trips", token)) return;
 
     if (!res.ok) {
-      setError((data && data.message) || "Failed to load bookings.");
+      setError(mapGuestScopeError(data, res.status, "Failed to load bookings."));
       return;
     }
 
     // Tolerant unwrap: accept raw array OR { ok, data: { bookings: [...] } }
     var bookings = Array.isArray(data) ? data
       : (data && data.data && Array.isArray(data.data.bookings)) ? data.data.bookings
+      : (data && data.data && Array.isArray(data.data.items)) ? data.data.items
       : (data && Array.isArray(data.bookings)) ? data.bookings
+      : (data && Array.isArray(data.items)) ? data.items
       : [];
 
     const pendingConnections = await loadPendingConnectionRequests().catch(function () { return []; });
+    if (!isDashboardLoadActive("trips", token)) return;
 
     if (bookings.length === 0) {
       guestBookingsCache = [];
@@ -489,6 +579,7 @@ async function loadTrips() {
     bookings.forEach(function(b) { contentEl.appendChild(renderTripCard(b)); });
     focusDashboardDeepLinkPanel();
   } catch (_) {
+    if (!isDashboardLoadActive("trips", token)) return;
     setError("Failed to load bookings.");
   }
 }
@@ -1452,7 +1543,7 @@ async function startStripeConnectStandard() {
   const res = await window.authFetch("/api/stripe/connect/standard/start", { method: "POST" });
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(String((payload && payload.message) || "Could not start Stripe onboarding."));
+    throw new Error(mapStripeConnectStartError(payload, res.status));
   }
   const data = (payload && payload.data && typeof payload.data === "object") ? payload.data : payload;
   const url = String((data && data.url) || "").trim();
@@ -2507,6 +2598,7 @@ function renderHostingSectionContent() {
 
 function renderHostingDashboard() {
   if (!contentEl) return;
+  if (dashboardRequestState.activeTab !== "hosting") return;
   const El = window.tstsEl;
   contentEl.textContent = "";
   const wrap = El("div", { className: "space-y-4" }, [
@@ -2534,12 +2626,14 @@ async function fetchHostListingsSource() {
         items: [],
         summary: null,
         warnings: [],
-        message: String((payload && payload.message) || "Failed to load listings.")
+        message: mapHostScopeError(payload, res.status, "Failed to load listings.")
       };
     }
 
     const root = (payload && payload.data && typeof payload.data === "object") ? payload.data : payload;
-    const items = Array.isArray(root && root.items) ? root.items : [];
+    const items = Array.isArray(root && root.items)
+      ? root.items
+      : (Array.isArray(root && root.experiences) ? root.experiences : []);
     const summary = computeListingsSummary(items, root && root.summary);
     const warnings = Array.isArray(root && root.warnings) ? root.warnings : [];
     return {
@@ -2559,7 +2653,7 @@ async function fetchHostBookingsSource() {
     const res = await window.authFetch("/api/bookings/host-bookings", { method: "GET" });
     const payload = await res.json().catch(() => []);
     if (!res.ok) {
-      return { status: "error", rows: [], message: String((payload && payload.message) || "Failed to load booking requests.") };
+      return { status: "error", rows: [], message: mapHostScopeError(payload, res.status, "Failed to load booking requests.") };
     }
     var unwrapped = (payload && payload.data) ? payload.data : payload;
     if (unwrapped && unwrapped.bookings && Array.isArray(unwrapped.bookings)) unwrapped = unwrapped.bookings;
@@ -2575,7 +2669,7 @@ async function fetchHostPrivateRequestsSource() {
     const res = await window.authFetch("/api/host/private-booking-requests?status=pending&limit=100", { method: "GET" });
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) {
-      return { status: "error", rows: [], message: String((payload && payload.message) || "Failed to load private requests.") };
+      return { status: "error", rows: [], message: mapHostScopeError(payload, res.status, "Failed to load private requests.") };
     }
     const unwrapped = (payload && payload.data) ? payload.data : payload;
     const rows = Array.isArray(unwrapped && unwrapped.requests) ? unwrapped.requests : [];
@@ -2590,7 +2684,7 @@ async function fetchHostVerificationSource() {
     const res = await window.authFetch("/api/host/verification/status", { method: "GET" });
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) {
-      return { status: "error", data: null, message: String((payload && payload.message) || "Failed to load verification and payout status.") };
+      return { status: "error", data: null, message: mapHostScopeError(payload, res.status, "Failed to load verification and payout status.") };
     }
     return { status: "ready", data: parseHostVerificationPayload(payload), message: "" };
   } catch (_) {
@@ -2598,8 +2692,43 @@ async function fetchHostVerificationSource() {
   }
 }
 
-async function loadHost(sectionOverride) {
-  if (!(await requireAuthOrRedirect())) return;
+async function loadHost(sectionOverride, loadToken) {
+  const token = Number.isFinite(Number(loadToken)) ? Number(loadToken) : nextDashboardLoadToken("hosting");
+  if (!isDashboardLoadActive("hosting", token)) return;
+
+  const sessionSnapshot = await getSessionSnapshot();
+  if (!sessionSnapshot.ok) {
+    if (sessionSnapshot.reason === "AUTH_REQUIRED") {
+      redirectToLogin();
+      return;
+    }
+    if (!isDashboardLoadActive("hosting", token)) return;
+    const sessionMsg = "Unable to verify your session. Please refresh and try again.";
+    hostDashboardState.section = resolveHostingSection(sectionOverride || hostDashboardState.section || dashboardDeepLink.section, dashboardDeepLink.panel);
+    hostDashboardState.listings = { status: "error", items: [], summary: null, warnings: [], message: sessionMsg };
+    hostDashboardState.bookings = { status: "error", rows: [], message: sessionMsg };
+    hostDashboardState.privateRequests = { status: "error", rows: [], message: sessionMsg };
+    hostDashboardState.verification = { status: "error", data: null, message: sessionMsg };
+    hostBookingsCache = [];
+    renderHostingDashboard();
+    return;
+  }
+  if (!isDashboardLoadActive("hosting", token)) return;
+
+  const viewer = (sessionSnapshot.session && sessionSnapshot.session.user) ? sessionSnapshot.session.user : {};
+  if (!userHasHostAccess(viewer)) {
+    const hostRequiredMsg = "Host tools require a host account. Complete host onboarding to continue.";
+    hostDashboardState.section = resolveHostingSection(sectionOverride || hostDashboardState.section || dashboardDeepLink.section, dashboardDeepLink.panel);
+    hostDashboardState.listings = { status: "error", items: [], summary: null, warnings: [], message: hostRequiredMsg };
+    hostDashboardState.bookings = { status: "error", rows: [], message: hostRequiredMsg };
+    hostDashboardState.privateRequests = { status: "error", rows: [], message: hostRequiredMsg };
+    hostDashboardState.verification = { status: "error", data: null, message: hostRequiredMsg };
+    hostBookingsCache = [];
+    renderHostingDashboard();
+    syncDashboardTabQuery("hosting", hostDashboardState.section);
+    focusDashboardDeepLinkPanel();
+    return;
+  }
 
   hostDashboardState.section = resolveHostingSection(sectionOverride || hostDashboardState.section || dashboardDeepLink.section, dashboardDeepLink.panel);
   hostDashboardState.listings = { status: "loading", items: [], summary: null, warnings: [], message: "" };
@@ -2616,6 +2745,7 @@ async function loadHost(sectionOverride) {
       fetchHostPrivateRequestsSource(),
       fetchHostVerificationSource()
     ]);
+    if (!isDashboardLoadActive("hosting", token)) return;
 
     hostDashboardState.listings = listingsState;
     hostDashboardState.bookings = bookingsState;
@@ -2626,7 +2756,14 @@ async function loadHost(sectionOverride) {
     renderHostingDashboard();
     focusDashboardDeepLinkPanel();
   } catch (_) {
-    setError("Failed to load hosting data.");
+    if (!isDashboardLoadActive("hosting", token)) return;
+    const failMsg = "Failed to load hosting data.";
+    hostDashboardState.listings = { status: "error", items: [], summary: null, warnings: [], message: failMsg };
+    hostDashboardState.bookings = { status: "error", rows: [], message: failMsg };
+    hostDashboardState.privateRequests = { status: "error", rows: [], message: failMsg };
+    hostDashboardState.verification = { status: "error", data: null, message: failMsg };
+    hostBookingsCache = [];
+    renderHostingDashboard();
   }
 }
 
@@ -2760,10 +2897,13 @@ function _trapFocus(e) {
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await requireAuthOrRedirect())) return;
 
-  if (tabTrips) tabTrips.addEventListener("click", () => { toggleTab("trips"); loadTrips(); });
+  if (tabTrips) tabTrips.addEventListener("click", () => {
+    const token = toggleTab("trips");
+    loadTrips(token);
+  });
   if (tabHost) tabHost.addEventListener("click", () => {
-    toggleTab("hosting");
-    loadHost(hostDashboardState.section || dashboardDeepLink.section || "overview");
+    const token = toggleTab("hosting");
+    loadHost(hostDashboardState.section || dashboardDeepLink.section || "overview", token);
   });
 
   if (reviewForm) reviewForm.addEventListener("submit", submitReview);
@@ -2876,7 +3016,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   loadActivePolicySnapshot().catch(() => {});
   const initialTab = resolveDashboardTab(dashboardDeepLink.tab);
   hostDashboardState.section = resolveHostingSection(dashboardDeepLink.section, dashboardDeepLink.panel);
-  toggleTab(initialTab);
-  if (initialTab === "hosting") loadHost(hostDashboardState.section);
-  else loadTrips();
+  const initialToken = toggleTab(initialTab);
+  if (initialTab === "hosting") loadHost(hostDashboardState.section, initialToken);
+  else loadTrips(initialToken);
 });
