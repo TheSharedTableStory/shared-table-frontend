@@ -80,7 +80,7 @@
       {
         type: "button",
         className:
-          "w-full text-left flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-tsts-ink hover:bg-slate-50 transition"
+          "w-full text-left flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm sm:text-base font-semibold text-tsts-ink hover:bg-slate-50 transition"
       },
       [
         createEl("span", { className: "pr-3", textContent: String(item.question || "") }),
@@ -93,7 +93,7 @@
       "div",
       {
         className:
-          "hidden rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs sm:text-sm leading-relaxed text-slate-700"
+          "hidden rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm sm:text-base leading-relaxed text-slate-700"
       },
       String(item.answer || "")
     );

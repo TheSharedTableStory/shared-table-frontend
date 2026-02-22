@@ -4,6 +4,21 @@
 (() => {
   const INTERNAL_DATA_KEY = "__THE_SHARED_TABLE_STORY_FAQ_INTERNAL__";
   const INTERNAL_RENDERER_KEY = "__THE_SHARED_TABLE_STORY_FAQ_RENDERER_INTERNAL__";
+  const SECTION_LABELS = Object.freeze({
+    "before-attending": "Before Attending",
+    "booking-management": "Booking Management",
+    "booking-lifecycle": "Booking Lifecycle",
+    "cancellation-refunds": "Cancellation & Refunds",
+    "host-cancellation": "Host Cancellation",
+    "location-privacy": "Location Privacy",
+    "refund-timing": "Refund Timing",
+    "trust-safety": "Trust & Safety"
+  });
+  const HUB_SECTION_ORDER = Object.freeze({
+    guest: ["before-attending", "booking", "payments", "cancellation", "safety", "support", "trust-safety"],
+    host: ["onboarding", "listing", "booking-management", "earnings", "cancellation", "safety", "disputes", "trust-safety"],
+    platform: ["basics", "booking-lifecycle", "roles", "payments", "cancellation-refunds", "disputes", "trust-safety", "privacy", "policies"]
+  });
 
   function getFaqState() {
     const state = window[INTERNAL_DATA_KEY];
@@ -63,10 +78,26 @@
   function titleizeSection(section) {
     const text = String(section || "").trim();
     if (!text) return "General";
+    const normalized = normalizeSection(text);
+    if (SECTION_LABELS[normalized]) return SECTION_LABELS[normalized];
     return text
       .split("-")
       .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : ""))
       .join(" ");
+  }
+
+  function sortSections(sectionNames, hubId) {
+    const normalizedHub = String(hubId || "").trim().toLowerCase();
+    const order = HUB_SECTION_ORDER[normalizedHub];
+    if (!Array.isArray(order) || order.length === 0) return sectionNames.sort();
+    const indexMap = new Map();
+    order.forEach((name, index) => indexMap.set(String(name || ""), index));
+    return sectionNames.sort((a, b) => {
+      const ai = indexMap.has(a) ? indexMap.get(a) : Number.MAX_SAFE_INTEGER;
+      const bi = indexMap.has(b) ? indexMap.get(b) : Number.MAX_SAFE_INTEGER;
+      if (ai !== bi) return ai - bi;
+      return a.localeCompare(b);
+    });
   }
 
   function matchQuery(item, query) {
@@ -123,7 +154,7 @@
       "summary",
       {
         className:
-          "flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900"
+          "flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-base font-semibold text-gray-900"
       },
       [
         createEl("span", { className: "pr-4", textContent: String(item.question || "") }),
@@ -134,7 +165,7 @@
     const body = createEl(
       "div",
       {
-        className: "px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2"
+        className: "px-4 py-3 text-base text-gray-700 leading-relaxed space-y-2"
       },
       String(item.answer || "")
     );
@@ -228,6 +259,19 @@
       root.appendChild(list);
     }
 
+    let hint = root.querySelector("[data-faq-hint]");
+    if (!hint) {
+      hint = createEl(
+        "p",
+        {
+          className: "text-xs sm:text-sm text-slate-500",
+          "data-faq-hint": "1"
+        },
+        "Select a section to expand questions and answers."
+      );
+      root.appendChild(hint);
+    }
+
     let empty = root.querySelector("[data-faq-empty]");
     if (!empty) {
       empty = createEl(
@@ -247,7 +291,7 @@
       root.appendChild(escalation);
     }
 
-    return { search, list, empty, escalation };
+    return { search, list, hint, empty, escalation };
   }
 
   function groupBySection(items, query) {
@@ -271,7 +315,7 @@
     function renderSections() {
       const query = String(skeleton.search.value || "").trim();
       const grouped = groupBySection(items, query);
-      const sections = Array.from(grouped.keys()).sort();
+      const sections = sortSections(Array.from(grouped.keys()), hubId);
 
       skeleton.list.textContent = "";
 
@@ -281,7 +325,7 @@
           "summary",
           {
             className:
-              "flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900"
+              "flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-base font-semibold text-gray-900"
           },
           [
             createEl("span", { className: "pr-4", textContent: titleizeSection(sectionName) }),
@@ -289,7 +333,7 @@
           ]
         );
 
-        const sectionBody = createEl("div", { className: "px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2" });
+        const sectionBody = createEl("div", { className: "px-4 py-3 text-base text-gray-700 leading-relaxed space-y-2" });
         sectionItems.forEach((item) => {
           sectionBody.appendChild(createQuestionDetails(item));
         });
@@ -301,6 +345,9 @@
           },
           [summary, sectionBody]
         );
+        if (query && sectionItems.length > 0) {
+          sectionDetails.open = true;
+        }
 
         skeleton.list.appendChild(sectionDetails);
       });

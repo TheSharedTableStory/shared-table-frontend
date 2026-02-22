@@ -12,7 +12,7 @@
 
   <link rel="stylesheet" href="css/tailwind.css?v=20260222c">
   <link rel="stylesheet" href="css/fonts.css?v=20260222c">
-  <link rel="stylesheet" href="css/help-center.css?v=20260222g">
+  <link rel="stylesheet" href="css/help-center.css?v=20260222j">
   <link rel="manifest" href="manifest.json">
 </head>
 
@@ -22,7 +22,7 @@
   <main class="flex-grow" role="main">
     <div id="help-root" class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-0 py-12 space-y-8">
       <header>
-        <p class="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">FAQs</p>
+        <p class="text-xs tracking-[0.18em] font-semibold text-slate-500 mb-2">FAQs</p>
         <h1 class="text-4xl sm:text-5xl font-bold mb-3 heading-serif text-tsts-ink">How can we help today?</h1>
         <p class="text-slate-600 text-lg">
           Choose the section that matches your journey. Answers reflect current platform policy and booking behavior.
@@ -38,13 +38,13 @@
             aria-expanded="false"
             aria-controls="faq-hub-panel-platform"
           >
-            <span class="flex items-center justify-between gap-3">
-              <span>
-                <span class="block heading-serif text-3xl font-semibold text-tsts-ink mb-2 leading-tight">How The Platform Works</span>
-                <span class="block text-xl text-slate-700 mt-1 leading-relaxed">Roles, lifecycle, trust, and payment process.</span>
-              </span>
-              <span class="help-center-chevron text-slate-500 text-2xl" data-hub-icon>⌄</span>
-            </span>
+            <div class="help-center-hub-content">
+              <div class="help-center-hub-copy">
+                <span class="block heading-serif help-center-hub-title text-tsts-ink mb-2">How The Platform Works</span>
+                <span class="block help-center-hub-description text-slate-700 mt-1">Roles, lifecycle, trust, and payment process.</span>
+              </div>
+              <span class="help-center-chevron text-slate-500 text-2xl" data-hub-icon aria-hidden="true">⌄</span>
+            </div>
           </button>
 
           <button
@@ -54,13 +54,13 @@
             aria-expanded="false"
             aria-controls="faq-hub-panel-guest"
           >
-            <span class="flex items-center justify-between gap-3">
-              <span>
-                <span class="block heading-serif text-3xl font-semibold text-tsts-ink mb-2 leading-tight">Guest FAQ</span>
-                <span class="block text-xl text-slate-700 mt-1 leading-relaxed">Booking, payments, cancellations, and support.</span>
-              </span>
-              <span class="help-center-chevron text-slate-500 text-2xl" data-hub-icon>⌄</span>
-            </span>
+            <div class="help-center-hub-content">
+              <div class="help-center-hub-copy">
+                <span class="block heading-serif help-center-hub-title text-tsts-ink mb-2">Guest FAQ</span>
+                <span class="block help-center-hub-description text-slate-700 mt-1">Booking, payments, cancellations, and support.</span>
+              </div>
+              <span class="help-center-chevron text-slate-500 text-2xl" data-hub-icon aria-hidden="true">⌄</span>
+            </div>
           </button>
 
           <button
@@ -70,13 +70,13 @@
             aria-expanded="false"
             aria-controls="faq-hub-panel-host"
           >
-            <span class="flex items-center justify-between gap-3">
-              <span>
-                <span class="block heading-serif text-3xl font-semibold text-tsts-ink mb-2 leading-tight">Host FAQ</span>
-                <span class="block text-xl text-slate-700 mt-1 leading-relaxed">Hosting setup, bookings, payouts, and policies.</span>
-              </span>
-              <span class="help-center-chevron text-slate-500 text-2xl" data-hub-icon>⌄</span>
-            </span>
+            <div class="help-center-hub-content">
+              <div class="help-center-hub-copy">
+                <span class="block heading-serif help-center-hub-title text-tsts-ink mb-2">Host FAQ</span>
+                <span class="block help-center-hub-description text-slate-700 mt-1">Hosting setup, bookings, payouts, and policies.</span>
+              </div>
+              <span class="help-center-chevron text-slate-500 text-2xl" data-hub-icon aria-hidden="true">⌄</span>
+            </div>
           </button>
         </div>
       </section>
@@ -106,8 +106,8 @@
   <script src="js/common.js?v=20260222c"></script>
   <script src="data/faq-catalog.js?v=20260222f"></script>
   <script src="data/faq-trust.js?v=20260222f"></script>
-  <script src="js/faq-renderer.js?v=20260222f"></script>
-  <script src="js/faq-contextual.js?v=20260222f"></script>
+  <script src="js/faq-renderer.js?v=20260222h"></script>
+  <script src="js/faq-contextual.js?v=20260222h"></script>
   <script src="js/faq-init.js?v=20260222f"></script>
   <script src="js/help-center.js?v=20260222f"></script>
 </body>
