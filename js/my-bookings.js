@@ -1075,6 +1075,11 @@ async function submitComplaint(e) {
   const evidenceInput = document.getElementById("complaint-evidence");
   const evidenceFile = (evidenceInput && evidenceInput.files && evidenceInput.files[0]) ? evidenceInput.files[0] : null;
 
+  if (evidenceFile && evidenceFile.size > 5 * 1024 * 1024) {
+    setComplaintStatus("Evidence file must be under 5 MB.", "error");
+    return;
+  }
+
   if (!bid) {
     setComplaintStatus("Booking selection is invalid. Please reopen the form.", "error");
     return;
