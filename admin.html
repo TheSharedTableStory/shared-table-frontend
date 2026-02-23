@@ -153,12 +153,14 @@
               <h2 class="font-bold text-lg text-tsts-ink">Marketing Emails</h2>
               <button id="btn-refresh-marketing-status" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh Status</button>
             </div>
-            <div class="flex flex-wrap items-center gap-4">
+            <div class="flex flex-wrap items-center gap-3">
               <div id="marketing-email-status-badge" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold bg-slate-100 text-slate-500">
                 <span id="marketing-email-status-dot" class="w-2 h-2 rounded-full bg-slate-400"></span>
                 <span id="marketing-email-status-label">Loading...</span>
               </div>
-              <p class="text-xs text-slate-500">To change: set <code class="bg-slate-100 px-1 rounded text-xs font-mono">MARKETING_EMAILS_ENABLED=true</code> or <code class="bg-slate-100 px-1 rounded text-xs font-mono">false</code> on Render backend environment.</p>
+              <span id="marketing-email-source-label" class="hidden text-xs text-slate-400"></span>
+              <button id="btn-marketing-enable" type="button" class="hidden px-4 py-2 rounded-xl bg-tsts-ink text-white text-sm font-semibold hover:opacity-90 transition-opacity">Enable Marketing Emails</button>
+              <button id="btn-marketing-pause" type="button" class="hidden px-4 py-2 rounded-xl border border-orange-400 text-orange-600 bg-white text-sm font-semibold hover:bg-orange-50 transition-colors">Pause Marketing Emails</button>
             </div>
           </section>
 

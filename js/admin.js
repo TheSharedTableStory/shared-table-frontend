@@ -836,10 +836,14 @@ function renderMarketingEmailStatus(payload) {
   var root = (payload && typeof payload === "object") ? payload : {};
   var data = (root.data && typeof root.data === "object") ? root.data : root;
   var enabled = data.enabled === true;
+  var source = String(data.source || "env");
 
   var badge = $("marketing-email-status-badge");
   var dot = $("marketing-email-status-dot");
   var label = $("marketing-email-status-label");
+  var sourceLabel = $("marketing-email-source-label");
+  var btnEnable = $("btn-marketing-enable");
+  var btnPause = $("btn-marketing-pause");
 
   if (badge) {
     badge.className = enabled
@@ -851,6 +855,47 @@ function renderMarketingEmailStatus(payload) {
   }
   if (label) {
     label.textContent = enabled ? "Sending enabled" : "Paused";
+  }
+  if (sourceLabel) {
+    sourceLabel.textContent = source === "db" ? "DB-controlled" : "env-controlled";
+    sourceLabel.className = "text-xs text-slate-400";
+  }
+  if (btnEnable) {
+    btnEnable.className = enabled
+      ? "hidden px-4 py-2 rounded-xl bg-tsts-ink text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+      : "px-4 py-2 rounded-xl bg-tsts-ink text-white text-sm font-semibold hover:opacity-90 transition-opacity";
+  }
+  if (btnPause) {
+    btnPause.className = enabled
+      ? "px-4 py-2 rounded-xl border border-orange-400 text-orange-600 bg-white text-sm font-semibold hover:bg-orange-50 transition-colors"
+      : "hidden px-4 py-2 rounded-xl border border-orange-400 text-orange-600 bg-white text-sm font-semibold hover:bg-orange-50 transition-colors";
+  }
+}
+
+async function setMarketingEmailEnabled(enabled) {
+  var confirmed = await window.tstsConfirm(
+    enabled
+      ? "Enable marketing emails? Recommendation emails will resume being sent to users who have not opted out."
+      : "Pause marketing emails? No recommendation emails will be sent until re-enabled."
+  );
+  if (!confirmed) return;
+  try {
+    const res = await adminFetch("/api/admin/marketing-email-status", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: enabled })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data || data.ok !== true) {
+      window.tstsNotify((data && data.message) ? data.message : "Failed to update marketing email status.", "error");
+      return;
+    }
+    window.tstsNotify(enabled ? "Marketing emails enabled." : "Marketing emails paused.", "success");
+    loadMarketingEmailStatus().then(renderMarketingEmailStatus).catch(function () {
+      window.tstsNotify("Status updated but failed to refresh display.", "error");
+    });
+  } catch (e) {
+    window.tstsNotify("Failed to update marketing email status.", "error");
   }
 }
 
@@ -1846,6 +1891,8 @@ function wireAdminEvents() {
   const refreshListings = $("btn-refresh-listings");
   const refreshVerificationPolicy = $("btn-refresh-verification-policy");
   const refreshMarketingStatus = $("btn-refresh-marketing-status");
+  const btnMarketingEnable = $("btn-marketing-enable");
+  const btnMarketingPause = $("btn-marketing-pause");
   const saveVerificationPolicyBtn = $("btn-save-verification-policy");
   const refreshHostVerifications = $("btn-refresh-host-verifications");
   const refreshEventVerifications = $("btn-refresh-event-verifications");
@@ -1890,6 +1937,8 @@ function wireAdminEvents() {
   if (refreshListings) refreshListings.addEventListener("click", () => loadExperiences().then(renderExperiences).catch(function () { window.tstsNotify("Failed to refresh listings.", "error"); renderExperiences([]); }));
   if (refreshVerificationPolicy) refreshVerificationPolicy.addEventListener("click", () => refreshVerificationViews().catch(function () { window.tstsNotify("Failed to refresh verification policy.", "error"); }));
   if (refreshMarketingStatus) refreshMarketingStatus.addEventListener("click", () => loadMarketingEmailStatus().then(renderMarketingEmailStatus).catch(function () { window.tstsNotify("Failed to refresh marketing email status.", "error"); }));
+  if (btnMarketingEnable) btnMarketingEnable.addEventListener("click", () => setMarketingEmailEnabled(true));
+  if (btnMarketingPause) btnMarketingPause.addEventListener("click", () => setMarketingEmailEnabled(false));
   if (saveVerificationPolicyBtn) saveVerificationPolicyBtn.addEventListener("click", () => handleSaveVerificationPolicy());
   if (refreshHostVerifications) refreshHostVerifications.addEventListener("click", () => loadHostVerifications("all").then(renderHostVerifications).catch(function () { window.tstsNotify("Failed to refresh host verifications.", "error"); renderHostVerifications({ data: { items: [] } }); }));
   if (refreshEventVerifications) refreshEventVerifications.addEventListener("click", () => loadEventVerifications("all").then(renderEventVerifications).catch(function () { window.tstsNotify("Failed to refresh event verifications.", "error"); renderEventVerifications({ data: { items: [] } }); }));
