@@ -9,8 +9,8 @@
     <meta name="theme-color" content="#ea580c">
     <meta name="description" content="Discover unique culinary and cultural dining experiences in Melbourne. Browse, filter, and book your seat at The Shared Table Story.">
     <title>Explore - The Shared Table Story</title>
-    <link rel="stylesheet" href="css/tailwind.css?v=20260222c">
-    <link rel="stylesheet" href="css/fonts.css?v=20260222c">
+    <link rel="stylesheet" href="css/tailwind.css?v=20260223d">
+    <link rel="stylesheet" href="css/fonts.css?v=20260223d">
     <link rel="stylesheet" href="vendor/nouislider/nouislider.min.css?v=15.7.0" />
     <script src="vendor/nouislider/nouislider.min.js?v=15.7.0"></script>
 
@@ -29,22 +29,22 @@
                     <div class="relative flex-grow">
                         <label for="search-input" class="sr-only">Search experiences</label>
                         <i class="fas fa-search absolute left-4 top-3.5 text-gray-400"></i>
-                        <input type="search" id="search-input" placeholder="Search dish, host, or vibe..." class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm transition">
+                        <input type="search" id="search-input" placeholder="Search dish, host, or vibe..." class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm transition">
                     </div>
                     <div class="relative w-full md:w-48">
                         <label for="location-input" class="sr-only">City</label>
                         <i class="fas fa-map-marker-alt absolute left-4 top-3.5 text-gray-400"></i>
-                        <input type="text" id="location-input" list="explore-city-suggestions" autocomplete="address-level2" placeholder="City" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm transition">
+                        <input type="text" id="location-input" list="explore-city-suggestions" autocomplete="address-level2" placeholder="City" class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm transition">
                         <datalist id="explore-city-suggestions"></datalist>
                     </div>
                     <div class="relative w-full md:w-40">
                         <label for="date-input" class="sr-only">Date</label>
-                        <input type="date" id="date-input" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-gray-600 text-sm transition">
+                        <input type="date" id="date-input" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-gray-600 text-sm transition">
                     </div>
                     <div class="relative w-full md:w-32">
                         <label for="guests-input" class="sr-only">Number of guests</label>
                         <i class="fas fa-user-friends absolute left-4 top-3.5 text-gray-400"></i>
-                        <input type="number" id="guests-input" min="1" placeholder="Guests" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm transition">
+                        <input type="number" id="guests-input" min="1" placeholder="Guests" class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm transition">
                     </div>
                 </div>
                 <div class="flex gap-2">
@@ -82,14 +82,14 @@
                             </select>
                             <i class="fas fa-chevron-down absolute right-4 top-3 text-gray-400 pointer-events-none"></i>
                         </div>
-                        <label for="private-booking-only" class="mt-4 flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 cursor-pointer">
+                        <label for="private-booking-only" class="mt-4 flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-gray-700 cursor-pointer">
                             <input id="private-booking-only" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
                             <span class="leading-snug">
                                 <span class="font-semibold text-gray-900">Private booking available</span>
                                 <span class="block text-xs text-gray-500">Show only experiences with private booking options.</span>
                             </span>
                         </label>
-                        <label for="verified-only" class="mt-3 flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 cursor-pointer">
+                        <label for="verified-only" class="mt-3 flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-gray-700 cursor-pointer">
                             <input id="verified-only" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
                             <span class="leading-snug">
                                 <span class="font-semibold text-gray-900">Verified events only</span>
@@ -153,7 +153,7 @@
             <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-50 flex items-center justify-center text-orange-600">
                 <i class="far fa-compass text-2xl"></i>
             </div>
-            <h3 class="text-xl font-bold text-gray-900 mb-2">No experiences found</h3>
+            <h3 class="text-xl font-bold heading-serif text-tsts-ink mb-2">No experiences found</h3>
             <p class="text-gray-500 mb-8">Try adjusting your filters.</p>
             <button id="clear-filters-empty-btn" type="button" class="text-orange-600 font-bold hover:underline">Clear all filters</button>
         </div>
@@ -171,8 +171,8 @@
     </main>
 
     <footer id="footer-placeholder" role="contentinfo"></footer>
-    <script src="js/runtime-config.js?v=20260222c"></script>
-  <script src="js/common.js?v=20260223a"></script>
-    <script src="js/explore.js?v=20260223c"></script>
+    <script src="js/runtime-config.js?v=20260223d"></script>
+  <script src="js/common.js?v=20260223d"></script>
+    <script src="js/explore.js?v=20260223d"></script>
 </body>
 </html>

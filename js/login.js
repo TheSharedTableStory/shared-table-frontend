@@ -18,7 +18,7 @@ async function handleForgotPassword(e) {
     const email = String((emailEl && emailEl.value) ? emailEl.value : "").trim();
 
     if (!email) {
-        showModal("Forgot Password", "Enter your email in the Email field first, then click Forgot Password again.", "error");
+        showModal("Forgot Password", "Enter your email in the field above and we\u2019ll help you reset your password.", "error");
         return;
     }
 
@@ -253,7 +253,7 @@ async function handleSignup(e) {
 
         // Registration creates the account but does NOT establish a cookie session.
         // Email verification is required before login (world-class baseline security).
-        showModal("Account Created", "Please check your email to verify your address, then log in to continue.", "success");
+        showModal("Account Created", "Welcome aboard! We\u2019ve sent a verification link to your inbox. Sit tight, we\u2019re taking you to the login page.", "success");
 
         // Clear any stale auth state (register response may include legacy token fields; cookie auth is authoritative).
         try { if (window.clearAuth) window.clearAuth(); } catch (_) {}

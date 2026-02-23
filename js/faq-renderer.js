@@ -158,7 +158,7 @@
       },
       [
         createEl("span", { className: "pr-4", textContent: String(item.question || "") }),
-        createEl("span", { className: "help-center-chevron text-gray-500 text-base leading-none" }, "⌄")
+        createEl("span", { className: "help-center-chevron text-gray-500 text-base leading-none", "aria-hidden": "true" }, "⌄")
       ]
     );
 
@@ -329,7 +329,7 @@
           },
           [
             createEl("span", { className: "pr-4", textContent: titleizeSection(sectionName) }),
-            createEl("span", { className: "help-center-chevron text-slate-500 text-base leading-none" }, "⌄")
+            createEl("span", { className: "help-center-chevron text-slate-500 text-base leading-none", "aria-hidden": "true" }, "⌄")
           ]
         );
 

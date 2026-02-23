@@ -528,8 +528,8 @@ document.addEventListener("DOMContentLoaded", () => {
             El("div", { className: "w-14 h-14 mx-auto mb-3 rounded-full bg-orange-50 flex items-center justify-center text-orange-600" }, [
                 El("i", { className: "fas fa-tags text-xl" })
             ]),
-            El("h3", { className: "text-lg font-bold text-gray-900 mb-1", textContent: "No deals available right now" }),
-            El("p", { className: "text-sm text-gray-500", textContent: "While we arrange more deals, feel free to explore all available experiences right now." })
+            El("h3", { className: "text-lg font-bold text-gray-900 mb-1", textContent: "Nothing here just yet, but something wonderful is always around the corner." }),
+            El("p", { className: "text-sm text-gray-500", textContent: "New experiences are added every week. Check back soon or explore what's on the table." })
         ]);
         experiencesGrid.appendChild(banner);
 
@@ -636,7 +636,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             var card = El("div", {
-                className: "group block bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col cursor-pointer",
+                className: "group block bg-white rounded-3xl shadow-soft-card hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col cursor-pointer",
                 role: "link",
                 tabindex: "0",
                 "aria-label": "Open " + title

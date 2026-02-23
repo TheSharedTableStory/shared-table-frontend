@@ -84,7 +84,7 @@
       },
       [
         createEl("span", { className: "pr-3", textContent: String(item.question || "") }),
-        createEl("span", { className: "text-slate-500 text-base leading-none", textContent: "+" })
+        createEl("span", { className: "text-slate-500 text-base leading-none", textContent: "+", "aria-hidden": "true" })
       ]
     );
     toggle.setAttribute("aria-expanded", "false");
@@ -209,7 +209,7 @@
             subtitleText
           )
         ]),
-        createEl("span", { className: "text-slate-500 text-lg leading-none", textContent: "+" })
+        createEl("span", { className: "text-slate-500 text-lg leading-none", textContent: "+", "aria-hidden": "true" })
       ]
     );
 

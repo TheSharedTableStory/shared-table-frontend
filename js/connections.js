@@ -121,7 +121,7 @@
       connList.textContent = "";
 
       if (list.length === 0) {
-        if (connEmpty) connEmpty.textContent = "No connections yet. Visit someone\u2019s profile and click Connect to get started.";
+        if (connEmpty) connEmpty.textContent = "You haven\u2019t connected with anyone yet. Search for a fellow traveller above, or connect after sharing an experience together.";
         showConn(connEmpty);
         return;
       }

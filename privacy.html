@@ -8,8 +8,8 @@
     <link rel="icon" type="image/png" href="/assets/icon-192.png">
     <meta name="theme-color" content="#ea580c">
     <title>Privacy Policy - The Shared Table Story</title>
-    <link rel="stylesheet" href="css/tailwind.css?v=20260222c">
-    <link rel="stylesheet" href="css/fonts.css?v=20260222c">
+    <link rel="stylesheet" href="css/tailwind.css?v=20260223d">
+    <link rel="stylesheet" href="css/fonts.css?v=20260223d">
 
 <link rel="manifest" href="manifest.json">
 </head>
@@ -20,277 +20,111 @@
     <main class="flex-grow" role="main">
     <div class="max-w-3xl mx-auto px-6 py-12 flex-grow">
         <h1 class="text-3xl font-bold mb-2 heading-serif text-tsts-ink">Privacy Policy</h1>
-        <p class="text-gray-500 mb-8 text-sm">Last Updated: February 2026 | Version 4.0.0</p>
+        <p class="text-slate-500 mb-8 text-sm">Last Updated: February 2026</p>
 
-        <div class="space-y-8 text-gray-700 text-sm leading-relaxed">
-            <section>
-                <h2 class="text-xl font-bold heading-serif text-tsts-ink mb-3">1. Information We Collect</h2>
-                <p>We collect information you provide directly to us, such as your name, email address, profile picture, and payment information when you make a booking.</p>
-            </section>
+        <!-- Warm intro -->
+        <p class="text-slate-700 text-base leading-relaxed mb-10">We built The Shared Table Story on a simple belief: what you share should always be your choice. Here's how we look after your information so you can focus on what matters — good food, good company, and great conversations.</p>
 
-            <section>
-                <h2 class="text-xl font-bold heading-serif text-tsts-ink mb-3">2. How We Use Your Data</h2>
-                <p>We use your data to facilitate bookings, process payments, and improve platform security. We do not sell your personal data to third-party advertisers.</p>
-            </section>
-
-            <section>
-                <h2 class="text-xl font-bold heading-serif text-tsts-ink mb-3">3. Third-Party Processors</h2>
-                <p>We trust secure partners to handle specific functions: <strong>Stripe</strong> for secure payments and <strong>Cloudinary</strong> for image hosting. Your financial data is never stored on our servers.</p>
-            </section>
-
-            <section>
-                <h2 class="text-xl font-bold heading-serif text-tsts-ink mb-3">4. Data Storage</h2>
-                <p>We maintain your login session using secure, HttpOnly cookies stored on your device. These cookies are not accessible to JavaScript running on the page and are not transmitted to third parties. Session state is managed server-side; cookies are removed when you log out or clear your browser cookies. We do not use browser local storage for authentication or session management.</p>
-            </section>
-
-            <section>
-                <h2 class="text-xl font-bold heading-serif text-tsts-ink mb-3">5. Contact Us</h2>
-                <p>If you have questions about your data, please contact us at admin@thesharedtablestory.com.</p>
-            </section>
+        <!-- At a Glance card -->
+        <div class="bg-white rounded-3xl shadow-soft-card border border-slate-200 p-6 sm:p-8 mb-10">
+            <h2 class="text-lg font-bold heading-serif text-tsts-ink mb-4">At a Glance</h2>
+            <ul class="space-y-3 text-sm text-slate-700 leading-relaxed">
+                <li class="flex items-start gap-3">
+                    <span class="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-tsts-clay/15 text-tsts-clay text-[10px] font-bold">1</span>
+                    <span>We collect your name, email, and booking details — just what's needed to bring you to the table.</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-tsts-clay/15 text-tsts-clay text-[10px] font-bold">2</span>
+                    <span>Your financial information is processed securely and never stored on our servers.</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-tsts-clay/15 text-tsts-clay text-[10px] font-bold">3</span>
+                    <span>We never sell your personal information to anyone.</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-tsts-clay/15 text-tsts-clay text-[10px] font-bold">4</span>
+                    <span>You're in control — update, download, or delete your data whenever you like.</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-tsts-clay/15 text-tsts-clay text-[10px] font-bold">5</span>
+                    <span>We're always here to help. Reach out through our Contact Us page and we'll get back to you as soon as we can.</span>
+                </li>
+            </ul>
         </div>
 
-        <!-- Operator info block -->
-        <div class="bg-gray-50 rounded-lg p-4 mb-6 mt-10 text-xs text-gray-500 space-y-1">
-            <p class="font-semibold text-gray-600">Operator: The Shared Table Story PTY LTD</p>
-            <p>Registered address: 24 Balance Pl, Birtinya QLD 4575, Australia</p>
-            <p>Support: <a href="mailto:admin@thesharedtablestory.com" class="underline hover:text-orange-600">admin@thesharedtablestory.com</a></p>
-        </div>
-
-        <!-- Full Privacy Policy heading -->
-        <h2 class="text-2xl font-bold heading-serif text-tsts-ink mt-10 mb-6">Full Privacy Policy</h2>
-
-        <!-- 15 collapsible sections -->
+        <!-- 5 collapsible sections -->
         <div class="space-y-3">
 
-            <!-- Section 1: Scope -->
-            <details class="border border-gray-100 rounded-lg overflow-hidden">
-                <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
-                    1. Scope
-                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            <!-- Section 1 -->
+            <details class="border border-slate-200 rounded-2xl overflow-hidden">
+                <summary class="flex items-center justify-between px-5 py-4 bg-white cursor-pointer hover:bg-slate-50 transition text-sm font-semibold text-tsts-ink">
+                    What We Collect &amp; Why
+                    <svg class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </summary>
-                <div class="px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2">
-                    <p>1.1 This Privacy Policy explains how the Operator collects, uses, discloses, stores, and handles personal information in connection with the Platform.</p>
-                    <p>1.2 "Personal information" has the meaning given in the Privacy Act 1988 (Cth).</p>
+                <div class="px-5 py-4 text-sm text-slate-700 leading-relaxed border-t border-slate-100">
+                    <p>Your contact details (name, email, and phone number) and your booking information. We collect this so we can keep you informed about your bookings, share relevant updates, and make sure everything runs smoothly.</p>
                 </div>
             </details>
 
-            <!-- Section 2: What We Collect -->
-            <details class="border border-gray-100 rounded-lg overflow-hidden">
-                <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
-                    2. What We Collect
-                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            <!-- Section 2 -->
+            <details class="border border-slate-200 rounded-2xl overflow-hidden">
+                <summary class="flex items-center justify-between px-5 py-4 bg-white cursor-pointer hover:bg-slate-50 transition text-sm font-semibold text-tsts-ink">
+                    Who Can See Your Information
+                    <svg class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </summary>
-                <div class="px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2">
-                    <p><strong>2.1 Information you provide:</strong></p>
-                    <p>(a) identity and contact details (name, email, phone);</p>
-                    <p>(b) account credentials and verification records;</p>
-                    <p>(c) profile information you choose to add;</p>
-                    <p>(d) booking and transaction details;</p>
-                    <p>(e) communications (messages, support tickets);</p>
-                    <p>(f) content you post (reviews, listings, photos).</p>
-                    <p><strong>2.2 Information collected automatically:</strong></p>
-                    <p>(a) device identifiers, browser type, IP address, log data;</p>
-                    <p>(b) cookies and similar technologies;</p>
-                    <p>(c) approximate location derived from IP (not precise GPS unless you grant permission);</p>
-                    <p>(d) usage analytics and interaction data.</p>
-                    <p><strong>2.3 Information from third parties:</strong></p>
-                    <p>(a) payment processors (payment method tokens, chargeback signals; not full card numbers);</p>
-                    <p>(b) identity verification providers (where used);</p>
-                    <p>(c) service providers supporting email delivery, hosting, security, and analytics.</p>
+                <div class="px-5 py-4 text-sm text-slate-700 leading-relaxed border-t border-slate-100">
+                    <p>When you book an experience, your host receives your contact details so they can help with logistics, share any requirements, and make sure you have a great time. Fellow travellers you've chosen to connect with can also reach out to you — but only when you've accepted the connection. Beyond that, your personal information stays with us. We don't share it with anyone else, and we will never sell your data.</p>
                 </div>
             </details>
 
-            <!-- Section 3: Why We Collect and Use Personal Information -->
-            <details class="border border-gray-100 rounded-lg overflow-hidden">
-                <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
-                    3. Why We Collect and Use Personal Information
-                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            <!-- Section 3 -->
+            <details class="border border-slate-200 rounded-2xl overflow-hidden">
+                <summary class="flex items-center justify-between px-5 py-4 bg-white cursor-pointer hover:bg-slate-50 transition text-sm font-semibold text-tsts-ink">
+                    Your Choices
+                    <svg class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </summary>
-                <div class="px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2">
-                    <p>3.1 We use personal information to:</p>
-                    <p>(a) create and manage Accounts;</p>
-                    <p>(b) process Bookings, payments, refunds, and payouts;</p>
-                    <p>(c) provide customer support and platform communications;</p>
-                    <p>(d) prevent fraud, abuse, and unauthorised access;</p>
-                    <p>(e) enforce policies and maintain marketplace integrity;</p>
-                    <p>(f) comply with legal obligations, respond to regulators, and manage disputes;</p>
-                    <p>(g) improve the Platform (analytics, testing, troubleshooting);</p>
-                    <p>(h) send service messages and (where permitted) marketing communications.</p>
+                <div class="px-5 py-4 text-sm text-slate-700 leading-relaxed border-t border-slate-100 space-y-3">
+                    <p>You're in control of your information. You can:</p>
+                    <ul class="list-disc list-inside space-y-1 pl-1">
+                        <li>Update your profile details anytime from your account settings.</li>
+                        <li>Opt out of marketing emails with one click.</li>
+                        <li>Request a copy of your data or ask us to delete your account.</li>
+                    </ul>
+                    <p>Just head to your Settings page or reach out to us through the Contact Us page.</p>
                 </div>
             </details>
 
-            <!-- Section 4: Lawful Basis and Consent -->
-            <details class="border border-gray-100 rounded-lg overflow-hidden">
-                <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
-                    4. Lawful Basis and Consent
-                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            <!-- Section 4 -->
+            <details class="border border-slate-200 rounded-2xl overflow-hidden">
+                <summary class="flex items-center justify-between px-5 py-4 bg-white cursor-pointer hover:bg-slate-50 transition text-sm font-semibold text-tsts-ink">
+                    How We Keep Things Safe
+                    <svg class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </summary>
-                <div class="px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2">
-                    <p>4.1 Where required, we rely on your consent (e.g., optional marketing, certain cookies).</p>
-                    <p>4.2 Otherwise, we collect/use information as reasonably necessary for platform operations and legitimate business functions, subject to applicable law.</p>
+                <div class="px-5 py-4 text-sm text-slate-700 leading-relaxed border-t border-slate-100 space-y-3">
+                    <p>We take your security seriously. Your login sessions are encrypted, and we follow industry best practices to protect your information.</p>
+                    <p>We only keep your data for as long as your account is active. If you delete your account, your personal information is removed — except where we're required by law to keep certain records (like transaction history for tax purposes).</p>
                 </div>
             </details>
 
-            <!-- Section 5: Disclosure to Others -->
-            <details class="border border-gray-100 rounded-lg overflow-hidden">
-                <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
-                    5. Disclosure to Others
-                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            <!-- Section 5 -->
+            <details class="border border-slate-200 rounded-2xl overflow-hidden">
+                <summary class="flex items-center justify-between px-5 py-4 bg-white cursor-pointer hover:bg-slate-50 transition text-sm font-semibold text-tsts-ink">
+                    Get in Touch
+                    <svg class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </summary>
-                <div class="px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2">
-                    <p>5.1 We may disclose personal information to:</p>
-                    <p>(a) Hosts and Guests as needed to fulfil Bookings (e.g., names, essential booking coordination details);</p>
-                    <p>(b) payment processors and banks to process payments and refunds;</p>
-                    <p>(c) cloud hosting, security, analytics, and email service providers;</p>
-                    <p>(d) professional advisers (lawyers, accountants, auditors);</p>
-                    <p>(e) law enforcement or regulators where required or reasonably necessary.</p>
-                    <p><strong>5.2 Marketplace disclosure minimisation:</strong></p>
-                    <p>(a) We aim to share only what is necessary for the Booking.</p>
-                    <p>(b) We do not sell personal information.</p>
+                <div class="px-5 py-4 text-sm text-slate-700 leading-relaxed border-t border-slate-100 space-y-3">
+                    <p>Have a question about your privacy or your data? We're here to help. Reach out through our Contact Us page and we'll get back to you as soon as we can.</p>
+                    <p>If you feel we haven't addressed your concern, you have the right to lodge a complaint with the Office of the Australian Information Commissioner (OAIC).</p>
                 </div>
             </details>
 
-            <!-- Section 6: Overseas Disclosures -->
-            <details class="border border-gray-100 rounded-lg overflow-hidden">
-                <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
-                    6. Overseas Disclosures
-                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <div class="px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2">
-                    <p>6.1 Some service providers may store/process data outside Australia (e.g., cloud hosting regions).</p>
-                    <p>6.2 Where we disclose overseas, we take reasonable steps to ensure privacy protections consistent with this Policy and applicable law.</p>
-                </div>
-            </details>
-
-            <!-- Section 7: Cookies and Tracking -->
-            <details class="border border-gray-100 rounded-lg overflow-hidden">
-                <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
-                    7. Cookies and Tracking
-                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <div class="px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2">
-                    <p>7.1 We use cookies and similar technologies for:</p>
-                    <p>(a) authentication/session integrity;</p>
-                    <p>(b) security and fraud prevention;</p>
-                    <p>(c) preferences and performance;</p>
-                    <p>(d) analytics.</p>
-                    <p>7.2 You can manage cookies via your browser settings, but some features may not function if cookies are disabled.</p>
-                    <p>For full details on the cookies we use, please see our dedicated <a href="cookie-policy.html" class="text-orange-600 underline hover:text-orange-700">Cookie Policy</a>.</p>
-                </div>
-            </details>
-
-            <!-- Section 8: Security -->
-            <details class="border border-gray-100 rounded-lg overflow-hidden">
-                <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
-                    8. Security
-                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <div class="px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2">
-                    <p>8.1 We take reasonable steps to protect personal information, including access controls, encryption in transit, and operational monitoring.</p>
-                    <p>8.2 No system is 100% secure; you share information at your own risk.</p>
-                </div>
-            </details>
-
-            <!-- Section 9: Retention -->
-            <details class="border border-gray-100 rounded-lg overflow-hidden">
-                <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
-                    9. Retention
-                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <div class="px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2">
-                    <p>9.1 We retain personal information only as long as needed for:</p>
-                    <p>(a) account operations;</p>
-                    <p>(b) dispute handling and evidence preservation;</p>
-                    <p>(c) compliance with legal and tax obligations;</p>
-                    <p>(d) fraud prevention and platform safety.</p>
-                    <p>9.2 Deletion may be limited where we must keep records for legal reasons.</p>
-                </div>
-            </details>
-
-            <!-- Section 10: Access and Correction -->
-            <details class="border border-gray-100 rounded-lg overflow-hidden">
-                <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
-                    10. Access and Correction
-                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <div class="px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2">
-                    <p>10.1 You may request access to and correction of personal information by contacting <a href="mailto:admin@thesharedtablestory.com" class="text-orange-600 underline hover:text-orange-700">admin@thesharedtablestory.com</a>.</p>
-                    <p>10.2 We may require identity verification before fulfilling requests.</p>
-                </div>
-            </details>
-
-            <!-- Section 11: Data Deletion and Privacy Requests -->
-            <details class="border border-gray-100 rounded-lg overflow-hidden">
-                <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
-                    11. Data Deletion and Privacy Requests
-                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <div class="px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2">
-                    <p>11.1 Requests are handled under our <a href="settings-data.html" class="text-orange-600 underline hover:text-orange-700">Data &amp; Privacy Requests Policy</a>.</p>
-                    <p>11.2 Some records cannot be deleted immediately (e.g., transaction records) due to legal obligations.</p>
-                </div>
-            </details>
-
-            <!-- Section 12: Marketing -->
-            <details class="border border-gray-100 rounded-lg overflow-hidden">
-                <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
-                    12. Marketing
-                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <div class="px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2">
-                    <p>12.1 We may send marketing messages where permitted. You can opt out via unsubscribe links or by contacting us.</p>
-                </div>
-            </details>
-
-            <!-- Section 13: Children -->
-            <details class="border border-gray-100 rounded-lg overflow-hidden">
-                <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
-                    13. Children
-                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <div class="px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2">
-                    <p>13.1 The Platform is not intended for children under 13. Where minors participate, Hosts and guardians must ensure lawful consent and supervision.</p>
-                </div>
-            </details>
-
-            <!-- Section 14: Complaints -->
-            <details class="border border-gray-100 rounded-lg overflow-hidden">
-                <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
-                    14. Complaints
-                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <div class="px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2">
-                    <p>14.1 Contact us at <a href="mailto:admin@thesharedtablestory.com" class="text-orange-600 underline hover:text-orange-700">admin@thesharedtablestory.com</a>. If unresolved, you may lodge a complaint with the Office of the Australian Information Commissioner (OAIC).</p>
-                </div>
-            </details>
-
-            <!-- Section 15: Changes -->
-            <details class="border border-gray-100 rounded-lg overflow-hidden">
-                <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
-                    15. Changes
-                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <div class="px-4 py-3 text-sm text-gray-700 leading-relaxed space-y-2">
-                    <p>15.1 We may update this Privacy Policy. We will post the updated version on the Platform with an updated effective date.</p>
-                </div>
-            </details>
-
-        </div>
-
-        <!-- Cross-reference links -->
-        <div class="mt-10 pt-6 border-t border-gray-200 text-sm text-gray-600 space-y-2">
-            <p>Related policies:</p>
-            <ul class="list-disc list-inside space-y-1">
-                <li><a href="settings-data.html" class="text-orange-600 underline hover:text-orange-700">Data &amp; Privacy Settings</a> &mdash; manage your data, submit deletion or access requests</li>
-                <li><a href="cookie-policy.html" class="text-orange-600 underline hover:text-orange-700">Cookie Policy</a> &mdash; detailed information on cookies and tracking technologies</li>
-            </ul>
         </div>
     </div>
     </main>
 
     <footer id="footer-placeholder" role="contentinfo"></footer>
 
-    <script src="js/runtime-config.js?v=20260222c"></script>
-  <script src="js/common.js?v=20260223a"></script>
+    <script src="js/runtime-config.js?v=20260223d"></script>
+  <script src="js/common.js?v=20260223d"></script>
 </body>
 </html>

@@ -1110,7 +1110,10 @@ function injectNavbar() {
   const logoBadge = tstsEl("span", { className: "inline-flex items-center justify-center h-9 w-9 rounded-full bg-orange-50 border border-orange-100" }, [
     tstsEl("img", { src: "/assets/logo-mark.png", alt: "The Shared Table Story", className: "h-7 w-7 object-contain" })
   ]);
-  const logoText = tstsEl("span", { className: "leading-none" }, "The Shared Table Story");
+  const logoText = tstsEl("span", { className: "leading-none flex flex-col" }, [
+    tstsEl("span", {}, "The Shared Table Story"),
+    tstsEl("span", { className: "text-[10px] font-normal text-slate-500 tracking-wide" }, "Reconnect with the world, one meal at a time.")
+  ]);
   const logo = tstsEl("a", { href: "index.html", className: "text-2xl font-bold text-orange-600 flex items-center gap-2 font-serif" }, [logoBadge, logoText]);
   logo.setAttribute("aria-label", "The Shared Table Story");
 
@@ -1152,7 +1155,10 @@ function injectFooter() {
   if (!root) return;
 
   const col1 = tstsEl("div", {}, [
-    tstsEl("h3", { className: "text-xl font-bold text-orange-500 mb-4 font-serif" }, "The Shared Table Story"),
+    tstsEl("div", { className: "flex items-center gap-2 mb-4" }, [
+      tstsEl("img", { src: "/assets/logo-mark.png", alt: "", className: "h-8 w-8 object-contain" }),
+      tstsEl("h3", { className: "text-xl font-bold text-orange-500 font-serif" }, "The Shared Table Story")
+    ]),
     tstsEl("p", { className: "text-gray-400 text-sm" }, "Reconnect with the world, one meal at a time.")
   ]);
 
