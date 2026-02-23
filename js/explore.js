@@ -431,7 +431,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (filterState.sort) params.set("sort", filterState.sort);
         if (filterState.minPrice > 0) params.set("minPrice", filterState.minPrice);
-        if (filterState.maxPrice < 300) params.set("maxPrice", filterState.maxPrice);
+        if (filterState.maxPrice < PRICE_SLIDER_MAX) params.set("maxPrice", filterState.maxPrice);
         if (filterState.guests) params.set("guests", filterState.guests);
         if (filterState.privateBookingOnly) params.set("privateBookingAllowed", "true");
         if (filterState.verifiedOnly) params.set("verified", "true");
