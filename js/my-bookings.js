@@ -156,17 +156,11 @@ function mapStripeConnectStartError(payload, statusCode) {
   return err.message || "Could not start Stripe onboarding.";
 }
 
+// ROLE-MATRIX: Host UI is always visible for every logged-in user.
+// Any authenticated user can access host surfaces. Non-hosts see empty state.
 function userHasHostAccess(user) {
-  const u = (user && typeof user === "object") ? user : {};
-  const role = String(u.role || "").trim().toLowerCase();
-  if (role === "host" || role === "admin") return true;
-  if (u.isHost === true || u.isAdmin === true) return true;
-  const hostAppStatus = String(u.hostApplicationStatus || "").trim().toLowerCase();
-  if (hostAppStatus === "approved" || hostAppStatus === "requested" || hostAppStatus === "under_review") return true;
-  if (u.hostHasListings === true) return true;
-  const hostVerificationStatus = String((u.hostVerification && u.hostVerification.status) || "").trim().toLowerCase();
-  if (hostVerificationStatus === "requested" || hostVerificationStatus === "under_review" || hostVerificationStatus === "verified") return true;
-  return false;
+  // Any authenticated user object = host access granted (per role matrix §21.5)
+  return !!(user && typeof user === "object" && (user._id || user.id || user.email));
 }
 
 async function getSessionSnapshot() {
