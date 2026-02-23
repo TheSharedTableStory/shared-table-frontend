@@ -49,7 +49,7 @@
         El("div", { className: "absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold shadow-sm", textContent: "$" + price })
       ]),
       El("div", { className: "p-4 flex flex-col gap-2 flex-grow" }, [
-        El("h3", { className: "font-bold text-gray-900 mb-1 truncate", textContent: sanitizeExperienceTitle(e.title) }),
+        El("h3", { className: "font-bold text-gray-900 mb-1 truncate", textContent: sanitizeExperienceTitle(e.title), title: sanitizeExperienceTitle(e.title) }),
         El("p", { className: "text-xs text-gray-500 flex items-center gap-1" }, [markerIcon, " " + (e.city || "")]),
         El("div", { className: "mt-auto pt-3 border-t border-gray-50 flex justify-between items-center" }, [
           El("span", { className: "text-xs text-gray-500", textContent: "Saved" }),

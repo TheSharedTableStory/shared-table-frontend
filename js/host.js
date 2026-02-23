@@ -968,7 +968,7 @@
             showNotice("success", "Image uploaded.");
           } catch (err) {
             // Accept-and-move-on behavior: keep existing image, allow save to proceed.
-            showNotice("error", "Image upload is temporarily unavailable. Your experience will be saved without changing the image.");
+            showNotice("error", "We couldn't upload your image right now, but your experience has been saved. Try uploading the image again in a moment.");
             imageUrl = existingImageUrl || "";
           }
         }

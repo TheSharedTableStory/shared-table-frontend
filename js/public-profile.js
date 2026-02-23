@@ -88,7 +88,7 @@ async function loadReviews() {
                 El('span', { className: 'text-xs text-slate-500', textContent: dateStr })
             ]),
             El('div', { className: 'text-yellow-500 text-xs mb-2', textContent: '★'.repeat(rating) + '☆'.repeat(5 - rating) }),
-            El('p', { className: 'text-slate-600 text-sm italic', textContent: '"' + comment + '"' })
+            comment ? El('p', { className: 'text-slate-600 text-sm italic', textContent: '\u201c' + comment + '\u201d' }) : El('span', {})
         ]);
         reviewsList.appendChild(card);
     });

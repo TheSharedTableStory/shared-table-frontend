@@ -916,11 +916,11 @@
     // D2: Show host-only status banner if viewer is the host and listing is not ACTIVE
     if (exp.status && exp.status !== "ACTIVE" && viewerIsHostForExperience) {
       const statusMessages = {
-        DRAFT: "This listing is temporarily unavailable to guests.",
-        PENDING_REVIEW: "This listing is temporarily unavailable to guests.",
-        PAUSED: "This listing is currently paused and not visible to guests."
+        DRAFT: "Your experience is still a draft. Guests won't see it until you publish.",
+        PENDING_REVIEW: "Your experience is under review. We'll let you know once it's live.",
+        PAUSED: "You've paused this experience. Only you can see it right now."
       };
-      const msg = statusMessages[exp.status] || ("This listing is " + exp.status + " and not visible to guests.");
+      const msg = statusMessages[exp.status] || "This experience isn't visible to guests at the moment.";
       const bannerEl = document.getElementById("host-listing-status-banner");
       const bannerText = document.getElementById("host-listing-status-text");
       if (bannerEl && bannerText) {
@@ -1529,7 +1529,7 @@
   if (bookingModePrivateBtn) {
     bookingModePrivateBtn.addEventListener("click", () => {
       if (!privateBookingEnabled) {
-        window.tstsNotify("Private booking is not available for this experience.", "warning");
+        window.tstsNotify("This experience is available for shared bookings only.", "warning");
         return;
       }
       setBookingMode("private");
@@ -1559,7 +1559,7 @@
 
         const isPrivateBooking = bookingMode === "private";
         if (isPrivateBooking && !privateBookingEnabled) {
-          window.tstsNotify("Private booking is not available for this experience.", "warning");
+          window.tstsNotify("This experience is available for shared bookings only.", "warning");
           if (submitBtn) submitBtn.disabled = false;
           return;
         }

@@ -703,7 +703,7 @@ function renderBookings(bookings) {
 
     var actionWrap = El("div", { className: "flex flex-wrap gap-2 justify-end" }, actions);
 
-    tbody.appendChild(El("tr", { className: "border-t border-slate-100 align-top" }, [
+    tbody.appendChild(El("tr", { className: "align-top" }, [
       El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: date }),
       El("td", { className: "px-6 py-4 text-sm font-semibold text-slate-800", textContent: guest }),
       El("td", { className: "px-6 py-4 text-sm text-slate-700", textContent: title }),
@@ -804,7 +804,7 @@ function renderExperiences(exps) {
     var statusCell = [El("div", { className: "font-semibold " + statusColor, textContent: statusText })];
     if (verifiedText) statusCell.push(El("div", { className: "text-xs mt-1 " + (verifiedStatus === "verified" ? "text-blue-700" : verifiedStatus === "pending" ? "text-amber-700" : "text-slate-500"), textContent: verifiedText }));
 
-    tbody.appendChild(El("tr", { className: "border-t border-slate-100" }, [
+    tbody.appendChild(El("tr", {}, [
       El("td", { className: "px-6 py-4" }, [imgEl]),
       El("td", { className: "px-6 py-4 text-sm font-semibold text-slate-800", textContent: title }),
       El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: host }),
@@ -989,7 +989,7 @@ function renderHostVerifications(payload) {
       actions.push(El("span", { className: "text-xs text-slate-400", textContent: "—" }));
     }
 
-    tbody.appendChild(El("tr", { className: "border-t border-slate-100 align-top" }, [
+    tbody.appendChild(El("tr", { className: "align-top" }, [
       El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
         El("div", { className: "font-semibold text-slate-800", textContent: hostName }),
         El("div", { className: "text-xs text-slate-500 mt-1", textContent: email || "—" }),
@@ -1048,7 +1048,7 @@ function renderEventVerifications(payload) {
       actions.push(El("span", { className: "text-xs text-slate-400", textContent: "—" }));
     }
 
-    tbody.appendChild(El("tr", { className: "border-t border-slate-100 align-top" }, [
+    tbody.appendChild(El("tr", { className: "align-top" }, [
       El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
         El("div", { className: "font-semibold text-slate-800", textContent: title }),
         El("div", { className: "text-xs text-slate-500 mt-1", textContent: city || "—" })
@@ -1104,7 +1104,7 @@ function renderUsers(users) {
     }
     actionButtons.push(deleteBtn);
 
-    tbody.appendChild(El("tr", { className: "border-t border-slate-100" }, [
+    tbody.appendChild(El("tr", {}, [
       El("td", { className: "px-6 py-4 text-sm font-semibold text-slate-800", textContent: name }),
       El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: email }),
       El("td", { className: "px-6 py-4 text-sm text-slate-500" }, [
@@ -1135,7 +1135,7 @@ function renderAdminInvites(items) {
     var created = formatDateValue(item && item.createdAt);
     var expires = formatDateValue(item && item.expiresAt);
     var status = normalizeStateLabel(item && item.status);
-    tbody.appendChild(El("tr", { className: "border-t border-slate-100" }, [
+    tbody.appendChild(El("tr", {}, [
       El("td", { className: "px-6 py-4 text-sm text-slate-700 font-semibold", textContent: String((item && item.email) || "—") }),
       El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: status }),
       El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: created }),
@@ -1172,7 +1172,7 @@ function renderAuditLogs(items) {
     var statusClass = (item && item.ok === true) ? "text-emerald-700" : "text-red-600";
     var rid = String((item && item.rid) || "");
 
-    tbody.appendChild(El("tr", { className: "border-t border-slate-100 align-top" }, [
+    tbody.appendChild(El("tr", { className: "align-top" }, [
       El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: created }),
       El("td", { className: "px-6 py-4 text-sm text-slate-700", textContent: actor }),
       El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
@@ -1215,7 +1215,7 @@ function renderCoupons(promos) {
     stopBtn.classList.toggle("opacity-50", !active);
     stopBtn.addEventListener("click", function() { handleDeactivateCoupon(code); });
 
-    tbody.appendChild(El("tr", { className: "border-t border-slate-100" }, [
+    tbody.appendChild(El("tr", {}, [
       El("td", { className: "px-6 py-4 text-sm font-semibold text-slate-800", textContent: code || "—" }),
       El("td", { className: "px-6 py-4 text-sm text-slate-600" }, [
         El("div", { className: "font-semibold text-slate-700", textContent: formatPromoScope(promo) }),
@@ -1286,7 +1286,7 @@ function renderReports(items) {
       actionBtns.push(pauseBtn);
     }
 
-    tbody.appendChild(El("tr", { className: "border-t border-slate-100 align-top" }, [
+    tbody.appendChild(El("tr", { className: "align-top" }, [
       El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: created }),
       El("td", { className: "px-6 py-4 text-sm text-slate-700", textContent: targetType + (targetId ? (" • " + targetId) : "") }),
       El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
@@ -1339,7 +1339,7 @@ function renderPrivateRequests(requests) {
       mkStatusBtn("Close", "closed", "px-2 py-1 text-xs font-bold rounded border border-slate-200 text-slate-700 hover:bg-slate-50")
     ];
 
-    tbody.appendChild(El("tr", { className: "border-t border-slate-100 align-top" }, [
+    tbody.appendChild(El("tr", { className: "align-top" }, [
       El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: created }),
       El("td", { className: "px-6 py-4 text-sm text-slate-700", textContent: expTitle }),
       El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
@@ -1428,7 +1428,7 @@ function renderActionItems(payload) {
     }
 
     var rowId = id ? ("action-item-row-" + id) : "";
-    var rowAttrs = { className: "border-t border-slate-100 align-top" };
+    var rowAttrs = { className: "align-top" };
     if (rowId) rowAttrs.id = rowId;
     tbody.appendChild(El("tr", rowAttrs, [
       El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [

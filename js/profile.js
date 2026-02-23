@@ -208,7 +208,7 @@
           secureUrl = await uploadImage(f);
         } catch (_) {
           // Accept-and-move-on behavior: do not feel broken; tell user cleanly.
-          setUploadStatus("error", "Image upload is temporarily unavailable. Please try again later.");
+          setUploadStatus("error", "We couldn't upload your photo right now. Please try again in a moment.");
           return;
         }
 

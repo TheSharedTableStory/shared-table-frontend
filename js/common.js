@@ -1156,7 +1156,9 @@ function injectFooter() {
 
   const col1 = tstsEl("div", {}, [
     tstsEl("div", { className: "flex items-center gap-2 mb-4" }, [
-      tstsEl("img", { src: "/assets/logo-mark.png", alt: "", className: "h-8 w-8 object-contain" }),
+      tstsEl("span", { className: "inline-flex items-center justify-center h-9 w-9 rounded-full bg-orange-50 border border-orange-100" }, [
+        tstsEl("img", { src: "/assets/logo-mark.png", alt: "", className: "h-7 w-7 object-contain" })
+      ]),
       tstsEl("h3", { className: "text-xl font-bold text-orange-500 font-serif" }, "The Shared Table Story")
     ]),
     tstsEl("p", { className: "text-gray-400 text-sm" }, "Reconnect with the world, one meal at a time.")
@@ -1259,7 +1261,7 @@ async function resolveSystemStatus() {
     return {
       level: "degraded",
       label: "Degraded",
-      message: "Core systems are responding slowly. Actions may take longer than usual."
+      message: "Things are a little slow right now. Your actions may take a moment longer than usual."
     };
   } catch (_) {
     return {
@@ -1535,7 +1537,7 @@ window.tstsRequireAuth = function (opts) {
           return true;
         }
         if (sess && Number(sess.status) === 429) {
-          try { if (window.tstsNotify) window.tstsNotify("Session check is temporarily rate-limited. Please retry.", "warning"); } catch (_) {}
+          try { if (window.tstsNotify) window.tstsNotify("Please wait a moment and try again.", "warning"); } catch (_) {}
           return false;
         }
         go();
