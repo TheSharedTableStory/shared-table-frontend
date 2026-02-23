@@ -303,7 +303,7 @@ async function updateMaxDiscountBanner() {
       if (maxDiscount > 0) {
         bannerEl.textContent = `Discover hosts offering up to ${maxDiscount}% off for groups this week.`;
       }
-  } catch(e) { /* Banner load failed silently */ }
+  } catch(e) { console.warn("[TSTS] Banner load failed:", e); }
 }
 
 async function loadHomeRecommendations() {
@@ -334,7 +334,7 @@ async function loadHomeRecommendations() {
       });
     }
   } catch(e) {
-    /* Recommendations load failed silently */
+    console.warn("[TSTS] Recommendations load failed:", e);
   }
 }
 

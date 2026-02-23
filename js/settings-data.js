@@ -159,7 +159,7 @@
         throw new Error((payload && payload.message) ? payload.message : "Data export failed.");
       }
       latestExportPayload = payload;
-      downloadJsonFile(payload);
+      downloadJsonFile(payload.data || payload);
       setActionStatus("Export downloaded successfully.", "success");
     } catch (err) {
       setActionStatus((err && err.message) ? err.message : "Data export failed.", "error");

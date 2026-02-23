@@ -150,7 +150,6 @@ function fillFromUrl() {
       setTimeout(() => { location.href = "login.html"; }, 900);
     } catch (_) {
       setAlert("error", "Network error. Please try again.");
-    } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.textContent = "Reset Password";

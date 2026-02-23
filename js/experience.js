@@ -699,6 +699,14 @@
       setText("exp-menu", exp.menu);
       show("menu-section");
     }
+    if (exp.requirements) {
+      setText("exp-requirements", exp.requirements);
+      show("requirements-section");
+    }
+    if (exp.duration) {
+      setText("exp-duration", exp.duration);
+      show("duration-section");
+    }
 
     let hostName = normalizeHostName(exp);
     let hostPic = normalizeHostPic(exp);
@@ -794,9 +802,21 @@
         var y = parseInt(dateParts[0], 10);
         var mo = parseInt(dateParts[1], 10);
         var da = parseInt(dateParts[2], 10);
-        // Approximate: compute local slot time and subtract cutoff
-        var localSlot = new Date(y, mo - 1, da, hh, mm, 0);
-        var cutoffTime = new Date(localSlot.getTime() - cutoffMins * 60000);
+        // Compute slot time in experience timezone (not browser timezone)
+        var slotMs = (function(sy,smo,sda,shh,smm,stz){
+          try {
+            var utcGuess = Date.UTC(sy, smo - 1, sda, shh, smm, 0);
+            var p = new Intl.DateTimeFormat("en-US", {
+              timeZone: stz, year: "numeric", month: "2-digit", day: "2-digit",
+              hour: "2-digit", minute: "2-digit", hour12: false
+            }).formatToParts(new Date(utcGuess));
+            var gv = function(t){ var f=p.find(function(x){return x.type===t}); return f?+f.value:0; };
+            var tHh = gv("hour"); if (tHh===24) tHh=0;
+            var tzShown = Date.UTC(gv("year"), gv("month")-1, gv("day"), tHh, gv("minute"), 0);
+            return utcGuess - (tzShown - utcGuess);
+          } catch(_){ return new Date(sy, smo-1, sda, shh, smm, 0).getTime(); }
+        })(y, mo, da, hh, mm, tz);
+        var cutoffTime = new Date(slotMs - cutoffMins * 60000);
         if (Date.now() >= cutoffTime.getTime()) {
           if (cutoffInfoEl) cutoffInfoEl.textContent = "Bookings are closed for this slot.";
           if (submitBtn) submitBtn.disabled = true;
@@ -1241,7 +1261,7 @@
           rows: "3",
           maxlength: String(COMMENT_REPLY_MAX_LENGTH),
           className: "w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-300",
-          textContent: String(reply.text || "")
+          value: String(reply.text || "")
         });
         const editStatus = El("p", { className: "text-xs text-slate-500", textContent: "No links. Max 800 characters." });
         const editSave = El("button", {

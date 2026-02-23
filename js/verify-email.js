@@ -6,6 +6,8 @@
   var successEl = document.getElementById("state-success");
   var errorEl = document.getElementById("state-error");
   var errorMsgEl = document.getElementById("error-message");
+  var infoEl = document.getElementById("state-info");
+  var infoMsgEl = document.getElementById("info-message");
   var resendBtn = document.getElementById("resend-btn");
   var resendInFlight = false;
 
@@ -15,6 +17,7 @@
   function setError(msg) {
     hide(loadingEl);
     hide(successEl);
+    hide(infoEl);
     show(errorEl);
     try { if (errorMsgEl) errorMsgEl.textContent = String(msg || "Verification failed."); } catch (_) {}
   }
@@ -22,7 +25,16 @@
   function setSuccess() {
     hide(loadingEl);
     hide(errorEl);
+    hide(infoEl);
     show(successEl);
+  }
+
+  function setInfo(msg) {
+    hide(loadingEl);
+    hide(successEl);
+    hide(errorEl);
+    show(infoEl);
+    try { if (infoMsgEl) infoMsgEl.textContent = String(msg || ""); } catch (_) {}
   }
 
   function parseHash() {
@@ -150,7 +162,7 @@
         .then(function (payload) {
           var msg = "If an account exists for this email, a new verification email will be sent.";
           try { if (payload && payload.message) msg = String(payload.message); } catch (_) {}
-          setError(msg);
+          setInfo(msg);
         })
         .catch(function () {
           setError("Could not resend verification email due to a network error.");

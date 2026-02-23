@@ -49,6 +49,8 @@ async function mustBeAdmin() {
 
 var currentListingsFilter = "all";
 var allExperiencesCache = [];
+var experiencesPageSize = 100;
+var experiencesTotalCount = 0;
 
 async function loadDashboardSummary() {
   const res = await adminFetch("/api/admin/dashboard-summary", { method: "GET" });
@@ -113,11 +115,20 @@ async function loadBookings() {
   return (body && body.data) ? body.data : body;
 }
 
-async function loadExperiences() {
-  const res = await adminFetch("/api/admin/experiences", { method: "GET" });
+async function loadExperiences(opts) {
+  var o = (opts && typeof opts === "object") ? opts : {};
+  var status = String(o.status || "").trim();
+  var skip = Number(o.skip) || 0;
+  var limit = Number(o.limit) || experiencesPageSize;
+  var qs = "?limit=" + limit + "&skip=" + skip;
+  if (status && status !== "all") qs += "&status=" + encodeURIComponent(status);
+  const res = await adminFetch("/api/admin/experiences" + qs, { method: "GET" });
   if (!res.ok) throw new Error("experiences");
   const payload = await res.json();
-  return (payload && Array.isArray(payload.data)) ? payload.data : (Array.isArray(payload) ? payload : []);
+  var data = (payload && Array.isArray(payload.data)) ? payload.data : (Array.isArray(payload) ? payload : []);
+  var meta = (payload && payload.meta) ? payload.meta : {};
+  experiencesTotalCount = Number(meta.total) || data.length;
+  return data;
 }
 
 async function loadUsers() {
@@ -709,11 +720,16 @@ function renderExperiences(exps) {
   if (!tbody) return;
 
   allExperiencesCache = Array.isArray(exps) ? exps : [];
+  var list = allExperiencesCache;
 
-  // Apply active filter
-  var list = currentListingsFilter === "all"
-    ? allExperiencesCache
-    : allExperiencesCache.filter(function(e) { return (e.status || (e.isDeleted ? "DELETED_SOFT" : e.isPaused ? "PAUSED" : "ACTIVE")) === currentListingsFilter; });
+  // Update count + load more visibility
+  var countEl = $("listings-count");
+  var loadMoreEl = $("listings-load-more");
+  if (countEl) countEl.textContent = "Showing " + list.length + " of " + experiencesTotalCount;
+  if (loadMoreEl) {
+    if (list.length < experiencesTotalCount) loadMoreEl.classList.remove("hidden");
+    else loadMoreEl.classList.add("hidden");
+  }
 
   tbody.textContent = "";
   if (list.length === 0) {
@@ -798,10 +814,10 @@ function renderExperiences(exps) {
     ]));
   });
 
-  // Wire up filter tabs
+  // Wire up filter tabs (server-side filtering)
   var tabEls = document.querySelectorAll(".listing-filter-tab");
   tabEls.forEach(function(tab) {
-    tab.onclick = function() {
+    tab.onclick = async function() {
       currentListingsFilter = tab.getAttribute("data-filter") || "all";
       tabEls.forEach(function(t) {
         t.classList.remove("bg-tsts-ink", "text-white");
@@ -809,9 +825,31 @@ function renderExperiences(exps) {
       });
       tab.classList.add("bg-tsts-ink", "text-white");
       tab.classList.remove("bg-white", "text-slate-500");
-      renderExperiences(allExperiencesCache);
+      try {
+        var data = await loadExperiences({ status: currentListingsFilter, skip: 0 });
+        renderExperiences(data);
+      } catch (_) {
+        renderExperiences([]);
+      }
     };
   });
+
+  // "Load More" button
+  var loadMoreBtn = $("listings-load-more");
+  if (loadMoreBtn) {
+    loadMoreBtn.onclick = async function() {
+      if (allExperiencesCache.length >= experiencesTotalCount) return;
+      loadMoreBtn.disabled = true;
+      loadMoreBtn.textContent = "Loading...";
+      try {
+        var moreData = await loadExperiences({ status: currentListingsFilter, skip: allExperiencesCache.length });
+        allExperiencesCache = allExperiencesCache.concat(moreData);
+        renderExperiences(allExperiencesCache);
+      } catch (_) {}
+      loadMoreBtn.disabled = false;
+      loadMoreBtn.textContent = "Load More";
+    };
+  }
 }
 
 function renderVerificationPolicy(payload) {

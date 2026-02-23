@@ -44,7 +44,8 @@
       if (hostEl) hostEl.textContent = pct(rules.hostRefundPercent);
 
       showOnly(contentEl);
-    } catch (_) {
+    } catch (err) {
+      console.warn("[TSTS] Policy load failed:", err);
       showOnly(errorEl);
     }
   }

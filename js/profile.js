@@ -3,6 +3,7 @@
 
   const form = document.getElementById("profile-form");
   const nameInput = document.getElementById("name");
+  const emailDisplay = document.getElementById("email");
   const mobileInput = document.getElementById("mobile");
   const bioInput = document.getElementById("bio");
   const handleInput = document.getElementById("handle");
@@ -89,6 +90,7 @@
       const user = sess.user || {};
 
       try { if (nameInput) nameInput.value = user.name || ""; } catch (_) {}
+      try { if (emailDisplay) emailDisplay.value = user.email || ""; } catch (_) {}
       try { if (mobileInput) mobileInput.value = user.mobile || ""; } catch (_) {}
       try { if (bioInput) bioInput.value = user.bio || ""; } catch (_) {}
       try { if (handleInput) handleInput.value = user.handle || ""; } catch (_) {}
@@ -270,6 +272,81 @@
         setUploadStatus("success", "Profile updated.");
         loadMe();
       } catch (_) {}
+    });
+  }
+
+  // --- Change Email ---
+  const changeEmailBtn = document.getElementById("change-email-btn");
+  const changeEmailForm = document.getElementById("change-email-form");
+  const changeEmailSubmit = document.getElementById("change-email-submit");
+  const changeEmailCancel = document.getElementById("change-email-cancel");
+  const newEmailInput = document.getElementById("new-email");
+  const changeEmailPassword = document.getElementById("change-email-password");
+  const changeEmailStatus = document.getElementById("change-email-status");
+
+  function setChangeEmailStatus(kind, msg) {
+    if (!changeEmailStatus) return;
+    changeEmailStatus.textContent = msg || "";
+    changeEmailStatus.classList.remove("hidden", "text-red-600", "text-green-600", "text-gray-500");
+    if (!msg) { changeEmailStatus.classList.add("hidden"); return; }
+    if (kind === "error") changeEmailStatus.classList.add("text-red-600");
+    else if (kind === "success") changeEmailStatus.classList.add("text-green-600");
+    else changeEmailStatus.classList.add("text-gray-500");
+  }
+
+  if (changeEmailBtn && changeEmailForm) {
+    changeEmailBtn.addEventListener("click", function () {
+      changeEmailForm.classList.toggle("hidden");
+      setChangeEmailStatus("", "");
+    });
+  }
+  if (changeEmailCancel && changeEmailForm) {
+    changeEmailCancel.addEventListener("click", function () {
+      changeEmailForm.classList.add("hidden");
+      setChangeEmailStatus("", "");
+      if (newEmailInput) newEmailInput.value = "";
+      if (changeEmailPassword) changeEmailPassword.value = "";
+    });
+  }
+  if (changeEmailSubmit) {
+    changeEmailSubmit.addEventListener("click", async function () {
+      const newEmail = newEmailInput ? String(newEmailInput.value || "").trim() : "";
+      const password = changeEmailPassword ? String(changeEmailPassword.value || "") : "";
+
+      if (!newEmail) { setChangeEmailStatus("error", "Please enter a new email address."); return; }
+      if (!password) { setChangeEmailStatus("error", "Please enter your current password."); return; }
+
+      changeEmailSubmit.disabled = true;
+      setChangeEmailStatus("info", "Sending verification...");
+
+      try {
+        const res = await window.authFetch("/api/auth/change-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ newEmail: newEmail, password: password })
+        });
+
+        if (handleUnauthorized(res)) return;
+        const payload = await res.json().catch(function () { return null; });
+
+        if (res.ok && payload && payload.ok) {
+          setChangeEmailStatus("success", "Verification email sent to " + newEmail + ". Please check your inbox to confirm the change.");
+          if (changeEmailPassword) changeEmailPassword.value = "";
+        } else {
+          var msg = "Failed to request email change.";
+          try {
+            if (payload && payload.message) msg = String(payload.message);
+            if (payload && payload.error === "SAME_EMAIL") msg = "That's already your current email.";
+            if (payload && payload.error === "EMAIL_IN_USE") msg = "That email is already in use by another account.";
+            if (payload && payload.error === "INVALID_PASSWORD") msg = "Incorrect password. Please try again.";
+          } catch (_) {}
+          setChangeEmailStatus("error", msg);
+        }
+      } catch (_) {
+        setChangeEmailStatus("error", "Network error. Please try again.");
+      } finally {
+        changeEmailSubmit.disabled = false;
+      }
     });
   }
 

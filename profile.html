@@ -59,6 +59,25 @@
                     <div>
                         <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                         <input type="email" id="email" class="w-full px-4 py-2 bg-gray-100 border border-slate-200 rounded-xl text-gray-500 cursor-not-allowed" readonly>
+                        <button id="change-email-btn" type="button" class="mt-1 text-xs text-orange-600 font-medium hover:underline">Change email address</button>
+                    </div>
+
+                    <div id="change-email-form" class="hidden bg-orange-50 border border-orange-100 rounded-xl p-4 space-y-3">
+                        <p class="text-sm font-semibold text-tsts-ink">Change Email Address</p>
+                        <p class="text-xs text-gray-600">A verification link will be sent to your new email. Your email won't change until you confirm the link.</p>
+                        <div>
+                            <label for="new-email" class="block text-xs font-medium text-gray-700 mb-1">New Email</label>
+                            <input type="email" id="new-email" maxlength="200" autocomplete="email" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="Enter new email address">
+                        </div>
+                        <div>
+                            <label for="change-email-password" class="block text-xs font-medium text-gray-700 mb-1">Current Password</label>
+                            <input type="password" id="change-email-password" maxlength="128" autocomplete="current-password" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="Confirm your password">
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="change-email-submit" type="button" class="tsts-btn-primary px-4 py-2 rounded-xl text-sm font-medium transition">Send Verification</button>
+                            <button id="change-email-cancel" type="button" class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition">Cancel</button>
+                        </div>
+                        <p id="change-email-status" class="text-xs hidden"></p>
                     </div>
 
                     <div>

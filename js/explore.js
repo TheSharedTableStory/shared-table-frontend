@@ -1,5 +1,7 @@
 // Frontend/js/explore.js
 
+const PRICE_SLIDER_MAX = 500;
+
 document.addEventListener("DOMContentLoaded", () => {
     // === DOM ELEMENTS ===
     const elSearch = document.getElementById("search-input");
@@ -46,7 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
         privateBookingOnly: false,
         verifiedOnly: false,
         minPrice: 0,
-        maxPrice: 300
+        maxPrice: PRICE_SLIDER_MAX
     };
 
     function syncUrlFromState() {
@@ -66,7 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (filterState.privateBookingOnly) p.set("privateBookingAllowed", "true");
             if (filterState.verifiedOnly) p.set("verified", "true");
             if (filterState.minPrice > 0) p.set("minPrice", String(filterState.minPrice));
-            if (filterState.maxPrice < 300) p.set("maxPrice", String(filterState.maxPrice));
+            if (filterState.maxPrice < PRICE_SLIDER_MAX) p.set("maxPrice", String(filterState.maxPrice));
             if (window.TSTS_DEALS_UI_MODE) p.set("filter", "deals");
 
             const qs = p.toString();
@@ -188,7 +190,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (filterState.privateBookingOnly) count += 1;
         if (filterState.verifiedOnly) count += 1;
         if (Array.isArray(filterState.categories) && filterState.categories.some((c) => c && c !== "all")) count += 1;
-        if (filterState.minPrice > 0 || filterState.maxPrice < 300) count += 1;
+        if (filterState.minPrice > 0 || filterState.maxPrice < PRICE_SLIDER_MAX) count += 1;
         return count;
     }
 
@@ -386,9 +388,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // === INITIALIZE SLIDER ===
     if (elPriceSlider && typeof noUiSlider !== 'undefined') {
         noUiSlider.create(elPriceSlider, {
-            start: [0, 300],
+            start: [0, PRICE_SLIDER_MAX],
             connect: true,
-            range: { 'min': 0, 'max': 300 },
+            range: { 'min': 0, 'max': PRICE_SLIDER_MAX },
             step: 10,
             tooltips: false
         });
@@ -492,7 +494,7 @@ document.addEventListener("DOMContentLoaded", () => {
         filterState.privateBookingOnly = false;
         filterState.verifiedOnly = false;
         filterState.minPrice = 0;
-        filterState.maxPrice = 300;
+        filterState.maxPrice = PRICE_SLIDER_MAX;
 
         // Reset DOM
         if (elSearch) elSearch.value = "";
@@ -502,8 +504,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (elSort) elSort.value = "";
         if (elPrivateBookingOnly) elPrivateBookingOnly.checked = false;
         if (elVerifiedOnly) elVerifiedOnly.checked = false;
-        
-        if (elPriceSlider && elPriceSlider.noUiSlider) elPriceSlider.noUiSlider.set([0, 300]);
+
+        if (elPriceSlider && elPriceSlider.noUiSlider) elPriceSlider.noUiSlider.set([0, PRICE_SLIDER_MAX]);
 
         // Reset Category Chips
         syncCategoryChips();
@@ -719,7 +721,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (filterState.privateBookingOnly) addChip("Private booking");
         if (filterState.verifiedOnly) addChip("Verified events");
-        if (filterState.minPrice > 0 || filterState.maxPrice < 300) addChip("Price: $" + filterState.minPrice + " - $" + filterState.maxPrice);
+        if (filterState.minPrice > 0 || filterState.maxPrice < PRICE_SLIDER_MAX) addChip("Price: $" + filterState.minPrice + " - $" + filterState.maxPrice);
         refreshFilterUi();
     };
 
