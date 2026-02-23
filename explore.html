@@ -34,7 +34,8 @@
                     <div class="relative w-full md:w-48">
                         <label for="location-input" class="sr-only">City</label>
                         <i class="fas fa-map-marker-alt absolute left-4 top-3.5 text-gray-400"></i>
-                        <input type="text" id="location-input" autocomplete="address-level2" placeholder="City" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm transition">
+                        <input type="text" id="location-input" list="explore-city-suggestions" autocomplete="address-level2" placeholder="City" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm transition">
+                        <datalist id="explore-city-suggestions"></datalist>
                     </div>
                     <div class="relative w-full md:w-40">
                         <label for="date-input" class="sr-only">Date</label>
@@ -172,6 +173,6 @@
     <footer id="footer-placeholder" role="contentinfo"></footer>
     <script src="js/runtime-config.js?v=20260222c"></script>
   <script src="js/common.js?v=20260223a"></script>
-    <script src="js/explore.js?v=20260223b"></script>
+    <script src="js/explore.js?v=20260223c"></script>
 </body>
 </html>

@@ -753,6 +753,54 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
     
+    // --- AU City Autocomplete for Explore ---
+    const exploreCityDatalist = document.getElementById("explore-city-suggestions");
+    var __exploreAuLocations = null;
+    var __exploreAuLoadPromise = null;
+    function __loadExploreAuLocations() {
+      if (__exploreAuLoadPromise) return __exploreAuLoadPromise;
+      __exploreAuLoadPromise = fetch("/data/au-locations.json").then(function (r) {
+        return r.ok ? r.json() : [];
+      }).then(function (arr) {
+        __exploreAuLocations = Array.isArray(arr) ? arr : [];
+        return __exploreAuLocations;
+      }).catch(function () { __exploreAuLocations = []; return []; });
+      return __exploreAuLoadPromise;
+    }
+    var __exploreCityTimer = null;
+    function __filterExploreCitySuggestions(val) {
+      if (!exploreCityDatalist || !__exploreAuLocations) return;
+      var tok = String(val || "").trim().toLowerCase();
+      if (tok.length < 2) { while (exploreCityDatalist.firstChild) exploreCityDatalist.removeChild(exploreCityDatalist.firstChild); return; }
+      // Collect unique city names (no duplicates for same locality)
+      var seen = {};
+      var matches = [];
+      for (var i = 0; i < __exploreAuLocations.length && matches.length < 15; i++) {
+        var entry = __exploreAuLocations[i];
+        var name = entry[0];
+        var nameLower = name.toLowerCase();
+        if (nameLower.indexOf(tok) === 0 && !seen[nameLower]) {
+          seen[nameLower] = true;
+          matches.push(name);
+        }
+      }
+      while (exploreCityDatalist.firstChild) exploreCityDatalist.removeChild(exploreCityDatalist.firstChild);
+      for (var j = 0; j < matches.length; j++) {
+        var opt = document.createElement("option");
+        opt.value = matches[j];
+        exploreCityDatalist.appendChild(opt);
+      }
+    }
+    if (elLocation) {
+      elLocation.addEventListener("focus", function () { __loadExploreAuLocations(); }, { once: true });
+      elLocation.addEventListener("input", function () {
+        clearTimeout(__exploreCityTimer);
+        var val = elLocation.value;
+        __exploreCityTimer = setTimeout(function () { __filterExploreCitySuggestions(val); }, 150);
+      });
+    }
+    // --- End AU City Autocomplete ---
+
     if (elLocation) elLocation.addEventListener("change", applyFilters);
     if (elDate) elDate.addEventListener("change", applyFilters);
     if (elGuests) elGuests.addEventListener("change", applyFilters);

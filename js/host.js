@@ -55,6 +55,91 @@
 
   const CLOUDINARY_URL = (window.CLOUDINARY_URL || "");
 
+  const cityDatalist = document.getElementById("city-suggestions");
+  const postcodeWarningEl = document.getElementById("postcode-warning");
+
+  // --- AU Location Autocomplete ---
+  var __auLocations = null; // lazy-loaded: array of [locality, state, postcode]
+  var __auLoadPromise = null;
+  function __loadAuLocations() {
+    if (__auLoadPromise) return __auLoadPromise;
+    __auLoadPromise = fetch("/data/au-locations.json").then(function (r) {
+      return r.ok ? r.json() : [];
+    }).then(function (arr) {
+      __auLocations = Array.isArray(arr) ? arr : [];
+      return __auLocations;
+    }).catch(function () { __auLocations = []; return []; });
+    return __auLoadPromise;
+  }
+
+  var __cityFilterTimer = null;
+  function __filterCitySuggestions(val) {
+    if (!cityDatalist || !__auLocations) return;
+    var tok = String(val || "").trim().toLowerCase();
+    if (tok.length < 2) { cityDatalist.innerHTML = ""; return; }
+    var matches = [];
+    for (var i = 0; i < __auLocations.length && matches.length < 15; i++) {
+      var entry = __auLocations[i];
+      if (entry[0].toLowerCase().indexOf(tok) === 0) {
+        matches.push(entry);
+      }
+    }
+    // Build datalist options using DOM (no innerHTML for safety)
+    while (cityDatalist.firstChild) cityDatalist.removeChild(cityDatalist.firstChild);
+    for (var j = 0; j < matches.length; j++) {
+      var opt = document.createElement("option");
+      opt.value = matches[j][0] + ", " + matches[j][1] + " " + matches[j][2];
+      cityDatalist.appendChild(opt);
+    }
+  }
+
+  function __parseCitySelection(val) {
+    // Parse "Locality, STATE Postcode" format
+    var m = String(val || "").match(/^(.+),\s*([A-Z]{2,3})\s+(\d{4})$/);
+    if (m) return { locality: m[1].trim(), state: m[2], postcode: m[3] };
+    return null;
+  }
+
+  function __onCityInput() {
+    var val = locationInput ? locationInput.value : "";
+    clearTimeout(__cityFilterTimer);
+    __cityFilterTimer = setTimeout(function () { __filterCitySuggestions(val); }, 150);
+    // Auto-fill postcode and suburb on selection
+    var parsed = __parseCitySelection(val);
+    if (parsed) {
+      if (postcodeInput && !postcodeInput.value) postcodeInput.value = parsed.postcode;
+      // Set city to just the locality name (strip state/postcode)
+      if (locationInput) locationInput.value = parsed.locality;
+    }
+  }
+
+  function __onCityFocus() {
+    __loadAuLocations();
+  }
+
+  function __validateCityPostcode(city, postcode) {
+    // Returns true if valid or data not loaded; returns false if definite mismatch
+    if (!__auLocations || __auLocations.length === 0) return true;
+    if (!city || !postcode) return true;
+    var cityLower = city.toLowerCase().trim();
+    var found = false;
+    var anyMatchForCity = false;
+    for (var i = 0; i < __auLocations.length; i++) {
+      if (__auLocations[i][0].toLowerCase() === cityLower) {
+        anyMatchForCity = true;
+        if (__auLocations[i][2] === postcode) { found = true; break; }
+      }
+    }
+    if (!anyMatchForCity) return true; // unknown city — don't block
+    return found;
+  }
+
+  if (locationInput) {
+    locationInput.addEventListener("input", __onCityInput);
+    locationInput.addEventListener("focus", __onCityFocus, { once: true });
+  }
+  // --- End AU Location Autocomplete ---
+
   let isEditing = false;
   let editId = null;
   let existingImageUrl = null;
@@ -836,6 +921,14 @@
         if (!/^[0-9]{4}$/.test(postcode)) {
           showNotice("error", "Postcode must be 4 digits.");
           return;
+        }
+        // AU city-postcode cross-check (informational warning, does not block)
+        if (postcodeWarningEl) postcodeWarningEl.classList.add("hidden");
+        if (!__validateCityPostcode(city, postcode)) {
+          if (postcodeWarningEl) {
+            postcodeWarningEl.textContent = "This postcode doesn\u2019t match the selected city in our records. Please double-check.";
+            postcodeWarningEl.classList.remove("hidden");
+          }
         }
         if (new Date(endDate) < new Date(startDate)) {
           showNotice("error", "End date must be on or after start date.");
