@@ -2223,7 +2223,7 @@ async function handleDeactivateCoupon(code) {
 
 // Tab switching functionality (local, no window.* exposure)
 function switchTab(tabName) {
-  const views = ['dashboard', 'listings', 'verification', 'action-items', 'users', 'coupons', 'moderation', 'private-requests', 'audit'];
+  const views = ['dashboard', 'listings', 'pricing', 'verification', 'action-items', 'users', 'coupons', 'moderation', 'private-requests', 'audit'];
   const activeClass = "border-tsts-clay text-tsts-clay border-b-2 py-4 px-1 font-bold text-sm";
   const inactiveClass = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm";
 
@@ -2250,10 +2250,36 @@ function switchTab(tabName) {
   if (tabName === 'listings') {
     loadExperiences().then(renderExperiences).catch(function () { window.tstsNotify("Failed to load experiences.", "error"); renderExperiences([]); });
   }
+  if (tabName === 'pricing') {
+    Promise.all([
+      loadVerificationFeePolicy().catch(function () { return null; }),
+      loadMarketingEmailStatus().catch(function () { return null; }),
+      loadTierPolicy().catch(function () { return null; }),
+      loadRefundWindowPolicy().catch(function () { return null; })
+    ]).then(function (results) {
+      if (results[0]) renderVerificationPolicy(results[0]);
+      if (results[1]) renderMarketingEmailStatus(results[1]);
+      if (results[2]) renderTierPolicy(results[2]);
+      if (results[3]) renderRefundWindowPolicy(results[3]);
+    }).catch(function () {
+      window.tstsNotify("Some pricing data failed to load.", "error");
+    });
+  }
   if (tabName === 'verification') {
-    refreshVerificationViews().catch(function () {
+    Promise.all([
+      loadHostVerifications("all").catch(function () { return null; }),
+      loadEventVerifications("all").catch(function () { return null; }),
+      loadShortfallMonitor({ limit: 250 }).catch(function () { return null; })
+    ]).then(function (results) {
+      if (results[0]) renderHostVerifications(results[0]);
+      if (results[1]) renderEventVerifications(results[1]);
+      if (results[2]) {
+        renderShortfallReview(results[2]);
+        renderShortfallReconciliation(results[2]);
+        renderShortfallSettlementCases(results[2]);
+      }
+    }).catch(function () {
       window.tstsNotify("Failed to load verifications.", "error");
-      renderVerificationPolicy({ data: { policy: { feePercent: 0, policyVersion: "Unavailable", effectiveFrom: null } } });
       renderHostVerifications({ data: { items: [] } });
       renderEventVerifications({ data: { items: [] } });
       renderShortfallReview({ data: { slots: [] } });
@@ -2309,6 +2335,7 @@ function resolveInitialAdminTab() {
 // ──────────────────────────────────────────────────────────────────────────────
 // PRICING TIER POLICY
 // ──────────────────────────────────────────────────────────────────────────────
+var _activeTierRows = [];
 
 async function loadTierPolicy() {
   var res = await adminFetch("/api/admin/pricing/tier-policy", { method: "GET" });
@@ -2331,6 +2358,7 @@ function renderTierPolicy(payload) {
   if (tbody) {
     tbody.innerHTML = "";
     var rows = Array.isArray(active.tiers) ? active.tiers : [];
+    _activeTierRows = rows.slice();
     if (rows.length === 0) {
       var emptyTr = document.createElement("tr");
       var emptyTd = document.createElement("td");
@@ -2383,7 +2411,7 @@ function _makeTierRowEl(container, data) {
   var minV = _numField("Min value (¢)", data.minValueCents, "0");
   var maxV = _numField("Max value (¢, blank=open)", data.maxValueCents != null ? data.maxValueCents : "", "Open");
   var fixedF = _numField("Fixed fee (¢)", data.fixedFeeCents, "0");
-  var pctF = _numField("% fee (bps, 1000=10%)", data.percentageFeeBps, "0");
+  var pctF = _numField("% fee (e.g., 10 for 10%)", data.percentageFeeBps, "0");
   var removeBtn = document.createElement("button");
   removeBtn.type = "button";
   removeBtn.className = "text-red-400 hover:text-red-600 text-xs font-bold pb-1.5";
@@ -2405,13 +2433,26 @@ function _makeTierRowEl(container, data) {
   container.appendChild(row);
 }
 
-function initTierEditor() {
+function initTierEditor(activeTiers) {
   var container = $("tier-rows-editor");
   var editForm = $("tier-policy-edit-form");
   var editBtn = $("btn-edit-tier-policy");
   if (!container || !editForm || !editBtn) return;
   container.innerHTML = "";
-  _makeTierRowEl(container, { minValueCents: 0, maxValueCents: null, fixedFeeCents: 100, percentageFeeBps: 1000 });
+  var rows = Array.isArray(activeTiers) && activeTiers.length > 0
+    ? activeTiers
+    : [{ minValueCents: 0, maxValueCents: null, fixedFeeCents: 500, percentageFeeBps: 1000 }];
+  rows.forEach(function (tier) {
+    // percentageFeeBps is stored as bps (e.g. 1000 = 10%).
+    // The input field expects percentage integer (e.g. 10 for 10%) because
+    // the backend's __ratioToBps(v) treats v > 1 as percentage and multiplies by 100.
+    _makeTierRowEl(container, {
+      minValueCents: tier.minValueCents != null ? tier.minValueCents : 0,
+      maxValueCents: tier.maxValueCents != null ? tier.maxValueCents : null,
+      fixedFeeCents: tier.fixedFeeCents != null ? tier.fixedFeeCents : 0,
+      percentageFeeBps: Math.round((tier.percentageFeeBps || 0) / 100)
+    });
+  });
   editForm.classList.remove("hidden");
   editBtn.classList.add("hidden");
   var vr = $("tier-validation-result");
@@ -2469,6 +2510,7 @@ async function handlePublishTiers() {
 // ──────────────────────────────────────────────────────────────────────────────
 // REFUND WINDOW POLICY
 // ──────────────────────────────────────────────────────────────────────────────
+var _activeRefundRows = [];
 
 async function loadRefundWindowPolicy() {
   var res = await adminFetch("/api/admin/pricing/refund-policy", { method: "GET" });
@@ -2491,6 +2533,7 @@ function renderRefundWindowPolicy(payload) {
   if (tbody) {
     tbody.innerHTML = "";
     var rows = Array.isArray(active.windows) ? active.windows : [];
+    _activeRefundRows = rows.slice();
     if (rows.length === 0) {
       var emptyTr = document.createElement("tr");
       var emptyTd = document.createElement("td");
@@ -2502,11 +2545,13 @@ function renderRefundWindowPolicy(payload) {
     } else {
       rows.forEach(function (w, i) {
         var tr = document.createElement("tr");
+        // Backend sends refundPercentageBps (with 'age'); normalize for display.
+        var refBps = w.refundPercentageBps != null ? w.refundPercentageBps : (w.refundPercentBps || 0);
         [
           String(i + 1),
           String(w.minHoursBeforeEvent || 0) + "h",
           (w.maxHoursBeforeEvent == null) ? "Open-ended" : String(w.maxHoursBeforeEvent) + "h",
-          ((w.refundPercentBps || 0) / 100).toFixed(0) + "%"
+          (refBps / 100).toFixed(0) + "%"
         ].forEach(function (val) {
           var td = document.createElement("td");
           td.className = "px-4 py-3 text-slate-700 text-sm";
@@ -2541,7 +2586,9 @@ function _makeRefundRowEl(container, data) {
   }
   var minH = _numField("Min hours before event", data.minHoursBeforeEvent, "0");
   var maxH = _numField("Max hours (blank=open)", data.maxHoursBeforeEvent != null ? data.maxHoursBeforeEvent : "", "Open");
-  var refPct = _numField("Refund % (0–100)", data.refundPercentBps != null ? (data.refundPercentBps / 100) : "", "0");
+  // Backend may send refundPercentageBps or refundPercentBps — handle both.
+  var _refBps = data.refundPercentageBps != null ? data.refundPercentageBps : (data.refundPercentBps != null ? data.refundPercentBps : null);
+  var refPct = _numField("Refund % (0–100)", _refBps != null ? (_refBps / 100) : "", "0");
   var removeBtn = document.createElement("button");
   removeBtn.type = "button";
   removeBtn.className = "text-red-400 hover:text-red-600 text-xs font-bold pb-1.5";
@@ -2561,16 +2608,27 @@ function _makeRefundRowEl(container, data) {
   container.appendChild(row);
 }
 
-function initRefundEditor() {
+function initRefundEditor(activeWindows) {
   var container = $("refund-rows-editor");
   var editForm = $("refund-policy-edit-form");
   var editBtn = $("btn-edit-refund-policy");
   if (!container || !editForm || !editBtn) return;
   container.innerHTML = "";
-  _makeRefundRowEl(container, { minHoursBeforeEvent: 72, maxHoursBeforeEvent: null, refundPercentBps: 9500 });
-  _makeRefundRowEl(container, { minHoursBeforeEvent: 48, maxHoursBeforeEvent: 72, refundPercentBps: 7500 });
-  _makeRefundRowEl(container, { minHoursBeforeEvent: 24, maxHoursBeforeEvent: 48, refundPercentBps: 5000 });
-  _makeRefundRowEl(container, { minHoursBeforeEvent: 0, maxHoursBeforeEvent: 24, refundPercentBps: 0 });
+  var rows = Array.isArray(activeWindows) && activeWindows.length > 0
+    ? activeWindows
+    : [
+        { minHoursBeforeEvent: 72, maxHoursBeforeEvent: null, refundPercentageBps: 9500 },
+        { minHoursBeforeEvent: 48, maxHoursBeforeEvent: 72, refundPercentageBps: 7500 },
+        { minHoursBeforeEvent: 24, maxHoursBeforeEvent: 48, refundPercentageBps: 5000 },
+        { minHoursBeforeEvent: 0, maxHoursBeforeEvent: 24, refundPercentageBps: 0 }
+      ];
+  rows.forEach(function (w) {
+    _makeRefundRowEl(container, {
+      minHoursBeforeEvent: w.minHoursBeforeEvent != null ? w.minHoursBeforeEvent : 0,
+      maxHoursBeforeEvent: w.maxHoursBeforeEvent != null ? w.maxHoursBeforeEvent : null,
+      refundPercentageBps: w.refundPercentageBps != null ? w.refundPercentageBps : (w.refundPercentBps || 0)
+    });
+  });
   editForm.classList.remove("hidden");
   editBtn.classList.add("hidden");
   var vr = $("refund-validation-result");
@@ -2633,6 +2691,7 @@ function wireAdminEvents() {
 
   const tabDashboard = $("tab-dashboard");
   const tabListings = $("tab-listings");
+  const tabPricing = $("tab-pricing");
   const tabVerification = $("tab-verification");
   const tabActionItems = $("tab-action-items");
   const tabUsers = $("tab-users");
@@ -2680,6 +2739,7 @@ function wireAdminEvents() {
 
   if (tabDashboard) tabDashboard.addEventListener("click", () => switchTab("dashboard"));
   if (tabListings) tabListings.addEventListener("click", () => switchTab("listings"));
+  if (tabPricing) tabPricing.addEventListener("click", () => switchTab("pricing"));
   if (tabVerification) tabVerification.addEventListener("click", () => switchTab("verification"));
   if (tabActionItems) tabActionItems.addEventListener("click", () => switchTab("action-items"));
   if (tabUsers) tabUsers.addEventListener("click", () => switchTab("users"));
@@ -2705,7 +2765,7 @@ function wireAdminEvents() {
   var publishTiersBtn = $("btn-publish-tiers");
   var cancelTierEditBtn = $("btn-cancel-tier-edit");
   if (refreshTierPolicyBtn) refreshTierPolicyBtn.addEventListener("click", function () { loadTierPolicy().then(renderTierPolicy).catch(function () { window.tstsNotify("Failed to refresh tier policy.", "error"); }); });
-  if (editTierPolicyBtn) editTierPolicyBtn.addEventListener("click", initTierEditor);
+  if (editTierPolicyBtn) editTierPolicyBtn.addEventListener("click", function () { initTierEditor(_activeTierRows); });
   if (addTierRowBtn) addTierRowBtn.addEventListener("click", function () { _makeTierRowEl($("tier-rows-editor")); });
   if (validateTiersBtn) validateTiersBtn.addEventListener("click", handleValidateTiers);
   if (publishTiersBtn) publishTiersBtn.addEventListener("click", handlePublishTiers);
@@ -2722,7 +2782,7 @@ function wireAdminEvents() {
   var publishRefundBtn = $("btn-publish-refund");
   var cancelRefundEditBtn = $("btn-cancel-refund-edit");
   if (refreshRefundPolicyBtn) refreshRefundPolicyBtn.addEventListener("click", function () { loadRefundWindowPolicy().then(renderRefundWindowPolicy).catch(function () { window.tstsNotify("Failed to refresh refund policy.", "error"); }); });
-  if (editRefundPolicyBtn) editRefundPolicyBtn.addEventListener("click", initRefundEditor);
+  if (editRefundPolicyBtn) editRefundPolicyBtn.addEventListener("click", function () { initRefundEditor(_activeRefundRows); });
   if (addRefundRowBtn) addRefundRowBtn.addEventListener("click", function () { _makeRefundRowEl($("refund-rows-editor")); });
   if (validateRefundBtn) validateRefundBtn.addEventListener("click", handleValidateRefund);
   if (publishRefundBtn) publishRefundBtn.addEventListener("click", handlePublishRefund);
