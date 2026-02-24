@@ -2549,16 +2549,19 @@ function renderRefundWindowPolicy(payload) {
       rows.forEach(function (w, i) {
         var tr = document.createElement("tr");
         var refBps = w.refundPercentageBps != null ? w.refundPercentageBps : (w.refundPercentBps || 0);
-        var retainedPct = 100 - Math.round(refBps / 100);
-        var hostAllocPct = Math.round((w.hostAllocationBps || 0) / 100);
-        var platformRetPct = Math.max(0, retainedPct - hostAllocPct);
+        var refundPct = refBps / 100;  // e.g. 95.0
+        var retainedPct = 100 - refundPct;  // e.g. 5.0
+        var hostAllocRatePct = (w.hostAllocationBps || 0) / 100;  // % of retained, e.g. 50
+        var hostAbsPct = retainedPct * hostAllocRatePct / 100;   // absolute %, e.g. 2.5
+        var platformAbsPct = retainedPct - hostAbsPct;           // absolute %, e.g. 2.5
+        function _fmt(n) { return (n % 1 === 0) ? String(n) : n.toFixed(1); }
         [
           String(i + 1),
           String(w.minHoursBeforeEvent || 0) + "h",
           (w.maxHoursBeforeEvent == null) ? "Open-ended" : String(w.maxHoursBeforeEvent) + "h",
-          Math.round(refBps / 100) + "%",
-          retainedPct + "% (auto)",
-          hostAllocPct + "% host / " + platformRetPct + "% platform"
+          _fmt(refundPct) + "% guest",
+          _fmt(retainedPct) + "% retained (auto)",
+          _fmt(hostAllocRatePct) + "% of retained → host " + _fmt(hostAbsPct) + "% / platform " + _fmt(platformAbsPct) + "%"
         ].forEach(function (val) {
           var td = document.createElement("td");
           td.className = "px-4 py-3 text-slate-700 text-sm";
@@ -2603,12 +2606,13 @@ function _makeRefundRowEl(container, data) {
   var previewEl = document.createElement("div");
   previewEl.className = "text-xs text-slate-400 self-end pb-2 whitespace-nowrap";
   function _updatePreview() {
-    var refP = parseFloat(refPct.inp.value || "0") || 0;
-    var allocP = parseFloat(hostAlloc.inp.value || "0") || 0;
-    var retainedP = Math.max(0, 100 - refP);
-    var hostCompP = Math.min(retainedP, allocP);
-    var platformP = Math.max(0, retainedP - hostCompP);
-    previewEl.textContent = "Guest gets " + refP.toFixed(0) + "% → retained " + retainedP.toFixed(0) + "% → host " + hostCompP.toFixed(0) + "% / platform " + platformP.toFixed(0) + "%";
+    var refP = Math.max(0, Math.min(100, parseFloat(refPct.inp.value || "0") || 0));
+    var allocRateP = Math.max(0, Math.min(100, parseFloat(hostAlloc.inp.value || "0") || 0));
+    var retainedP = 100 - refP;                       // absolute retained %
+    var hostCompP = retainedP * allocRateP / 100;     // absolute host % = retained × rate
+    var platformP = retainedP - hostCompP;            // absolute platform % = retained − host
+    function _f(n) { return (n % 1 === 0) ? n.toFixed(0) : n.toFixed(1); }
+    previewEl.textContent = "Guest " + _f(refP) + "% + Host " + _f(hostCompP) + "% + Platform " + _f(platformP) + "% = 100%";
   }
   refPct.inp.addEventListener("input", _updatePreview);
   hostAlloc.inp.addEventListener("input", _updatePreview);
