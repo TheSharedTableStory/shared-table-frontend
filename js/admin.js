@@ -2540,7 +2540,7 @@ function renderRefundWindowPolicy(payload) {
     if (rows.length === 0) {
       var emptyTr = document.createElement("tr");
       var emptyTd = document.createElement("td");
-      emptyTd.colSpan = 4;
+      emptyTd.colSpan = 6;
       emptyTd.className = "px-4 py-6 text-center text-slate-400 text-sm";
       emptyTd.textContent = "No active windows. Click Edit Refund Windows to define windows.";
       emptyTr.appendChild(emptyTd);
@@ -2548,13 +2548,17 @@ function renderRefundWindowPolicy(payload) {
     } else {
       rows.forEach(function (w, i) {
         var tr = document.createElement("tr");
-        // Backend sends refundPercentageBps (with 'age'); normalize for display.
         var refBps = w.refundPercentageBps != null ? w.refundPercentageBps : (w.refundPercentBps || 0);
+        var retainedPct = 100 - Math.round(refBps / 100);
+        var hostAllocPct = Math.round((w.hostAllocationBps || 0) / 100);
+        var platformRetPct = Math.max(0, retainedPct - hostAllocPct);
         [
           String(i + 1),
           String(w.minHoursBeforeEvent || 0) + "h",
           (w.maxHoursBeforeEvent == null) ? "Open-ended" : String(w.maxHoursBeforeEvent) + "h",
-          (refBps / 100).toFixed(0) + "%"
+          Math.round(refBps / 100) + "%",
+          retainedPct + "% (auto)",
+          hostAllocPct + "% host / " + platformRetPct + "% platform"
         ].forEach(function (val) {
           var td = document.createElement("td");
           td.className = "px-4 py-3 text-slate-700 text-sm";
@@ -2591,7 +2595,25 @@ function _makeRefundRowEl(container, data) {
   var maxH = _numField("Max hours (blank=open)", data.maxHoursBeforeEvent != null ? data.maxHoursBeforeEvent : "", "Open");
   // Backend may send refundPercentageBps or refundPercentBps — handle both.
   var _refBps = data.refundPercentageBps != null ? data.refundPercentageBps : (data.refundPercentBps != null ? data.refundPercentBps : null);
-  var refPct = _numField("Refund % (0–100)", _refBps != null ? (_refBps / 100) : "", "0");
+  var refPct = _numField("Guest refund % (0–100)", _refBps != null ? (_refBps / 100) : "", "0");
+  var _hostAllocBps = data.hostAllocationBps != null ? data.hostAllocationBps : 0;
+  var hostAlloc = _numField("Host alloc % of retained (0–100)", Math.round(_hostAllocBps / 100), "0");
+
+  // Live preview: guest refund → retained → host compensation → platform retained
+  var previewEl = document.createElement("div");
+  previewEl.className = "text-xs text-slate-400 self-end pb-2 whitespace-nowrap";
+  function _updatePreview() {
+    var refP = parseFloat(refPct.inp.value || "0") || 0;
+    var allocP = parseFloat(hostAlloc.inp.value || "0") || 0;
+    var retainedP = Math.max(0, 100 - refP);
+    var hostCompP = Math.min(retainedP, allocP);
+    var platformP = Math.max(0, retainedP - hostCompP);
+    previewEl.textContent = "Guest gets " + refP.toFixed(0) + "% → retained " + retainedP.toFixed(0) + "% → host " + hostCompP.toFixed(0) + "% / platform " + platformP.toFixed(0) + "%";
+  }
+  refPct.inp.addEventListener("input", _updatePreview);
+  hostAlloc.inp.addEventListener("input", _updatePreview);
+  _updatePreview();
+
   var removeBtn = document.createElement("button");
   removeBtn.type = "button";
   removeBtn.className = "text-red-400 hover:text-red-600 text-xs font-bold pb-1.5";
@@ -2600,15 +2622,16 @@ function _makeRefundRowEl(container, data) {
   row.appendChild(minH.wrap);
   row.appendChild(maxH.wrap);
   row.appendChild(refPct.wrap);
+  row.appendChild(hostAlloc.wrap);
+  row.appendChild(previewEl);
   row.appendChild(removeBtn);
   row._collectWindow = function () {
-    // Send refundPercentageBps as percentage integer (e.g. 95 for 95%) because
-    // backend __normalizeRefundWindowRows calls __ratioToBps which multiplies by 100.
-    // Do NOT pre-multiply by 100 here — that would cause double multiplication and store 0.
+    // Send as percentage integers — backend __ratioToBps multiplies by 100 to get bps.
     return {
       minHoursBeforeEvent: parseInt(minH.inp.value || "0", 10),
       maxHoursBeforeEvent: maxH.inp.value.trim() === "" ? null : parseInt(maxH.inp.value, 10),
-      refundPercentageBps: parseFloat(refPct.inp.value || "0") || 0
+      refundPercentageBps: parseFloat(refPct.inp.value || "0") || 0,
+      hostAllocationBps: parseFloat(hostAlloc.inp.value || "0") || 0
     };
   };
   container.appendChild(row);
@@ -2623,16 +2646,17 @@ function initRefundEditor(activeWindows) {
   var rows = Array.isArray(activeWindows) && activeWindows.length > 0
     ? activeWindows
     : [
-        { minHoursBeforeEvent: 72, maxHoursBeforeEvent: null, refundPercentageBps: 9500 },
-        { minHoursBeforeEvent: 48, maxHoursBeforeEvent: 72, refundPercentageBps: 7500 },
-        { minHoursBeforeEvent: 24, maxHoursBeforeEvent: 48, refundPercentageBps: 5000 },
-        { minHoursBeforeEvent: 0, maxHoursBeforeEvent: 24, refundPercentageBps: 0 }
+        { minHoursBeforeEvent: 72, maxHoursBeforeEvent: null, refundPercentageBps: 9500, hostAllocationBps: 0 },
+        { minHoursBeforeEvent: 48, maxHoursBeforeEvent: 72, refundPercentageBps: 7500, hostAllocationBps: 0 },
+        { minHoursBeforeEvent: 24, maxHoursBeforeEvent: 48, refundPercentageBps: 5000, hostAllocationBps: 0 },
+        { minHoursBeforeEvent: 0, maxHoursBeforeEvent: 24, refundPercentageBps: 0, hostAllocationBps: 0 }
       ];
   rows.forEach(function (w) {
     _makeRefundRowEl(container, {
       minHoursBeforeEvent: w.minHoursBeforeEvent != null ? w.minHoursBeforeEvent : 0,
       maxHoursBeforeEvent: w.maxHoursBeforeEvent != null ? w.maxHoursBeforeEvent : null,
-      refundPercentageBps: w.refundPercentageBps != null ? w.refundPercentageBps : (w.refundPercentBps || 0)
+      refundPercentageBps: w.refundPercentageBps != null ? w.refundPercentageBps : (w.refundPercentBps || 0),
+      hostAllocationBps: w.hostAllocationBps != null ? w.hostAllocationBps : 0
     });
   });
   editForm.classList.remove("hidden");
