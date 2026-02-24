@@ -2599,10 +2599,13 @@ function _makeRefundRowEl(container, data) {
   row.appendChild(refPct.wrap);
   row.appendChild(removeBtn);
   row._collectWindow = function () {
+    // Send refundPercentageBps as percentage integer (e.g. 95 for 95%) because
+    // backend __normalizeRefundWindowRows calls __ratioToBps which multiplies by 100.
+    // Do NOT pre-multiply by 100 here — that would cause double multiplication and store 0.
     return {
       minHoursBeforeEvent: parseInt(minH.inp.value || "0", 10),
       maxHoursBeforeEvent: maxH.inp.value.trim() === "" ? null : parseInt(maxH.inp.value, 10),
-      refundPercentBps: Math.round(parseFloat(refPct.inp.value || "0") * 100)
+      refundPercentageBps: parseFloat(refPct.inp.value || "0") || 0
     };
   };
   container.appendChild(row);
