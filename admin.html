@@ -168,6 +168,64 @@
             </div>
           </section>
 
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+            <div class="flex items-center justify-between gap-4 mb-4">
+              <h2 class="font-bold text-lg text-tsts-ink">Pricing Tier Policy</h2>
+              <button id="btn-refresh-tier-policy" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
+            </div>
+            <div id="tier-policy-version-meta" class="text-xs text-slate-400 mb-3">Loading...</div>
+            <div class="overflow-x-auto mb-4">
+              <table class="min-w-full text-left text-sm">
+                <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                  <tr><th class="px-4 py-3">Tier</th><th class="px-4 py-3">Min Value</th><th class="px-4 py-3">Max Value</th><th class="px-4 py-3">Fixed Fee</th><th class="px-4 py-3">% Fee (bps)</th></tr>
+                </thead>
+                <tbody id="tier-policy-table-body" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+            <div id="tier-policy-edit-form" class="hidden border-t border-slate-100 pt-4 space-y-3">
+              <div class="text-sm font-semibold text-slate-700">New Tier Configuration</div>
+              <div class="text-xs text-slate-400">Define tiers in ascending min value order. Leave Max blank on the last row for open-ended. Fixed fee in cents (100 = $1.00). % fee in basis points (1000 = 10%).</div>
+              <div id="tier-rows-editor" class="space-y-2"></div>
+              <button id="btn-add-tier-row" type="button" class="text-sm text-orange-600 font-bold hover:underline">+ Add tier row</button>
+              <div id="tier-validation-result" class="hidden text-xs rounded-xl px-3 py-2"></div>
+              <div class="flex flex-wrap gap-2 pt-1">
+                <button id="btn-validate-tiers" type="button" class="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100">Validate</button>
+                <button id="btn-publish-tiers" type="button" class="inline-flex items-center rounded-xl bg-tsts-clay px-4 py-2 text-sm font-bold text-white hover:opacity-90">Publish New Version</button>
+                <button id="btn-cancel-tier-edit" type="button" class="text-sm text-slate-500 hover:text-slate-700 px-2 py-2">Cancel</button>
+              </div>
+            </div>
+            <button id="btn-edit-tier-policy" type="button" class="inline-flex items-center rounded-xl bg-tsts-clay px-4 py-2 text-sm font-bold text-white hover:opacity-90">Edit Tier Pricing</button>
+          </section>
+
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+            <div class="flex items-center justify-between gap-4 mb-4">
+              <h2 class="font-bold text-lg text-tsts-ink">Refund Window Policy</h2>
+              <button id="btn-refresh-refund-policy" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
+            </div>
+            <div id="refund-policy-version-meta" class="text-xs text-slate-400 mb-3">Loading...</div>
+            <div class="overflow-x-auto mb-4">
+              <table class="min-w-full text-left text-sm">
+                <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                  <tr><th class="px-4 py-3">Window</th><th class="px-4 py-3">Min Hours Before Event</th><th class="px-4 py-3">Max Hours Before Event</th><th class="px-4 py-3">Refund %</th></tr>
+                </thead>
+                <tbody id="refund-policy-table-body" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+            <div id="refund-policy-edit-form" class="hidden border-t border-slate-100 pt-4 space-y-3">
+              <div class="text-sm font-semibold text-slate-700">New Refund Window Configuration</div>
+              <div class="text-xs text-slate-400">Define windows in ascending min hours order. Leave Max blank on the last row for open-ended. Refund % is 0–100 (decimals allowed).</div>
+              <div id="refund-rows-editor" class="space-y-2"></div>
+              <button id="btn-add-refund-row" type="button" class="text-sm text-orange-600 font-bold hover:underline">+ Add window row</button>
+              <div id="refund-validation-result" class="hidden text-xs rounded-xl px-3 py-2"></div>
+              <div class="flex flex-wrap gap-2 pt-1">
+                <button id="btn-validate-refund" type="button" class="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100">Validate</button>
+                <button id="btn-publish-refund" type="button" class="inline-flex items-center rounded-xl bg-tsts-clay px-4 py-2 text-sm font-bold text-white hover:opacity-90">Publish New Version</button>
+                <button id="btn-cancel-refund-edit" type="button" class="text-sm text-slate-500 hover:text-slate-700 px-2 py-2">Cancel</button>
+              </div>
+            </div>
+            <button id="btn-edit-refund-policy" type="button" class="inline-flex items-center rounded-xl bg-tsts-clay px-4 py-2 text-sm font-bold text-white hover:opacity-90">Edit Refund Windows</button>
+          </section>
+
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                 <div class="font-bold text-lg">Host Verification Queue</div>
@@ -194,6 +252,45 @@
                   <tr><th class="px-6 py-3">Experience</th><th class="px-6 py-3">Host</th><th class="px-6 py-3">Snapshot Fee</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Actions</th></tr>
                 </thead>
                 <tbody id="event-verifications-table-body" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <div class="font-bold text-lg">Deficit Shortfall Review Queue</div>
+                <button id="btn-refresh-shortfall-monitor" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh Shortfall</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-left text-sm">
+                <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                  <tr><th class="px-6 py-3">Experience / Slot</th><th class="px-6 py-3">Approval</th><th class="px-6 py-3">Seats</th><th class="px-6 py-3">Funding</th><th class="px-6 py-3">Actions</th></tr>
+                </thead>
+                <tbody id="shortfall-review-table-body" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 font-bold text-lg">Shortfall Reconciliation Grid</div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-left text-sm">
+                <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                  <tr><th class="px-6 py-3">Experience / Slot</th><th class="px-6 py-3">Approval / Decision</th><th class="px-6 py-3">Capacity / Threshold / Booked</th><th class="px-6 py-3">Stage A / Stage B</th><th class="px-6 py-3">Settlement Case</th><th class="px-6 py-3">Actions</th></tr>
+                </thead>
+                <tbody id="shortfall-recon-table-body" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 font-bold text-lg">Shortfall Settlement Cases</div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-left text-sm">
+                <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                  <tr><th class="px-6 py-3">Case ID</th><th class="px-6 py-3">Slot</th><th class="px-6 py-3">Amounts</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Actions</th></tr>
+                </thead>
+                <tbody id="shortfall-settlement-table-body" class="divide-y divide-slate-100"></tbody>
               </table>
             </div>
           </section>
@@ -461,6 +558,6 @@
 
   <script src="js/runtime-config.js?v=20260224a"></script>
   <script src="js/common.js?v=20260224a"></script>
-  <script src="js/admin.js?v=20260224a"></script>
+  <script src="js/admin.js?v=20260224b"></script>
 </body>
 </html>

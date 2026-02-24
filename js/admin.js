@@ -51,6 +51,8 @@ var currentListingsFilter = "all";
 var allExperiencesCache = [];
 var experiencesPageSize = 100;
 var experiencesTotalCount = 0;
+var shortfallReasonCodes = [];
+var shortfallSettlementReasonCodes = [];
 
 async function loadDashboardSummary() {
   const res = await adminFetch("/api/admin/dashboard-summary", { method: "GET" });
@@ -174,6 +176,55 @@ async function loadEventVerifications(status) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data || data.ok !== true) {
     throw new Error((data && data.message) ? data.message : "Failed to load event verifications");
+  }
+  return data;
+}
+
+async function loadShortfallMonitor(options) {
+  var o = (options && typeof options === "object") ? options : {};
+  var p = new URLSearchParams();
+  p.set("limit", String(o.limit || 200));
+  if (o.approvalState) p.set("approvalState", String(o.approvalState));
+  if (o.fundingStatus) p.set("fundingStatus", String(o.fundingStatus));
+  if (o.slotId) p.set("slotId", String(o.slotId));
+  const res = await adminFetch("/api/admin/shortfall/monitor?" + p.toString(), { method: "GET" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to load shortfall monitor");
+  }
+  return data;
+}
+
+async function decideShortfallApproval(slotId, decision, reasonCode, note) {
+  const res = await adminFetch("/api/admin/shortfall/" + encodeURIComponent(slotId) + "/decision", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      decision: String(decision || "").toLowerCase(),
+      reasonCode: String(reasonCode || "").trim(),
+      note: String(note || "").trim()
+    })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to update shortfall decision");
+  }
+  return data;
+}
+
+async function decideShortfallSettlement(caseId, decision, reasonCode, note) {
+  const res = await adminFetch("/api/admin/shortfall/settlement/" + encodeURIComponent(caseId) + "/decision", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      decision: String(decision || "").toLowerCase(),
+      reasonCode: String(reasonCode || "").trim(),
+      note: String(note || "").trim()
+    })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to process settlement case");
   }
   return data;
 }
@@ -1066,6 +1117,203 @@ function renderEventVerifications(payload) {
   });
 }
 
+function shortfallBadgeClass(state) {
+  var s = String(state || "").toUpperCase();
+  if (s === "APPROVED" || s === "APPROVED_EXECUTED" || s === "FULLY_FUNDED") return "text-emerald-700";
+  if (s === "UNDER_REVIEW" || s === "PENDING_ADMIN_REVIEW" || s === "STAGE_A_DUE" || s === "STAGE_B_DUE" || s === "BOOKING_FROZEN_STAGE_B") return "text-amber-700";
+  if (s === "REJECTED") return "text-red-700";
+  return "text-slate-600";
+}
+
+function toShortfallStateLabel(v) {
+  return String(v || "none").replace(/_/g, " ").toLowerCase();
+}
+
+function renderShortfallReview(payload) {
+  const El = window.tstsEl;
+  const tbody = $("shortfall-review-table-body");
+  if (!tbody) return;
+  tbody.textContent = "";
+
+  var root = (payload && typeof payload === "object") ? payload : {};
+  var data = (root.data && typeof root.data === "object") ? root.data : root;
+  var slots = Array.isArray(data.slots) ? data.slots : [];
+  shortfallReasonCodes = Array.isArray(data.reasonCodes) ? data.reasonCodes : [];
+  shortfallSettlementReasonCodes = Array.isArray(data.settlementReasonCodes) ? data.settlementReasonCodes : [];
+
+  if (slots.length === 0) {
+    tbody.appendChild(El("tr", {}, [
+      El("td", { className: "px-6 py-6 text-center text-sm text-slate-500", colSpan: "5", textContent: "No shortfall slots." })
+    ]));
+    return;
+  }
+
+  slots.forEach(function (slot) {
+    var slotId = String((slot && slot.slotId) || "");
+    var approval = String((slot && slot.approvalState) || "NONE");
+    var funding = String((slot && slot.fundingStatus) || "NONE");
+    var actions = [];
+
+    if (approval === "UNDER_REVIEW") {
+      var approveBtn = El("button", { className: "px-2 py-1 text-xs font-bold rounded border border-emerald-200 text-emerald-700 hover:bg-emerald-50", textContent: "Approve" });
+      approveBtn.addEventListener("click", function () { handleShortfallApprovalDecision(slotId, "approve"); });
+      var rejectBtn = El("button", { className: "px-2 py-1 text-xs font-bold rounded border border-red-200 text-red-700 hover:bg-red-50", textContent: "Reject" });
+      rejectBtn.addEventListener("click", function () { handleShortfallApprovalDecision(slotId, "reject"); });
+      actions.push(approveBtn, rejectBtn);
+    } else {
+      actions.push(El("span", { className: "text-xs text-slate-400", textContent: "—" }));
+    }
+
+    var flags = (slot && slot.antiAbuseFlags && typeof slot.antiAbuseFlags === "object") ? slot.antiAbuseFlags : {};
+    var flagCount = Number(flags.flagCount || 0);
+    var flagBadgeChildren = [
+      El("div", { className: "font-semibold text-slate-800", textContent: String(slot.experienceTitle || "Experience") }),
+      El("div", { className: "text-xs text-slate-500 mt-1", textContent: String(slot.bookingDate || "") + " • " + String(slot.timeSlot || "") })
+    ];
+    if (flagCount > 0) {
+      var flagLabels = [];
+      if (flags.highShortfallPerSeat) flagLabels.push("High per-seat amount");
+      if (flags.unknownDiscountOrigin) flagLabels.push("Unknown discount origin");
+      if (flags.highDemandWithShortfall) flagLabels.push("High demand ratio");
+      if (flags.unverifiedHost) flagLabels.push("Unverified host");
+      flagBadgeChildren.push(El("div", { className: "mt-1 inline-flex items-center rounded px-2 py-0.5 text-xs font-bold bg-amber-100 text-amber-800", textContent: "\u2691 " + flagCount + " risk flag" + (flagCount > 1 ? "s" : "") + ": " + flagLabels.join(", ") }));
+    }
+
+    tbody.appendChild(El("tr", { className: "align-top" }, [
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, flagBadgeChildren),
+      El("td", { className: "px-6 py-4 text-sm" }, [
+        El("div", { className: "font-semibold " + shortfallBadgeClass(approval), textContent: toShortfallStateLabel(approval) }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Reason: " + String(slot.approvalReasonCode || "—") })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { textContent: "Booked: " + String(Number(slot.bookedSeats || 0)) }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Capacity: " + String(Number(slot.capacityTotalSnapshot || 0)) + " • Threshold: " + String(Number(slot.thresholdSeatsSnapshot || 0)) })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { className: "font-semibold " + shortfallBadgeClass(funding), textContent: toShortfallStateLabel(funding) }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Stage A remaining: " + formatCurrencyFromCents(Number(slot.stageA && slot.stageA.remainingCents || 0)) }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Stage B remaining: " + formatCurrencyFromCents(Number(slot.stageB && slot.stageB.remainingCents || 0)) })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm" }, [
+        El("div", { className: "flex flex-wrap gap-2" }, actions)
+      ])
+    ]));
+  });
+}
+
+function renderShortfallReconciliation(payload) {
+  const El = window.tstsEl;
+  const tbody = $("shortfall-recon-table-body");
+  if (!tbody) return;
+  tbody.textContent = "";
+
+  var root = (payload && typeof payload === "object") ? payload : {};
+  var data = (root.data && typeof root.data === "object") ? root.data : root;
+  var slots = Array.isArray(data.slots) ? data.slots : [];
+
+  if (slots.length === 0) {
+    tbody.appendChild(El("tr", {}, [
+      El("td", { className: "px-6 py-6 text-center text-sm text-slate-500", colSpan: "6", textContent: "No shortfall reconciliation rows." })
+    ]));
+    return;
+  }
+
+  slots.forEach(function (slot) {
+    var settlement = (slot && slot.settlement && typeof slot.settlement === "object") ? slot.settlement : {};
+    var settlementCaseId = String(settlement.caseId || "");
+    var actions = [];
+    if (String(settlement.status || "") === "PENDING_ADMIN_REVIEW" && settlementCaseId) {
+      var approveBtn = El("button", { className: "px-2 py-1 text-xs font-bold rounded border border-emerald-200 text-emerald-700 hover:bg-emerald-50", textContent: "Approve refund" });
+      approveBtn.addEventListener("click", function () { handleShortfallSettlementDecision(settlementCaseId, "approve"); });
+      var rejectBtn = El("button", { className: "px-2 py-1 text-xs font-bold rounded border border-red-200 text-red-700 hover:bg-red-50", textContent: "Reject refund" });
+      rejectBtn.addEventListener("click", function () { handleShortfallSettlementDecision(settlementCaseId, "reject"); });
+      actions.push(approveBtn, rejectBtn);
+    } else {
+      actions.push(El("span", { className: "text-xs text-slate-400", textContent: "—" }));
+    }
+
+    tbody.appendChild(El("tr", { className: "align-top" }, [
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { className: "font-semibold text-slate-800", textContent: String(slot.experienceTitle || "Experience") }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: String(slot.bookingDate || "") + " • " + String(slot.timeSlot || "") })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { className: "font-semibold " + shortfallBadgeClass(slot.approvalState), textContent: "Approval: " + toShortfallStateLabel(slot.approvalState) }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Approver: " + String(slot.approvedBy || "—") }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Decision at: " + formatDateValue(slot.decisionAt) })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { textContent: "Capacity: " + String(Number(slot.capacityTotalSnapshot || 0)) }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Threshold: " + String(Number(slot.thresholdSeatsSnapshot || 0)) }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Booked: " + String(Number(slot.bookedSeats || 0)) })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { textContent: "A paid: " + formatCurrencyFromCents(Number(slot.stageA && slot.stageA.paidCents || 0)) + " / " + formatCurrencyFromCents(Number(slot.stageA && slot.stageA.dueCents || 0)) }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "A intent: " + String(slot.stageA && slot.stageA.paymentIntentId || "—") }),
+        El("div", { className: "mt-2", textContent: "B paid: " + formatCurrencyFromCents(Number(slot.stageB && slot.stageB.paidCents || 0)) + " / " + formatCurrencyFromCents(Number(slot.stageB && slot.stageB.dueCents || 0)) }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "B intent: " + String(slot.stageB && slot.stageB.paymentIntentId || "—") })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { className: "font-semibold " + shortfallBadgeClass(settlement.status), textContent: toShortfallStateLabel(settlement.status || "none") }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Principal: " + formatCurrencyFromCents(Number(settlement.refundablePrincipalCents || 0)) }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "5% fee: " + formatCurrencyFromCents(Number(settlement.processingFeeCents || 0)) }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Net refund: " + formatCurrencyFromCents(Number(settlement.netRefundCents || 0)) })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm" }, [
+        El("div", { className: "flex flex-wrap gap-2" }, actions)
+      ])
+    ]));
+  });
+}
+
+function renderShortfallSettlementCases(payload) {
+  const El = window.tstsEl;
+  const tbody = $("shortfall-settlement-table-body");
+  if (!tbody) return;
+  tbody.textContent = "";
+
+  var root = (payload && typeof payload === "object") ? payload : {};
+  var data = (root.data && typeof root.data === "object") ? root.data : root;
+  var cases = Array.isArray(data.settlementCases) ? data.settlementCases : [];
+
+  if (cases.length === 0) {
+    tbody.appendChild(El("tr", {}, [
+      El("td", { className: "px-6 py-6 text-center text-sm text-slate-500", colSpan: "5", textContent: "No settlement cases." })
+    ]));
+    return;
+  }
+
+  cases.forEach(function (caseRow) {
+    var caseId = String((caseRow && (caseRow._id || caseRow.id)) || "");
+    var actions = [];
+    if (String(caseRow && caseRow.status || "") === "PENDING_ADMIN_REVIEW") {
+      var approveBtn = El("button", { className: "px-2 py-1 text-xs font-bold rounded border border-emerald-200 text-emerald-700 hover:bg-emerald-50", textContent: "Approve" });
+      approveBtn.addEventListener("click", function () { handleShortfallSettlementDecision(caseId, "approve"); });
+      var rejectBtn = El("button", { className: "px-2 py-1 text-xs font-bold rounded border border-red-200 text-red-700 hover:bg-red-50", textContent: "Reject" });
+      rejectBtn.addEventListener("click", function () { handleShortfallSettlementDecision(caseId, "reject"); });
+      actions.push(approveBtn, rejectBtn);
+    } else {
+      actions.push(El("span", { className: "text-xs text-slate-400", textContent: "—" }));
+    }
+    tbody.appendChild(El("tr", { className: "align-top" }, [
+      El("td", { className: "px-6 py-4 text-xs text-slate-700", textContent: caseId || "—" }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { textContent: String(caseRow && caseRow.bookingDate || "") + " • " + String(caseRow && caseRow.timeSlot || "") }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Slot: " + String(caseRow && caseRow.slotId || "—") })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm text-slate-700" }, [
+        El("div", { textContent: "Principal: " + formatCurrencyFromCents(Number(caseRow && caseRow.refundablePrincipalCents || 0)) }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Fee: " + formatCurrencyFromCents(Number(caseRow && caseRow.processingFeeCents || 0)) }),
+        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Net: " + formatCurrencyFromCents(Number(caseRow && caseRow.netRefundCents || 0)) })
+      ]),
+      El("td", { className: "px-6 py-4 text-sm " + shortfallBadgeClass(caseRow && caseRow.status), textContent: toShortfallStateLabel(caseRow && caseRow.status || "none") }),
+      El("td", { className: "px-6 py-4 text-sm" }, [
+        El("div", { className: "flex flex-wrap gap-2" }, actions)
+      ])
+    ]));
+  });
+}
+
 function renderUsers(users) {
   const El = window.tstsEl;
   const tbody = $("users-table-body");
@@ -1516,11 +1764,17 @@ async function refreshVerificationViews() {
   const results = await Promise.all([
     loadVerificationFeePolicy().catch(() => null),
     loadHostVerifications("all").catch(() => null),
-    loadEventVerifications("all").catch(() => null)
+    loadEventVerifications("all").catch(() => null),
+    loadShortfallMonitor({ limit: 250 }).catch(() => null)
   ]);
   if (results[0]) renderVerificationPolicy(results[0]);
   if (results[1]) renderHostVerifications(results[1]);
   if (results[2]) renderEventVerifications(results[2]);
+  if (results[3]) {
+    renderShortfallReview(results[3]);
+    renderShortfallReconciliation(results[3]);
+    renderShortfallSettlementCases(results[3]);
+  }
 }
 
 async function handleHostVerificationTransition(userId, nextStatus) {
@@ -1566,6 +1820,65 @@ async function handleSaveVerificationPolicy() {
     await refreshVerificationViews();
   } catch (err) {
     window.tstsNotify((err && err.message) ? err.message : "Failed to update verification fee policy.", "error");
+  }
+}
+
+async function refreshShortfallViews() {
+  const payload = await loadShortfallMonitor({ limit: 250 });
+  renderShortfallReview(payload);
+  renderShortfallReconciliation(payload);
+  renderShortfallSettlementCases(payload);
+}
+
+async function chooseShortfallReason(reasonCodes, fallbackCode) {
+  var codes = Array.isArray(reasonCodes) ? reasonCodes.filter(Boolean) : [];
+  if (codes.length === 0) return String(fallbackCode || "OTHER");
+  var suggested = String(codes[0] || fallbackCode || "OTHER");
+  var promptText = "Reason code (available: " + codes.join(", ") + ")";
+  var entered = await window.tstsPrompt(promptText, suggested, { minLength: 1, placeholder: suggested });
+  var value = String(entered || "").trim();
+  if (!value) return "";
+  if (codes.indexOf(value) >= 0) return value;
+  return String(fallbackCode || suggested);
+}
+
+async function handleShortfallApprovalDecision(slotId, decision) {
+  var action = String(decision || "").toLowerCase();
+  if (!slotId || (action !== "approve" && action !== "reject")) return;
+  var reasonCode = await chooseShortfallReason(shortfallReasonCodes, action === "approve" ? "RISK_LOW" : "RISK_HIGH");
+  if (!reasonCode) return;
+  var note = await window.tstsPrompt("Decision note (required)", "", { minLength: 5, placeholder: "Explain this shortfall approval decision." });
+  note = String(note || "").trim();
+  if (!note) {
+    window.tstsNotify("Decision note is required.", "error");
+    return;
+  }
+  try {
+    await decideShortfallApproval(slotId, action, reasonCode, note);
+    window.tstsNotify("Shortfall decision saved.", "success");
+    await refreshShortfallViews();
+  } catch (err) {
+    window.tstsNotify((err && err.message) ? err.message : "Failed to save shortfall decision.", "error");
+  }
+}
+
+async function handleShortfallSettlementDecision(caseId, decision) {
+  var action = String(decision || "").toLowerCase();
+  if (!caseId || (action !== "approve" && action !== "reject")) return;
+  var reasonCode = await chooseShortfallReason(shortfallSettlementReasonCodes, action === "approve" ? "UNUSED_CAPACITY_REFUND" : "FRAUD_REVIEW");
+  if (!reasonCode) return;
+  var note = await window.tstsPrompt("Settlement note (required)", "", { minLength: 5, placeholder: "Explain this settlement decision." });
+  note = String(note || "").trim();
+  if (!note) {
+    window.tstsNotify("Settlement note is required.", "error");
+    return;
+  }
+  try {
+    await decideShortfallSettlement(caseId, action, reasonCode, note);
+    window.tstsNotify("Settlement decision saved.", "success");
+    await refreshShortfallViews();
+  } catch (err) {
+    window.tstsNotify((err && err.message) ? err.message : "Failed to process settlement decision.", "error");
   }
 }
 
@@ -1864,6 +2177,9 @@ function switchTab(tabName) {
       renderVerificationPolicy({ data: { policy: { feePercent: 0, policyVersion: "Unavailable", effectiveFrom: null } } });
       renderHostVerifications({ data: { items: [] } });
       renderEventVerifications({ data: { items: [] } });
+      renderShortfallReview({ data: { slots: [] } });
+      renderShortfallReconciliation({ data: { slots: [] } });
+      renderShortfallSettlementCases({ data: { settlementCases: [] } });
     });
   }
   if (tabName === 'action-items') {
@@ -1911,6 +2227,325 @@ function resolveInitialAdminTab() {
   return allowed[requested] ? requested : "dashboard";
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// PRICING TIER POLICY
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function loadTierPolicy() {
+  var res = await adminFetch("/api/admin/pricing/tier-policy", { method: "GET" });
+  var data = await res.json().catch(function () { return {}; });
+  if (!res.ok || !data || data.ok !== true) throw new Error("Failed to load tier policy");
+  return data;
+}
+
+function renderTierPolicy(payload) {
+  var root = (payload && typeof payload === "object") ? payload : {};
+  var d = (root.data && typeof root.data === "object") ? root.data : root;
+  var active = (d.active && typeof d.active === "object") ? d.active : {};
+  var metaEl = $("tier-policy-version-meta");
+  var tbody = $("tier-policy-table-body");
+  if (metaEl) {
+    var vId = String(active.policyId || active.version || "—");
+    var effFrom = active.effectiveFrom ? formatDateValue(active.effectiveFrom) : "—";
+    metaEl.textContent = "Active version: " + vId + " — effective from: " + effFrom;
+  }
+  if (tbody) {
+    tbody.innerHTML = "";
+    var rows = Array.isArray(active.tiers) ? active.tiers : [];
+    if (rows.length === 0) {
+      var emptyTr = document.createElement("tr");
+      var emptyTd = document.createElement("td");
+      emptyTd.colSpan = 5;
+      emptyTd.className = "px-4 py-6 text-center text-slate-400 text-sm";
+      emptyTd.textContent = "No active tiers. Click Edit Tier Pricing to define tiers.";
+      emptyTr.appendChild(emptyTd);
+      tbody.appendChild(emptyTr);
+    } else {
+      rows.forEach(function (tier, i) {
+        var tr = document.createElement("tr");
+        [
+          String(i + 1),
+          formatCurrencyFromCents(tier.minValueCents || 0),
+          (tier.maxValueCents == null) ? "Open-ended" : formatCurrencyFromCents(tier.maxValueCents),
+          formatCurrencyFromCents(tier.fixedFeeCents || 0),
+          String(tier.percentageFeeBps || 0) + " bps (" + ((tier.percentageFeeBps || 0) / 100).toFixed(2) + "%)"
+        ].forEach(function (val) {
+          var td = document.createElement("td");
+          td.className = "px-4 py-3 text-slate-700 text-sm";
+          td.textContent = val;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+  }
+}
+
+function _makeTierRowEl(container, data) {
+  data = data || {};
+  var row = document.createElement("div");
+  row.className = "flex flex-wrap gap-2 items-end";
+  function _numField(hint, value, placeholder) {
+    var wrap = document.createElement("div");
+    wrap.className = "flex flex-col gap-0.5";
+    var lbl = document.createElement("label");
+    lbl.className = "text-xs text-slate-400";
+    lbl.textContent = hint;
+    var inp = document.createElement("input");
+    inp.type = "number";
+    inp.min = "0";
+    inp.placeholder = placeholder;
+    inp.className = "w-28 rounded-lg border border-slate-200 px-2 py-1.5 text-sm";
+    inp.value = value != null ? String(value) : "";
+    wrap.appendChild(lbl);
+    wrap.appendChild(inp);
+    return { wrap: wrap, inp: inp };
+  }
+  var minV = _numField("Min value (¢)", data.minValueCents, "0");
+  var maxV = _numField("Max value (¢, blank=open)", data.maxValueCents != null ? data.maxValueCents : "", "Open");
+  var fixedF = _numField("Fixed fee (¢)", data.fixedFeeCents, "0");
+  var pctF = _numField("% fee (bps, 1000=10%)", data.percentageFeeBps, "0");
+  var removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.className = "text-red-400 hover:text-red-600 text-xs font-bold pb-1.5";
+  removeBtn.textContent = "✕ Remove";
+  removeBtn.addEventListener("click", function () { if (container.contains(row)) container.removeChild(row); });
+  row.appendChild(minV.wrap);
+  row.appendChild(maxV.wrap);
+  row.appendChild(fixedF.wrap);
+  row.appendChild(pctF.wrap);
+  row.appendChild(removeBtn);
+  row._collectTier = function () {
+    return {
+      minValueCents: parseInt(minV.inp.value || "0", 10),
+      maxValueCents: maxV.inp.value.trim() === "" ? null : parseInt(maxV.inp.value, 10),
+      fixedFeeCents: parseInt(fixedF.inp.value || "0", 10),
+      percentageFeeBps: parseInt(pctF.inp.value || "0", 10)
+    };
+  };
+  container.appendChild(row);
+}
+
+function initTierEditor() {
+  var container = $("tier-rows-editor");
+  var editForm = $("tier-policy-edit-form");
+  var editBtn = $("btn-edit-tier-policy");
+  if (!container || !editForm || !editBtn) return;
+  container.innerHTML = "";
+  _makeTierRowEl(container, { minValueCents: 0, maxValueCents: null, fixedFeeCents: 100, percentageFeeBps: 1000 });
+  editForm.classList.remove("hidden");
+  editBtn.classList.add("hidden");
+  var vr = $("tier-validation-result");
+  if (vr) vr.classList.add("hidden");
+}
+
+async function handleValidateTiers() {
+  var container = $("tier-rows-editor");
+  var resultEl = $("tier-validation-result");
+  if (!container || !resultEl) return;
+  var rows = Array.from(container.children).map(function (r) { return typeof r._collectTier === "function" ? r._collectTier() : null; }).filter(Boolean);
+  try {
+    var res = await adminFetch("/api/admin/pricing/tier-policy/validate", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tiers: rows })
+    });
+    var data = await res.json().catch(function () { return {}; });
+    resultEl.classList.remove("hidden");
+    if (res.ok && data && data.ok === true) {
+      resultEl.className = "text-xs rounded-xl px-3 py-2 bg-emerald-50 text-emerald-700";
+      resultEl.textContent = "Validation passed — tiers are valid.";
+    } else {
+      var errs = (data && data.data && Array.isArray(data.data.errors)) ? data.data.errors : [(data && data.error) || "Validation failed"];
+      resultEl.className = "text-xs rounded-xl px-3 py-2 bg-red-50 text-red-700";
+      resultEl.textContent = "Errors: " + errs.join(", ");
+    }
+  } catch (e) {
+    resultEl.classList.remove("hidden");
+    resultEl.className = "text-xs rounded-xl px-3 py-2 bg-red-50 text-red-700";
+    resultEl.textContent = "Validation request failed.";
+  }
+}
+
+async function handlePublishTiers() {
+  var container = $("tier-rows-editor");
+  if (!container) return;
+  var rows = Array.from(container.children).map(function (r) { return typeof r._collectTier === "function" ? r._collectTier() : null; }).filter(Boolean);
+  var confirmed = await window.tstsConfirm("Publish new pricing tier version? This will apply to all new bookings from this point forward. Existing bookings are not affected.", { confirmText: "Publish" });
+  if (!confirmed) return;
+  try {
+    var res = await adminFetch("/api/admin/pricing/tier-policy/publish", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tiers: rows })
+    });
+    var data = await res.json().catch(function () { return {}; });
+    if (res.ok && data && data.ok === true) {
+      window.tstsNotify("New pricing tier version published.", "success");
+      var ef = $("tier-policy-edit-form"); var eb = $("btn-edit-tier-policy");
+      if (ef) ef.classList.add("hidden"); if (eb) eb.classList.remove("hidden");
+      loadTierPolicy().then(renderTierPolicy).catch(function () {});
+    } else {
+      window.tstsNotify((data && data.error) ? "Publish failed: " + data.error : "Failed to publish tier policy.", "error");
+    }
+  } catch (e) { window.tstsNotify("Failed to publish tier policy.", "error"); }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// REFUND WINDOW POLICY
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function loadRefundWindowPolicy() {
+  var res = await adminFetch("/api/admin/pricing/refund-policy", { method: "GET" });
+  var data = await res.json().catch(function () { return {}; });
+  if (!res.ok || !data || data.ok !== true) throw new Error("Failed to load refund policy");
+  return data;
+}
+
+function renderRefundWindowPolicy(payload) {
+  var root = (payload && typeof payload === "object") ? payload : {};
+  var d = (root.data && typeof root.data === "object") ? root.data : root;
+  var active = (d.active && typeof d.active === "object") ? d.active : {};
+  var metaEl = $("refund-policy-version-meta");
+  var tbody = $("refund-policy-table-body");
+  if (metaEl) {
+    var vId = String(active.policyId || active.version || "—");
+    var effFrom = active.effectiveFrom ? formatDateValue(active.effectiveFrom) : "—";
+    metaEl.textContent = "Active version: " + vId + " — effective from: " + effFrom;
+  }
+  if (tbody) {
+    tbody.innerHTML = "";
+    var rows = Array.isArray(active.windows) ? active.windows : [];
+    if (rows.length === 0) {
+      var emptyTr = document.createElement("tr");
+      var emptyTd = document.createElement("td");
+      emptyTd.colSpan = 4;
+      emptyTd.className = "px-4 py-6 text-center text-slate-400 text-sm";
+      emptyTd.textContent = "No active windows. Click Edit Refund Windows to define windows.";
+      emptyTr.appendChild(emptyTd);
+      tbody.appendChild(emptyTr);
+    } else {
+      rows.forEach(function (w, i) {
+        var tr = document.createElement("tr");
+        [
+          String(i + 1),
+          String(w.minHoursBeforeEvent || 0) + "h",
+          (w.maxHoursBeforeEvent == null) ? "Open-ended" : String(w.maxHoursBeforeEvent) + "h",
+          ((w.refundPercentBps || 0) / 100).toFixed(0) + "%"
+        ].forEach(function (val) {
+          var td = document.createElement("td");
+          td.className = "px-4 py-3 text-slate-700 text-sm";
+          td.textContent = val;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+  }
+}
+
+function _makeRefundRowEl(container, data) {
+  data = data || {};
+  var row = document.createElement("div");
+  row.className = "flex flex-wrap gap-2 items-end";
+  function _numField(hint, value, placeholder) {
+    var wrap = document.createElement("div");
+    wrap.className = "flex flex-col gap-0.5";
+    var lbl = document.createElement("label");
+    lbl.className = "text-xs text-slate-400";
+    lbl.textContent = hint;
+    var inp = document.createElement("input");
+    inp.type = "number";
+    inp.min = "0";
+    inp.placeholder = placeholder;
+    inp.className = "w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-sm";
+    inp.value = value != null ? String(value) : "";
+    wrap.appendChild(lbl);
+    wrap.appendChild(inp);
+    return { wrap: wrap, inp: inp };
+  }
+  var minH = _numField("Min hours before event", data.minHoursBeforeEvent, "0");
+  var maxH = _numField("Max hours (blank=open)", data.maxHoursBeforeEvent != null ? data.maxHoursBeforeEvent : "", "Open");
+  var refPct = _numField("Refund % (0–100)", data.refundPercentBps != null ? (data.refundPercentBps / 100) : "", "0");
+  var removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.className = "text-red-400 hover:text-red-600 text-xs font-bold pb-1.5";
+  removeBtn.textContent = "✕ Remove";
+  removeBtn.addEventListener("click", function () { if (container.contains(row)) container.removeChild(row); });
+  row.appendChild(minH.wrap);
+  row.appendChild(maxH.wrap);
+  row.appendChild(refPct.wrap);
+  row.appendChild(removeBtn);
+  row._collectWindow = function () {
+    return {
+      minHoursBeforeEvent: parseInt(minH.inp.value || "0", 10),
+      maxHoursBeforeEvent: maxH.inp.value.trim() === "" ? null : parseInt(maxH.inp.value, 10),
+      refundPercentBps: Math.round(parseFloat(refPct.inp.value || "0") * 100)
+    };
+  };
+  container.appendChild(row);
+}
+
+function initRefundEditor() {
+  var container = $("refund-rows-editor");
+  var editForm = $("refund-policy-edit-form");
+  var editBtn = $("btn-edit-refund-policy");
+  if (!container || !editForm || !editBtn) return;
+  container.innerHTML = "";
+  _makeRefundRowEl(container, { minHoursBeforeEvent: 72, maxHoursBeforeEvent: null, refundPercentBps: 9500 });
+  _makeRefundRowEl(container, { minHoursBeforeEvent: 48, maxHoursBeforeEvent: 72, refundPercentBps: 7500 });
+  _makeRefundRowEl(container, { minHoursBeforeEvent: 24, maxHoursBeforeEvent: 48, refundPercentBps: 5000 });
+  _makeRefundRowEl(container, { minHoursBeforeEvent: 0, maxHoursBeforeEvent: 24, refundPercentBps: 0 });
+  editForm.classList.remove("hidden");
+  editBtn.classList.add("hidden");
+  var vr = $("refund-validation-result");
+  if (vr) vr.classList.add("hidden");
+}
+
+async function handleValidateRefund() {
+  var container = $("refund-rows-editor");
+  var resultEl = $("refund-validation-result");
+  if (!container || !resultEl) return;
+  var rows = Array.from(container.children).map(function (r) { return typeof r._collectWindow === "function" ? r._collectWindow() : null; }).filter(Boolean);
+  try {
+    var res = await adminFetch("/api/admin/pricing/refund-policy/validate", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ windows: rows })
+    });
+    var data = await res.json().catch(function () { return {}; });
+    resultEl.classList.remove("hidden");
+    if (res.ok && data && data.ok === true) {
+      resultEl.className = "text-xs rounded-xl px-3 py-2 bg-emerald-50 text-emerald-700";
+      resultEl.textContent = "Validation passed — refund windows are valid.";
+    } else {
+      var errs = (data && data.data && Array.isArray(data.data.errors)) ? data.data.errors : [(data && data.error) || "Validation failed"];
+      resultEl.className = "text-xs rounded-xl px-3 py-2 bg-red-50 text-red-700";
+      resultEl.textContent = "Errors: " + errs.join(", ");
+    }
+  } catch (e) {
+    resultEl.classList.remove("hidden");
+    resultEl.className = "text-xs rounded-xl px-3 py-2 bg-red-50 text-red-700";
+    resultEl.textContent = "Validation request failed.";
+  }
+}
+
+async function handlePublishRefund() {
+  var container = $("refund-rows-editor");
+  if (!container) return;
+  var rows = Array.from(container.children).map(function (r) { return typeof r._collectWindow === "function" ? r._collectWindow() : null; }).filter(Boolean);
+  var confirmed = await window.tstsConfirm("Publish new refund window policy? This will apply to all new bookings from this point forward. Existing bookings use their snapshot.", { confirmText: "Publish" });
+  if (!confirmed) return;
+  try {
+    var res = await adminFetch("/api/admin/pricing/refund-policy/publish", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ windows: rows })
+    });
+    var data = await res.json().catch(function () { return {}; });
+    if (res.ok && data && data.ok === true) {
+      window.tstsNotify("New refund window policy published.", "success");
+      var ef = $("refund-policy-edit-form"); var eb = $("btn-edit-refund-policy");
+      if (ef) ef.classList.add("hidden"); if (eb) eb.classList.remove("hidden");
+      loadRefundWindowPolicy().then(renderRefundWindowPolicy).catch(function () {});
+    } else {
+      window.tstsNotify((data && data.error) ? "Publish failed: " + data.error : "Failed to publish refund policy.", "error");
+    }
+  } catch (e) { window.tstsNotify("Failed to publish refund policy.", "error"); }
+}
+
 let __adminWired = false;
 
 function wireAdminEvents() {
@@ -1934,6 +2569,7 @@ function wireAdminEvents() {
   const saveVerificationPolicyBtn = $("btn-save-verification-policy");
   const refreshHostVerifications = $("btn-refresh-host-verifications");
   const refreshEventVerifications = $("btn-refresh-event-verifications");
+  const refreshShortfallMonitor = $("btn-refresh-shortfall-monitor");
   const refreshActionItems = $("btn-refresh-action-items");
   const actionItemsStatusFilter = $("action-items-status-filter");
   const refreshUsers = $("btn-refresh-users");
@@ -1980,6 +2616,41 @@ function wireAdminEvents() {
   if (saveVerificationPolicyBtn) saveVerificationPolicyBtn.addEventListener("click", () => handleSaveVerificationPolicy());
   if (refreshHostVerifications) refreshHostVerifications.addEventListener("click", () => loadHostVerifications("all").then(renderHostVerifications).catch(function () { window.tstsNotify("Failed to refresh host verifications.", "error"); renderHostVerifications({ data: { items: [] } }); }));
   if (refreshEventVerifications) refreshEventVerifications.addEventListener("click", () => loadEventVerifications("all").then(renderEventVerifications).catch(function () { window.tstsNotify("Failed to refresh event verifications.", "error"); renderEventVerifications({ data: { items: [] } }); }));
+  if (refreshShortfallMonitor) refreshShortfallMonitor.addEventListener("click", () => refreshShortfallViews().catch(function () { window.tstsNotify("Failed to refresh shortfall monitor.", "error"); }));
+
+  // Pricing Tier Policy
+  var refreshTierPolicyBtn = $("btn-refresh-tier-policy");
+  var editTierPolicyBtn = $("btn-edit-tier-policy");
+  var addTierRowBtn = $("btn-add-tier-row");
+  var validateTiersBtn = $("btn-validate-tiers");
+  var publishTiersBtn = $("btn-publish-tiers");
+  var cancelTierEditBtn = $("btn-cancel-tier-edit");
+  if (refreshTierPolicyBtn) refreshTierPolicyBtn.addEventListener("click", function () { loadTierPolicy().then(renderTierPolicy).catch(function () { window.tstsNotify("Failed to refresh tier policy.", "error"); }); });
+  if (editTierPolicyBtn) editTierPolicyBtn.addEventListener("click", initTierEditor);
+  if (addTierRowBtn) addTierRowBtn.addEventListener("click", function () { _makeTierRowEl($("tier-rows-editor")); });
+  if (validateTiersBtn) validateTiersBtn.addEventListener("click", handleValidateTiers);
+  if (publishTiersBtn) publishTiersBtn.addEventListener("click", handlePublishTiers);
+  if (cancelTierEditBtn) cancelTierEditBtn.addEventListener("click", function () {
+    var ef = $("tier-policy-edit-form"); var eb = $("btn-edit-tier-policy");
+    if (ef) ef.classList.add("hidden"); if (eb) eb.classList.remove("hidden");
+  });
+
+  // Refund Window Policy
+  var refreshRefundPolicyBtn = $("btn-refresh-refund-policy");
+  var editRefundPolicyBtn = $("btn-edit-refund-policy");
+  var addRefundRowBtn = $("btn-add-refund-row");
+  var validateRefundBtn = $("btn-validate-refund");
+  var publishRefundBtn = $("btn-publish-refund");
+  var cancelRefundEditBtn = $("btn-cancel-refund-edit");
+  if (refreshRefundPolicyBtn) refreshRefundPolicyBtn.addEventListener("click", function () { loadRefundWindowPolicy().then(renderRefundWindowPolicy).catch(function () { window.tstsNotify("Failed to refresh refund policy.", "error"); }); });
+  if (editRefundPolicyBtn) editRefundPolicyBtn.addEventListener("click", initRefundEditor);
+  if (addRefundRowBtn) addRefundRowBtn.addEventListener("click", function () { _makeRefundRowEl($("refund-rows-editor")); });
+  if (validateRefundBtn) validateRefundBtn.addEventListener("click", handleValidateRefund);
+  if (publishRefundBtn) publishRefundBtn.addEventListener("click", handlePublishRefund);
+  if (cancelRefundEditBtn) cancelRefundEditBtn.addEventListener("click", function () {
+    var ef = $("refund-policy-edit-form"); var eb = $("btn-edit-refund-policy");
+    if (ef) ef.classList.add("hidden"); if (eb) eb.classList.remove("hidden");
+  });
   if (refreshActionItems) refreshActionItems.addEventListener("click", () => refreshActionItemsView().catch(function () { window.tstsNotify("Failed to refresh action items.", "error"); renderActionItems({ data: { items: [] } }); }));
   if (actionItemsStatusFilter) actionItemsStatusFilter.addEventListener("change", () => refreshActionItemsView().catch(function () { window.tstsNotify("Failed to filter action items.", "error"); renderActionItems({ data: { items: [] } }); }));
   if (refreshUsers) refreshUsers.addEventListener("click", () => loadUsers().then(renderUsers).catch(function () { window.tstsNotify("Failed to refresh users.", "error"); renderUsers([]); }));
@@ -2004,7 +2675,7 @@ async function boot() {
   try {
     var _bootFailed = false;
     function _bootCatch(fallback) { return function () { _bootFailed = true; return fallback; }; }
-    const [stats, bookings, exps, users, promos, reports, privateRequests, auditData, inviteData, verificationPolicy, hostVerifications, eventVerifications, actionItems, dashSummary, marketingStatus] = await Promise.all([
+    const [stats, bookings, exps, users, promos, reports, privateRequests, auditData, inviteData, verificationPolicy, hostVerifications, eventVerifications, shortfallData, actionItems, dashSummary, marketingStatus, tierPolicyData, refundPolicyData] = await Promise.all([
       loadStats().catch(_bootCatch({})),
       loadBookings().catch(_bootCatch([])),
       loadExperiences().catch(_bootCatch([])),
@@ -2017,9 +2688,12 @@ async function boot() {
       loadVerificationFeePolicy().catch(_bootCatch({ data: { policy: { feePercent: 0, policyVersion: "Unavailable", effectiveFrom: null } } })),
       loadHostVerifications("all").catch(_bootCatch({ data: { items: [] } })),
       loadEventVerifications("all").catch(_bootCatch({ data: { items: [] } })),
+      loadShortfallMonitor({ limit: 250 }).catch(_bootCatch({ data: { slots: [], settlementCases: [], reasonCodes: [], settlementReasonCodes: [] } })),
       loadAdminActionItems("pending").catch(_bootCatch({ data: { items: [] } })),
       loadDashboardSummary().catch(_bootCatch({})),
-      loadMarketingEmailStatus().catch(_bootCatch({ data: { enabled: false } }))
+      loadMarketingEmailStatus().catch(_bootCatch({ data: { enabled: false } })),
+      loadTierPolicy().catch(_bootCatch({})),
+      loadRefundWindowPolicy().catch(_bootCatch({}))
     ]);
     if (_bootFailed) window.tstsNotify("Some admin data failed to load. Sections may be incomplete.", "error");
 
@@ -2036,8 +2710,13 @@ async function boot() {
     renderAdminInvites((inviteData && inviteData.items) || []);
     renderVerificationPolicy(verificationPolicy);
     renderMarketingEmailStatus(marketingStatus);
+    renderTierPolicy(tierPolicyData);
+    renderRefundWindowPolicy(refundPolicyData);
     renderHostVerifications(hostVerifications);
     renderEventVerifications(eventVerifications);
+    renderShortfallReview(shortfallData);
+    renderShortfallReconciliation(shortfallData);
+    renderShortfallSettlementCases(shortfallData);
     renderActionItems(actionItems);
     switchTab(resolveInitialAdminTab());
   } catch (e) {

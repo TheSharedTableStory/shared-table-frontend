@@ -44,6 +44,11 @@
   const pricingPrivateSummaryEl = document.getElementById("pricing-private-summary");
   const pricingHostChargeNoteEl = document.getElementById("pricing-host-charge-note");
   const pricingPolicyReferenceEl = document.getElementById("pricing-policy-reference");
+  const shortfallRefreshBtn = document.getElementById("shortfall-refresh-btn");
+  const shortfallLoadingEl = document.getElementById("shortfall-loading");
+  const shortfallEmptyEl = document.getElementById("shortfall-empty");
+  const shortfallErrorEl = document.getElementById("shortfall-error");
+  const shortfallSlotListEl = document.getElementById("shortfall-slot-list");
   const timezoneInput = document.getElementById("experienceTimezone");
   const cutoffEnabledInput = document.getElementById("bookingCutoffEnabled");
   const cutoffHoursInput = document.getElementById("bookingCutoffHours");
@@ -149,8 +154,14 @@
   let verificationFeePercent = 5.0;
   let verificationPolicyVersion = "";
   let activePolicySnapshot = null;
+  let activePricingPolicy = null;
+  let activeRefundPolicy = null;
   let platformFeeRate = null; // null = policy not yet loaded from API
   let platformFeeBps = null;
+  let shortfallSlotsCache = [];
+  let shortfallRequestCounter = 0;
+  const shortfallPaymentInFlight = new Set();
+  const shortfallPaymentPendingWebhook = new Set();
 
   function ensureInlineNotice() {
     let el = document.getElementById("host-inline-notice");
@@ -308,16 +319,90 @@
     return v || "Unavailable";
   }
 
+  function toNonNegInt(value, fallback) {
+    var fb = Number.isFinite(Number(fallback)) ? Math.max(0, Math.floor(Number(fallback))) : 0;
+    var n = Number(value);
+    if (!Number.isFinite(n)) return fb;
+    return Math.max(0, Math.floor(n));
+  }
+
+  function normalizeTierRows(rawRows) {
+    var rows = Array.isArray(rawRows) ? rawRows : [];
+    var out = [];
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i] && typeof rows[i] === "object" ? rows[i] : {};
+      var minValueCents = toNonNegInt(
+        (row.minValueCents != null) ? row.minValueCents : row.min_value_cents,
+        0
+      );
+      var maxRaw = (row.maxValueCents != null) ? row.maxValueCents : row.max_value_cents;
+      var maxValueCents = (maxRaw == null || maxRaw === "") ? null : toNonNegInt(maxRaw, 0);
+      out.push({
+        id: String(row.id || ("tier_" + i)),
+        minValueCents: minValueCents,
+        maxValueCents: maxValueCents,
+        fixedFeeCents: toNonNegInt((row.fixedFeeCents != null) ? row.fixedFeeCents : row.fixed_fee_cents, 0),
+        percentageFeeBps: toNonNegInt((row.percentageFeeBps != null) ? row.percentageFeeBps : row.percentage_fee_bps, 0),
+        status: String(row.status || "active").toLowerCase() === "archived" ? "archived" : "active",
+        order: Number.isFinite(Number(row.order)) ? Number(row.order) : i
+      });
+    }
+    out.sort(function (a, b) {
+      if (a.order !== b.order) return a.order - b.order;
+      return a.minValueCents - b.minValueCents;
+    });
+    return out;
+  }
+
+  function pickTierForBookingValue(rows, bookingValueCents) {
+    var value = toNonNegInt(bookingValueCents, 0);
+    var list = Array.isArray(rows) ? rows : [];
+    for (var i = 0; i < list.length; i++) {
+      var row = list[i];
+      if (!row || row.status !== "active") continue;
+      if (value < Number(row.minValueCents || 0)) continue;
+      if (row.maxValueCents != null && value >= Number(row.maxValueCents || 0)) continue;
+      return row;
+    }
+    return null;
+  }
+
+  function computePlatformFeeFromTierRow(tier, bookingValueCents) {
+    if (!tier || typeof tier !== "object") return 0;
+    var value = toNonNegInt(bookingValueCents, 0);
+    var fixedFee = toNonNegInt(tier.fixedFeeCents, 0);
+    var bps = toNonNegInt(tier.percentageFeeBps, 0);
+    return Math.max(0, Math.round(fixedFee + (value * (bps / 10000))));
+  }
+
+  function tierRangeLabel(tier) {
+    if (!tier || typeof tier !== "object") return "Not matched";
+    var minLabel = formatMoneyFromCents(toNonNegInt(tier.minValueCents, 0));
+    if (tier.maxValueCents == null) return minLabel + "+";
+    return minLabel + " to " + formatMoneyFromCents(toNonNegInt(tier.maxValueCents, 0));
+  }
+
   function computePublicPricingBreakdown(priceRaw) {
     const guestPriceCents = toCents(priceRaw);
     if (!(Number.isFinite(guestPriceCents) && guestPriceCents > 0)) return null;
-    const platformFeeCents = Math.max(0, Math.round(Number(guestPriceCents) * platformFeeRate));
+    var tierRows = normalizeTierRows(activePricingPolicy && activePricingPolicy.tiers);
+    var tier = pickTierForBookingValue(tierRows, guestPriceCents);
+    var platformFeeCents = 0;
+    var effectiveBps = null;
+    if (tier) {
+      platformFeeCents = computePlatformFeeFromTierRow(tier, guestPriceCents);
+      effectiveBps = toNonNegInt(tier.percentageFeeBps, 0);
+    } else if (platformFeeRate != null) {
+      platformFeeCents = Math.max(0, Math.round(Number(guestPriceCents) * platformFeeRate));
+      effectiveBps = platformFeeBps;
+    }
     const hostPayoutCents = Math.max(0, Number(guestPriceCents) - platformFeeCents);
     return {
       guestPriceCents: Number(guestPriceCents),
-      platformFeeBps: platformFeeBps,
+      platformFeeBps: effectiveBps,
       platformFeeCents: Number(platformFeeCents),
       hostPayoutCents: Number(hostPayoutCents),
+      tier: tier
     };
   }
 
@@ -330,7 +415,9 @@
   function resolvePlatformFeeEstimate(price) {
     const b = computePublicPricingBreakdown(price);
     if (!b) return "—";
-    return "-" + formatMoneyFromCents(b.platformFeeCents) + " (" + String(platformFeeBps / 100) + "% of public price)";
+    var pct = Number.isFinite(Number(b.platformFeeBps)) ? (Number(b.platformFeeBps) / 100).toFixed(2).replace(/\.00$/, "") : "0";
+    var tierText = b.tier ? ("Tier range: " + tierRangeLabel(b.tier)) : "Tier range unavailable";
+    return "-" + formatMoneyFromCents(b.platformFeeCents) + " (" + pct + "% + fixed tier component). " + tierText;
   }
 
   function resolvePrivateSummary() {
@@ -372,6 +459,34 @@
     return "No verification deduction until your event verification request is approved.";
   }
 
+  function ensurePricingShortfallWarningEl() {
+    var existing = document.getElementById("pricing-shortfall-warning");
+    if (existing) return existing;
+    var panel = document.getElementById("pricing-transparency-panel");
+    if (!panel) return null;
+    var el = window.tstsEl("div", {
+      id: "pricing-shortfall-warning",
+      className: "hidden rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-xs text-red-700"
+    }, "");
+    panel.appendChild(el);
+    return el;
+  }
+
+  function syncPricingShortfallWarning(pricingBreakdown) {
+    var warningEl = ensurePricingShortfallWarningEl();
+    if (!warningEl) return;
+    var b = pricingBreakdown;
+    var active = !!(b && Number(b.platformFeeCents) > Number(b.guestPriceCents));
+    if (!active) {
+      warningEl.classList.add("hidden");
+      warningEl.textContent = "";
+      return;
+    }
+    var shortfallCents = Math.max(0, Number(b.platformFeeCents) - Number(b.guestPriceCents));
+    warningEl.classList.remove("hidden");
+    warningEl.textContent = "Deficit warning: platform fee (" + formatMoneyFromCents(b.platformFeeCents) + ") is higher than booking value (" + formatMoneyFromCents(b.guestPriceCents) + "). For non-admin deficit cases, host confirmation is required and shortfall funding is staged (50% seats upfront, remaining at threshold). Shortfall per seat: " + formatMoneyFromCents(shortfallCents) + ".";
+  }
+
   function syncPricingTransparency() {
     if (platformFeeRate === null) {
       // Fee policy not yet loaded — show raw public price (fee-independent) and loading states
@@ -386,6 +501,7 @@
       if (pricingHostPayoutEstimateEl) pricingHostPayoutEstimateEl.textContent = "Loading\u2026";
       if (pricingVerifiedImpactEl) pricingVerifiedImpactEl.textContent = "Loading\u2026";
       if (pricingPolicyReferenceEl) pricingPolicyReferenceEl.textContent = "Loading policy\u2026";
+      syncPricingShortfallWarning(null);
       return;
     }
     const publicPrice = priceInput ? safeNum(priceInput.value) : null;
@@ -411,8 +527,11 @@
     if (pricingPolicyReferenceEl) {
       const ver = resolvePolicyVersion();
       const feeVer = verificationPolicyVersion ? String(verificationPolicyVersion) : "Unavailable";
-      pricingPolicyReferenceEl.textContent = "Policy reference: " + ver + " (booking policy) • " + feeVer + " (verification fee policy " + verificationFeePercent.toFixed(1) + "%).";
+      const pricingVer = activePricingPolicy && activePricingPolicy.version ? String(activePricingPolicy.version) : "Unavailable";
+      const refundVer = activeRefundPolicy && activeRefundPolicy.version ? String(activeRefundPolicy.version) : "Unavailable";
+      pricingPolicyReferenceEl.textContent = "Policy reference: " + ver + " (legacy booking policy) • " + pricingVer + " (tier pricing) • " + refundVer + " (refund windows) • " + feeVer + " (verification fee policy " + verificationFeePercent.toFixed(1) + "%).";
     }
+    syncPricingShortfallWarning(pricingBreakdown);
   }
 
   async function loadActivePolicySnapshot() {
@@ -425,9 +544,15 @@
       }
       const payload = await res.json().catch(() => ({}));
       const policy = (payload && payload.data && payload.data.policy) ? payload.data.policy : ((payload && payload.policy) ? payload.policy : null);
+      const pricingPolicy = (payload && payload.data && payload.data.pricingPolicy) ? payload.data.pricingPolicy : null;
+      const refundPolicy = (payload && payload.data && payload.data.refundPolicy) ? payload.data.refundPolicy : null;
       activePolicySnapshot = (policy && typeof policy === "object") ? policy : null;
+      activePricingPolicy = (pricingPolicy && typeof pricingPolicy === "object") ? pricingPolicy : null;
+      activeRefundPolicy = (refundPolicy && typeof refundPolicy === "object") ? refundPolicy : null;
     } catch (_) {
       activePolicySnapshot = null;
+      activePricingPolicy = null;
+      activeRefundPolicy = null;
     }
     syncPricingTransparency();
   }
@@ -470,6 +595,358 @@
     }
     syncVerifiedUi();
     syncPricingTransparency();
+  }
+
+  function shortfallBadgeClass(state) {
+    var key = String(state || "").toUpperCase();
+    if (key === "APPROVED" || key === "FULLY_FUNDED") return "bg-emerald-100 text-emerald-700";
+    if (key === "UNDER_REVIEW" || key === "STAGE_A_DUE" || key === "STAGE_B_DUE" || key === "BOOKING_FROZEN_STAGE_B") return "bg-amber-100 text-amber-700";
+    if (key === "REJECTED") return "bg-red-100 text-red-700";
+    return "bg-slate-100 text-slate-700";
+  }
+
+  function shortfallStateLabel(state) {
+    return String(state || "none").toLowerCase().replace(/_/g, " ");
+  }
+
+  function shortfallPaymentUiLabel(state) {
+    var s = String(state || "").toUpperCase();
+    if (s === "PAYMENT_IN_PROGRESS") return "Payment in progress";
+    if (s === "PAYMENT_CONFIRMED_PENDING_WEBHOOK") return "Payment confirmed, awaiting webhook";
+    if (s === "PAID") return "Paid";
+    return "Payment required";
+  }
+
+  function shortfallEffectiveUiState(slot) {
+    var slotId = String((slot && slot.slotId) || "");
+    if (shortfallPaymentInFlight.has(slotId)) return "PAYMENT_IN_PROGRESS";
+    if (shortfallPaymentPendingWebhook.has(slotId)) return "PAYMENT_CONFIRMED_PENDING_WEBHOOK";
+    return String((slot && slot.paymentUiState) || "PAYMENT_REQUIRED");
+  }
+
+  function nextShortfallStage(slot) {
+    var s = slot && typeof slot === "object" ? slot : {};
+    var stageARemaining = Number((s.stageA && s.stageA.remainingCents) || 0);
+    var stageBRemaining = Number((s.stageB && s.stageB.remainingCents) || 0);
+    var threshold = Number(s.thresholdSeatsSnapshot || 0);
+    var booked = Number(s.bookedSeats || 0);
+    if (stageARemaining > 0) return "A";
+    if (stageBRemaining > 0 && booked >= threshold) return "B";
+    return "";
+  }
+
+  function setShortfallUiState(mode, errorMessage) {
+    if (shortfallLoadingEl) shortfallLoadingEl.classList.add("hidden");
+    if (shortfallEmptyEl) shortfallEmptyEl.classList.add("hidden");
+    if (shortfallErrorEl) shortfallErrorEl.classList.add("hidden");
+    if (shortfallSlotListEl) {
+      shortfallSlotListEl.classList.add("hidden");
+      shortfallSlotListEl.textContent = "";
+    }
+    if (mode === "loading" && shortfallLoadingEl) shortfallLoadingEl.classList.remove("hidden");
+    if (mode === "empty" && shortfallEmptyEl) shortfallEmptyEl.classList.remove("hidden");
+    if (mode === "error" && shortfallErrorEl) {
+      shortfallErrorEl.classList.remove("hidden");
+      if (errorMessage) shortfallErrorEl.textContent = String(errorMessage);
+    }
+    if (mode === "ready" && shortfallSlotListEl) shortfallSlotListEl.classList.remove("hidden");
+  }
+
+  async function fetchShortfallStatus(opts) {
+    var options = opts && typeof opts === "object" ? opts : {};
+    var query = new URLSearchParams();
+    query.set("limit", String(options.limit || 150));
+    if (options.slotId) query.set("slotId", String(options.slotId));
+    var path = "/api/host/shortfall/status?" + query.toString();
+    var res = await window.authFetch(path, { method: "GET" });
+    var payload = await res.json().catch(function () { return {}; });
+    if (!res.ok || !payload || payload.ok !== true) {
+      var msg = String((payload && payload.message) || "Could not load shortfall status.");
+      throw new Error(msg);
+    }
+    var data = (payload && payload.data && typeof payload.data === "object") ? payload.data : payload;
+    var slots = Array.isArray(data.slots) ? data.slots : [];
+    return { slots: slots, meta: data };
+  }
+
+  function ensureShortfallPaymentModal() {
+    var overlay = document.getElementById("shortfall-payment-overlay");
+    if (overlay) {
+      return {
+        overlay: overlay,
+        titleEl: document.getElementById("shortfall-payment-title"),
+        metaEl: document.getElementById("shortfall-payment-meta"),
+        elementMount: document.getElementById("shortfall-payment-element"),
+        statusEl: document.getElementById("shortfall-payment-status"),
+        closeBtn: document.getElementById("shortfall-payment-close"),
+        submitBtn: document.getElementById("shortfall-payment-submit")
+      };
+    }
+    var El = window.tstsEl;
+    if (!El) return null;
+
+    overlay = El("div", {
+      id: "shortfall-payment-overlay",
+      className: "fixed inset-0 z-[1000] hidden items-center justify-center bg-slate-900/50 px-4"
+    });
+    var card = El("div", { className: "w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl space-y-4" });
+    var header = El("div", { className: "flex items-start justify-between gap-3" }, [
+      El("div", { className: "space-y-1" }, [
+        El("h3", { id: "shortfall-payment-title", className: "text-lg font-bold text-slate-900", textContent: "Pay shortfall" }),
+        El("p", { id: "shortfall-payment-meta", className: "text-xs text-slate-600", textContent: "" })
+      ]),
+      El("button", { id: "shortfall-payment-close", type: "button", className: "rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50", textContent: "Close" })
+    ]);
+    var mount = El("div", { id: "shortfall-payment-element", className: "rounded-xl border border-slate-200 p-3 bg-white" });
+    var status = El("p", { id: "shortfall-payment-status", className: "text-xs text-slate-600", textContent: "Complete payment to unlock this stage." });
+    var actions = El("div", { className: "flex items-center justify-end gap-2" }, [
+      El("button", { id: "shortfall-payment-submit", type: "button", className: "inline-flex items-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90", textContent: "Pay now" })
+    ]);
+    card.appendChild(header);
+    card.appendChild(mount);
+    card.appendChild(status);
+    card.appendChild(actions);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+
+    return {
+      overlay: overlay,
+      titleEl: document.getElementById("shortfall-payment-title"),
+      metaEl: document.getElementById("shortfall-payment-meta"),
+      elementMount: document.getElementById("shortfall-payment-element"),
+      statusEl: document.getElementById("shortfall-payment-status"),
+      closeBtn: document.getElementById("shortfall-payment-close"),
+      submitBtn: document.getElementById("shortfall-payment-submit")
+    };
+  }
+
+  async function pollShortfallSlotUntilWebhook(slotId, stage) {
+    var targetSlotId = String(slotId || "");
+    var targetStage = String(stage || "").toUpperCase();
+    for (var i = 0; i < 14; i++) {
+      await new Promise(function (resolve) { setTimeout(resolve, 2500); });
+      var loaded = await loadShortfallDashboard({ silent: true, slotId: targetSlotId });
+      var slots = loaded && Array.isArray(loaded.slots) ? loaded.slots : shortfallSlotsCache;
+      var current = null;
+      for (var j = 0; j < slots.length; j++) {
+        if (String(slots[j] && slots[j].slotId || "") === targetSlotId) { current = slots[j]; break; }
+      }
+      if (!current) continue;
+      var stageAPaid = Number((current.stageA && current.stageA.remainingCents) || 0) <= 0;
+      var stageBPaid = Number((current.stageB && current.stageB.remainingCents) || 0) <= 0;
+      if (targetStage === "A" && stageAPaid) return true;
+      if (targetStage === "B" && stageBPaid) return true;
+      if (String(current.fundingStatus || "").toUpperCase() === "FULLY_FUNDED") return true;
+    }
+    return false;
+  }
+
+  async function openShortfallPaymentFlow(slot, stage, paymentData) {
+    var modal = ensureShortfallPaymentModal();
+    if (!modal) throw new Error("Payment modal could not be initialized.");
+    var publishableKey = String((paymentData && paymentData.publishableKey) || "").trim();
+    if (!publishableKey) throw new Error("Stripe publishable key is missing.");
+    if (!(window.Stripe && typeof window.Stripe === "function")) throw new Error("Stripe SDK not available.");
+    var stripe = window.Stripe(publishableKey);
+    if (!stripe) throw new Error("Stripe could not initialize.");
+
+    var clientSecret = String((paymentData && paymentData.clientSecret) || "").trim();
+    if (!clientSecret) throw new Error("Payment intent secret missing.");
+
+    modal.titleEl.textContent = "Pay shortfall Stage " + String(stage || "");
+    modal.metaEl.textContent = String((slot && slot.experienceTitle) || "Experience") + " • " +
+      String((slot && slot.bookingDate) || "") + " " + String((slot && slot.timeSlot) || "") + " • " +
+      formatMoneyFromCents(Number((paymentData && paymentData.amountCents) || 0));
+    modal.statusEl.textContent = "Complete payment to unlock this stage.";
+    modal.overlay.classList.remove("hidden");
+    modal.overlay.classList.add("flex");
+
+    var elements = stripe.elements({ clientSecret: clientSecret });
+    var paymentElement = elements.create("payment");
+    modal.elementMount.textContent = "";
+    paymentElement.mount(modal.elementMount);
+
+    var closed = false;
+    function closeModal() {
+      if (closed) return;
+      closed = true;
+      try { paymentElement.unmount(); } catch (_) {}
+      modal.overlay.classList.add("hidden");
+      modal.overlay.classList.remove("flex");
+      modal.elementMount.textContent = "";
+      modal.statusEl.textContent = "";
+      modal.submitBtn.disabled = false;
+    }
+
+    return await new Promise(function (resolve) {
+      modal.closeBtn.onclick = function () {
+        closeModal();
+        resolve(false);
+      };
+      modal.submitBtn.disabled = false;
+      modal.submitBtn.onclick = async function () {
+        modal.submitBtn.disabled = true;
+        modal.statusEl.textContent = "Processing payment…";
+        var result = await stripe.confirmPayment({
+          elements: elements,
+          redirect: "if_required"
+        });
+        if (result && result.error) {
+          modal.statusEl.textContent = String(result.error.message || "Payment failed.");
+          modal.submitBtn.disabled = false;
+          return;
+        }
+        modal.statusEl.textContent = "Payment submitted. Waiting for webhook confirmation…";
+        resolve(true);
+        closeModal();
+      };
+    });
+  }
+
+  function renderShortfallSlots(slots) {
+    if (!shortfallSlotListEl) return;
+    shortfallSlotListEl.textContent = "";
+    var El = window.tstsEl;
+    var list = Array.isArray(slots) ? slots : [];
+    for (var i = 0; i < list.length; i++) {
+      var slot = list[i] && typeof list[i] === "object" ? list[i] : {};
+      var uiState = shortfallEffectiveUiState(slot);
+      var approvalState = String(slot.approvalState || "NONE").toUpperCase();
+      var fundingState = String(slot.fundingStatus || "NONE").toUpperCase();
+      var nextStage = nextShortfallStage(slot);
+
+      var header = El("div", { className: "flex flex-wrap items-center justify-between gap-2" }, [
+        El("div", { className: "space-y-1" }, [
+          El("h4", { className: "text-sm font-bold text-slate-900", textContent: String(slot.experienceTitle || "Experience") }),
+          El("p", { className: "text-xs text-slate-600", textContent: String(slot.bookingDate || "") + " • " + String(slot.timeSlot || "") })
+        ]),
+        El("div", { className: "flex flex-wrap items-center gap-2 text-[11px]" }, [
+          El("span", { className: "rounded-full px-2 py-1 font-bold " + shortfallBadgeClass(approvalState), textContent: "Approval: " + shortfallStateLabel(approvalState) }),
+          El("span", { className: "rounded-full px-2 py-1 font-bold " + shortfallBadgeClass(fundingState), textContent: "Funding: " + shortfallStateLabel(fundingState) }),
+          El("span", { className: "rounded-full px-2 py-1 font-bold " + shortfallBadgeClass(uiState), textContent: shortfallPaymentUiLabel(uiState) })
+        ])
+      ]);
+
+      var seatsPanel = El("div", { className: "rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1 text-xs text-slate-700" }, [
+        El("p", { className: "font-bold uppercase tracking-wide text-slate-500", textContent: "Seats" }),
+        El("p", { textContent: "Booked seats: " + String(Number(slot.bookedSeats || 0)) }),
+        El("p", { textContent: "Capacity snapshot: " + String(Number(slot.capacityTotalSnapshot || 0)) }),
+        El("p", { textContent: "Threshold (50%): " + String(Number(slot.thresholdSeatsSnapshot || 0)) })
+      ]);
+      var fundingPanel = El("div", { className: "rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1 text-xs text-slate-700" }, [
+        El("p", { className: "font-bold uppercase tracking-wide text-slate-500", textContent: "Funding" }),
+        El("p", { textContent: "Shortfall per seat: " + formatMoneyFromCents(Number(slot.shortfallPerSeatSnapshotCents || 0)) }),
+        El("p", { textContent: "Stage A paid: " + formatMoneyFromCents(Number(slot.stageA && slot.stageA.paidCents || 0)) + " / " + formatMoneyFromCents(Number(slot.stageA && slot.stageA.dueCents || 0)) }),
+        El("p", { textContent: "Stage B paid: " + formatMoneyFromCents(Number(slot.stageB && slot.stageB.paidCents || 0)) + " / " + formatMoneyFromCents(Number(slot.stageB && slot.stageB.dueCents || 0)) })
+      ]);
+      var settlementPanel = El("div", { className: "rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1 text-xs text-slate-700" }, [
+        El("p", { className: "font-bold uppercase tracking-wide text-slate-500", textContent: "Settlement (+72h)" }),
+        El("p", { textContent: "Refundable principal: " + formatMoneyFromCents(Number(slot.settlement && slot.settlement.refundablePrincipalCents || 0)) }),
+        El("p", { textContent: "Processing fee (5%): " + formatMoneyFromCents(Number(slot.settlement && slot.settlement.processingFeeCents || 0)) }),
+        El("p", { textContent: "Net refund: " + formatMoneyFromCents(Number(slot.settlement && slot.settlement.netRefundCents || 0)) }),
+        El("p", { textContent: "Case status: " + shortfallStateLabel(slot.settlement && slot.settlement.status || "none") })
+      ]);
+
+      var actions = El("div", { className: "flex flex-wrap items-center gap-2 pt-1" });
+      if (approvalState === "APPROVED" && slot.hostConfirmed !== true) {
+        var confirmBtn = El("button", { type: "button", className: "inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50", textContent: "Confirm shortfall terms" });
+        confirmBtn.addEventListener("click", (function (slotIdCopy) {
+          return async function () {
+            try {
+              var r = await window.authFetch("/api/host/shortfall/confirm", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ slotId: slotIdCopy })
+              });
+              var p = await r.json().catch(function () { return {}; });
+              if (!r.ok || !p || p.ok !== true) throw new Error(String((p && p.message) || "Confirmation failed."));
+              window.tstsNotify("Shortfall terms confirmed.", "success");
+              await loadShortfallDashboard({ silent: true });
+            } catch (err) {
+              window.tstsNotify(String((err && err.message) || "Confirmation failed."), "error");
+            }
+          };
+        })(String(slot.slotId || "")));
+        actions.appendChild(confirmBtn);
+      }
+      if (approvalState === "APPROVED" && slot.hostConfirmed === true && nextStage) {
+        var payBtn = El("button", { type: "button", className: "inline-flex items-center rounded-xl bg-tsts-ink px-3 py-2 text-xs font-bold text-white hover:opacity-90", textContent: "Pay shortfall (Stage " + nextStage + ")" });
+        var slotId = String(slot.slotId || "");
+        if (shortfallPaymentInFlight.has(slotId)) {
+          payBtn.disabled = true;
+          payBtn.classList.add("opacity-60");
+          payBtn.textContent = "Payment in progress";
+        }
+        payBtn.addEventListener("click", (function (slotCopy, stageCopy) {
+          return async function () {
+            var slotIdLocal = String((slotCopy && slotCopy.slotId) || "");
+            try {
+              shortfallPaymentInFlight.add(slotIdLocal);
+              renderShortfallSlots(shortfallSlotsCache);
+              var res = await window.authFetch("/api/host/shortfall/pay-intent", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ slotId: slotIdLocal, stage: stageCopy })
+              });
+              var payload = await res.json().catch(function () { return {}; });
+              if (!res.ok || !payload || payload.ok !== true) throw new Error(String((payload && payload.message) || "Could not initialize payment."));
+              var data = payload.data || {};
+              var submitted = await openShortfallPaymentFlow(slotCopy, stageCopy, data);
+              if (!submitted) return;
+              shortfallPaymentPendingWebhook.add(slotIdLocal);
+              renderShortfallSlots(shortfallSlotsCache);
+              var webhookApplied = await pollShortfallSlotUntilWebhook(slotIdLocal, stageCopy);
+              if (!webhookApplied) {
+                window.tstsNotify("Payment submitted. Webhook confirmation is still pending; refresh in a moment.", "warning");
+              } else {
+                shortfallPaymentPendingWebhook.delete(slotIdLocal);
+                window.tstsNotify("Shortfall payment confirmed.", "success");
+              }
+              await loadShortfallDashboard({ silent: true });
+            } catch (err) {
+              window.tstsNotify(String((err && err.message) || "Payment failed."), "error");
+            } finally {
+              shortfallPaymentInFlight.delete(slotIdLocal);
+              renderShortfallSlots(shortfallSlotsCache);
+            }
+          };
+        })(slot, nextStage));
+        actions.appendChild(payBtn);
+      }
+      if (actions.childNodes.length === 0) {
+        actions.appendChild(El("p", { className: "text-xs text-slate-500", textContent: "No host action required at this stage." }));
+      }
+
+      var card = El("article", { className: "rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-sm" }, [
+        header,
+        El("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, [seatsPanel, fundingPanel, settlementPanel]),
+        actions
+      ]);
+      shortfallSlotListEl.appendChild(card);
+    }
+  }
+
+  async function loadShortfallDashboard(opts) {
+    var options = (opts && typeof opts === "object") ? opts : {};
+    var reqId = ++shortfallRequestCounter;
+    if (!options.silent) setShortfallUiState("loading");
+    try {
+      var loaded = await fetchShortfallStatus({ limit: 150, slotId: options.slotId || "" });
+      if (reqId !== shortfallRequestCounter) return loaded;
+      var slots = Array.isArray(loaded.slots) ? loaded.slots : [];
+      shortfallSlotsCache = slots;
+      if (slots.length === 0) {
+        setShortfallUiState("empty");
+        return loaded;
+      }
+      setShortfallUiState("ready");
+      renderShortfallSlots(slots);
+      return loaded;
+    } catch (err) {
+      if (reqId !== shortfallRequestCounter) return { slots: [] };
+      setShortfallUiState("error", String((err && err.message) || "Could not load shortfall status."));
+      return { slots: [] };
+    }
   }
 
   function normalizeVerifiedStatus(v) {
@@ -957,6 +1434,27 @@
           }
         }
 
+        const deficitBreakdown = computePublicPricingBreakdown(price);
+        if (deficitBreakdown && Number(deficitBreakdown.platformFeeCents) > Number(deficitBreakdown.guestPriceCents)) {
+          const shortfallPerSeatCents = Math.max(0, Number(deficitBreakdown.platformFeeCents) - Number(deficitBreakdown.guestPriceCents));
+          const thresholdSeats = Math.max(1, Math.ceil(Number(capacity) * 0.5));
+          const stageADueCents = shortfallPerSeatCents * thresholdSeats;
+          const stageBDueCents = shortfallPerSeatCents * Math.max(0, Number(capacity) - thresholdSeats);
+          const proceed = await window.tstsConfirm(
+            "Deficit shortfall warning:\n\nBooking value per seat: " + formatMoneyFromCents(deficitBreakdown.guestPriceCents) +
+            "\nPlatform fee per seat: " + formatMoneyFromCents(deficitBreakdown.platformFeeCents) +
+            "\nShortfall per seat: " + formatMoneyFromCents(shortfallPerSeatCents) +
+            "\n\nIf this slot is approved as non-admin deficit, Stage A due will be " + formatMoneyFromCents(stageADueCents) +
+            " (first 50% seats), and Stage B due will be " + formatMoneyFromCents(stageBDueCents) +
+            " (remaining seats at threshold).\n\nProceed with this listing?",
+            { confirmText: "Proceed", destructive: true }
+          );
+          if (!proceed) {
+            showNotice("error", "Listing save cancelled. Update the price if you do not want deficit shortfall funding.");
+            return;
+          }
+        }
+
         let imageUrl = existingImageUrl || "";
 
         // If user selected a new image, try upload. If upload fails, do NOT break the entire flow.
@@ -1069,6 +1567,7 @@
         syncVerifiedUi();
         syncPricingTransparency();
         await loadHostListings();
+        await loadShortfallDashboard({ silent: true });
       } catch (_) {
         showNotice("error", "Something went wrong. Please try again.");
       } finally {
@@ -1169,6 +1668,7 @@
         return;
       }
       await loadHostListings();
+      await loadShortfallDashboard({ silent: true });
     } catch (_) {
       if (window.tstsNotify) window.tstsNotify("Action failed. Please try again.", "error");
     }
@@ -1257,6 +1757,12 @@
     });
   }
 
+  if (shortfallRefreshBtn) {
+    shortfallRefreshBtn.addEventListener("click", function () {
+      loadShortfallDashboard({ silent: false });
+    });
+  }
+
   (async function initHostPage() {
     const ok = await requireAuth();
     if (!ok) {
@@ -1267,7 +1773,8 @@
     await loadHostVerificationStatus();
     await loadActivePolicySnapshot();
     syncPricingTransparency();
-    loadHostListings();
+    await loadHostListings();
+    await loadShortfallDashboard({ silent: false });
     unmaskAuthGate();
   })().catch(function () {
     unmaskAuthGate();
