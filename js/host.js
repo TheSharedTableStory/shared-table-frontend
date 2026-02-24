@@ -669,6 +669,26 @@
     return { slots: slots, meta: data };
   }
 
+  async function requestFeeWaiver(slotId) {
+    if (!slotId) return;
+    var note = await window.tstsPrompt("Reason for waiver request", "", { minLength: 10, placeholder: "Explain why you're requesting a fee waiver for this event." });
+    note = String(note || "").trim();
+    if (!note) return;
+    try {
+      var res = await window.authFetch("/api/host/shortfall/" + encodeURIComponent(slotId) + "/waiver-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: note })
+      });
+      var payload = await res.json().catch(function () { return {}; });
+      if (!res.ok || !payload || payload.ok !== true) throw new Error(String((payload && payload.message) || "Could not submit waiver request."));
+      window.tstsNotify("Waiver request submitted successfully.", "success");
+      await loadShortfallDashboard({ silent: true });
+    } catch (err) {
+      window.tstsNotify(String((err && err.message) || "Could not submit waiver request."), "error");
+    }
+  }
+
   function ensureShortfallPaymentModal() {
     var overlay = document.getElementById("shortfall-payment-overlay");
     if (overlay) {
@@ -913,6 +933,29 @@
         })(slot, nextStage));
         actions.appendChild(payBtn);
       }
+      // Waiver section
+      var waiver = (slot && slot.waiver && typeof slot.waiver === "object") ? slot.waiver : {};
+      var waiverStatus = String(waiver.status || "none");
+      var stageADue = Number((slot.stageA && slot.stageA.dueCents) || 0);
+      var stageAPaid = Number((slot.stageA && slot.stageA.paidCents) || 0);
+      var canRequestWaiver = approvalState === "APPROVED" && (waiverStatus === "none" || waiverStatus === "rejected") && stageAPaid < stageADue;
+      if (canRequestWaiver) {
+        var waiverRequestBtn = El("button", { type: "button", className: "inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50", textContent: "Request fee waiver" });
+        waiverRequestBtn.addEventListener("click", (function (slotIdCopy) {
+          return async function () { await requestFeeWaiver(slotIdCopy); };
+        })(String(slot.slotId || "")));
+        actions.appendChild(waiverRequestBtn);
+      }
+      if (waiverStatus === "pending") {
+        actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-amber-100 text-amber-800", textContent: "Waiver request under review" }));
+      } else if (waiverStatus === "approved_full") {
+        actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-emerald-100 text-emerald-800", textContent: "Full waiver approved — no payment required" }));
+      } else if (waiverStatus === "approved_partial") {
+        actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-emerald-100 text-emerald-800", textContent: "Partial waiver approved — reduced fee applies" }));
+      } else if (waiverStatus === "rejected") {
+        actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-slate-100 text-slate-600", textContent: "Waiver request was not approved" }));
+      }
+
       if (actions.childNodes.length === 0) {
         actions.appendChild(El("p", { className: "text-xs text-slate-500", textContent: "No host action required at this stage." }));
       }

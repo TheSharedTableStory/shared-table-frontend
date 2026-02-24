@@ -53,6 +53,7 @@ var experiencesPageSize = 100;
 var experiencesTotalCount = 0;
 var shortfallReasonCodes = [];
 var shortfallSettlementReasonCodes = [];
+var shortfallWaiverReasonCodes = [];
 
 async function loadDashboardSummary() {
   const res = await adminFetch("/api/admin/dashboard-summary", { method: "GET" });
@@ -225,6 +226,27 @@ async function decideShortfallSettlement(caseId, decision, reasonCode, note) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data || data.ok !== true) {
     throw new Error((data && data.message) ? data.message : "Failed to process settlement case");
+  }
+  return data;
+}
+
+async function decideShortfallWaiver(slotId, decision, reasonCode, note, waivedAmountCents) {
+  var body = {
+    decision: String(decision || "").trim(),
+    reasonCode: String(reasonCode || "").trim(),
+    note: String(note || "").trim()
+  };
+  if (decision === "approve_partial" && waivedAmountCents > 0) {
+    body.waivedAmountCents = waivedAmountCents;
+  }
+  const res = await adminFetch("/api/admin/shortfall/" + encodeURIComponent(slotId) + "/waiver", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to process waiver decision");
   }
   return data;
 }
@@ -1140,6 +1162,7 @@ function renderShortfallReview(payload) {
   var slots = Array.isArray(data.slots) ? data.slots : [];
   shortfallReasonCodes = Array.isArray(data.reasonCodes) ? data.reasonCodes : [];
   shortfallSettlementReasonCodes = Array.isArray(data.settlementReasonCodes) ? data.settlementReasonCodes : [];
+  shortfallWaiverReasonCodes = Array.isArray(data.waiverReasonCodes) ? data.waiverReasonCodes : [];
 
   if (slots.length === 0) {
     tbody.appendChild(El("tr", {}, [
@@ -1162,6 +1185,22 @@ function renderShortfallReview(payload) {
       actions.push(approveBtn, rejectBtn);
     } else {
       actions.push(El("span", { className: "text-xs text-slate-400", textContent: "—" }));
+    }
+
+    // Waiver section
+    var waiver = (slot && slot.waiver && typeof slot.waiver === "object") ? slot.waiver : {};
+    var waiverStatus = String(waiver.status || "none");
+    if (waiverStatus === "pending") {
+      var waiverBadge = El("div", { className: "mt-1 inline-flex items-center rounded px-2 py-0.5 text-xs font-bold bg-amber-100 text-amber-800", textContent: "\u2691 Waiver request pending" });
+      var reviewWaiverBtn = El("button", { className: "px-2 py-1 text-xs font-bold rounded border border-amber-300 text-amber-800 hover:bg-amber-50", textContent: "Review Waiver" });
+      (function (sid) { reviewWaiverBtn.addEventListener("click", function () { handleWaiverDecision(sid); }); })(slotId);
+      actions.push(waiverBadge, reviewWaiverBtn);
+    } else if (waiverStatus === "approved_full") {
+      actions.push(El("div", { className: "mt-1 inline-flex items-center rounded px-2 py-0.5 text-xs font-bold bg-emerald-100 text-emerald-800", textContent: "Full waiver approved" }));
+    } else if (waiverStatus === "approved_partial") {
+      actions.push(El("div", { className: "mt-1 inline-flex items-center rounded px-2 py-0.5 text-xs font-bold bg-emerald-100 text-emerald-800", textContent: "Partial waiver: " + formatCurrencyFromCents(Number(waiver.amountCents || 0)) }));
+    } else if (waiverStatus === "rejected") {
+      actions.push(El("div", { className: "mt-1 inline-flex items-center rounded px-2 py-0.5 text-xs font-bold bg-slate-100 text-slate-600", textContent: "Waiver rejected" }));
     }
 
     var flags = (slot && slot.antiAbuseFlags && typeof slot.antiAbuseFlags === "object") ? slot.antiAbuseFlags : {};
@@ -1879,6 +1918,46 @@ async function handleShortfallSettlementDecision(caseId, decision) {
     await refreshShortfallViews();
   } catch (err) {
     window.tstsNotify((err && err.message) ? err.message : "Failed to process settlement decision.", "error");
+  }
+}
+
+async function handleWaiverDecision(slotId) {
+  if (!slotId) return;
+  var decisionChoice = await window.tstsConfirm("Waiver decision", [
+    { label: "Approve — Full waiver", value: "approve_full" },
+    { label: "Approve — Partial waiver", value: "approve_partial" },
+    { label: "Reject waiver request", value: "reject" }
+  ]);
+  var decision = String((decisionChoice && decisionChoice.value) ? decisionChoice.value : (decisionChoice || "")).trim();
+  if (!decision || (decision !== "approve_full" && decision !== "approve_partial" && decision !== "reject")) return;
+
+  var waivedAmountCents = 0;
+  if (decision === "approve_partial") {
+    var amountStr = await window.tstsPrompt("Waived amount (AUD, e.g. 25.00)", "", { placeholder: "Enter the amount to waive in dollars" });
+    if (!amountStr) return;
+    var amountFloat = parseFloat(String(amountStr).trim());
+    if (!Number.isFinite(amountFloat) || amountFloat <= 0) {
+      window.tstsNotify("Invalid amount entered.", "error");
+      return;
+    }
+    waivedAmountCents = Math.round(amountFloat * 100);
+  }
+
+  var reasonCode = await chooseShortfallReason(shortfallWaiverReasonCodes, "ADMIN_DISCRETION");
+  if (!reasonCode) return;
+
+  var note = await window.tstsPrompt("Decision note (required)", "", { minLength: 5, placeholder: "Explain this waiver decision." });
+  note = String(note || "").trim();
+  if (!note) {
+    window.tstsNotify("Decision note is required.", "error");
+    return;
+  }
+  try {
+    await decideShortfallWaiver(slotId, decision, reasonCode, note, waivedAmountCents);
+    window.tstsNotify("Waiver decision saved.", "success");
+    await refreshShortfallViews();
+  } catch (err) {
+    window.tstsNotify((err && err.message) ? err.message : "Failed to save waiver decision.", "error");
   }
 }
 
