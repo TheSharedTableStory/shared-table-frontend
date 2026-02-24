@@ -2144,7 +2144,10 @@ async function handleRefreshAudit() {
 }
 async function handleExportAudit(format) {
   try {
-    await exportAuditLogs(format, collectAuditFilters());
+    // Override limit to 1000 (backend max) for exports — avoids truncating multi-year data.
+    // UI default (100) is for the live view only.
+    var filters = Object.assign({}, collectAuditFilters(), { limit: 1000 });
+    await exportAuditLogs(format, filters);
     window.tstsNotify("Audit export downloaded.", "success");
   } catch (e) {
     window.tstsNotify(e.message || "Failed to export audit logs.", "error");
