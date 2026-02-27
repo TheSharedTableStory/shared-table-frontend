@@ -140,7 +140,7 @@
   function publicDescription(expLike) {
     const expObj = expLike || {};
     const raw = String(expObj.description || "").trim();
-    if (!raw) return "Details coming soon.";
+    if (!raw) return "";
     return raw;
   }
 

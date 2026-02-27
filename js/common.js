@@ -1160,7 +1160,7 @@ function injectFooter() {
         tstsEl("img", { src: "/assets/logo-mark.png", alt: "", className: "h-7 w-7 object-contain" })
       ]),
       tstsEl("span", { className: "leading-none flex flex-col" }, [
-        tstsEl("h3", { className: "text-xl font-bold text-orange-500 font-serif" }, "The Shared Table Story"),
+        tstsEl("h3", { className: "text-2xl font-bold text-orange-500 font-serif" }, "The Shared Table Story"),
         tstsEl("span", { className: "text-xs font-normal text-gray-400 tracking-wide mt-1" }, "Reconnect with the world, one meal at a time.")
       ])
     ])

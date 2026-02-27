@@ -61,11 +61,29 @@
   const discountTiersContainer = document.getElementById("discount-tiers-container");
   const discountTiersList = document.getElementById("discount-tiers-list");
   const addDiscountTierBtn = document.getElementById("add-discount-tier");
+  const descCounterEl = document.getElementById("desc-counter");
 
   const CLOUDINARY_URL = (window.CLOUDINARY_URL || "");
 
   const cityDatalist = document.getElementById("city-suggestions");
   const postcodeWarningEl = document.getElementById("postcode-warning");
+
+  // --- Description character counter ---
+  function __updateDescCounter() {
+    if (!descCounterEl || !descriptionInput) return;
+    var len = String(descriptionInput.value || "").length;
+    descCounterEl.textContent = len + " / 1500";
+    if (len < 150) {
+      descCounterEl.className = "text-xs text-red-500 mt-1 text-right";
+    } else if (len > 1400) {
+      descCounterEl.className = "text-xs text-amber-500 mt-1 text-right";
+    } else {
+      descCounterEl.className = "text-xs text-slate-400 mt-1 text-right";
+    }
+  }
+  if (descriptionInput) {
+    descriptionInput.addEventListener("input", __updateDescCounter);
+  }
 
   // --- AU Location Autocomplete ---
   var __auLocations = null; // lazy-loaded: array of [locality, state, postcode]
@@ -1337,6 +1355,7 @@
 
       if (titleInput) titleInput.value = exp.title || "";
       if (descriptionInput) descriptionInput.value = exp.description || "";
+      __updateDescCounter();
       if (priceInput) priceInput.value = exp.price != null ? String(exp.price) : "";
       if (dateInput) dateInput.value = String(exp.startDate || exp.date || exp.experienceDate || "").slice(0, 10);
       if (endDateInput) endDateInput.value = String(exp.endDate || "").slice(0, 10);
@@ -1506,6 +1525,11 @@
 
         if (!title || !description || price == null || !startDate || !endDate || !startTime || !city || !suburb || !postcode || !addressLine || capacity == null) {
           showNotice("error", "Please fill all required fields.");
+          return;
+        }
+        if (description.length < 150 || description.length > 1500) {
+          showNotice("error", "Description must be between 150 and 1500 characters.");
+          if (descriptionInput) descriptionInput.focus();
           return;
         }
         if (!tags || tags.length < 1) {
@@ -1821,6 +1845,7 @@
       currentVerifiedStatus = exp.verifiedStatus || "none";
       if (titleInput) titleInput.value = String(exp.title || "");
       if (descriptionInput) descriptionInput.value = String(exp.description || "");
+      __updateDescCounter();
       if (priceInput) priceInput.value = String(exp.price != null ? exp.price : "");
       if (dateInput) dateInput.value = String(exp.startDate || "");
       if (endDateInput) endDateInput.value = String(exp.endDate || "");
