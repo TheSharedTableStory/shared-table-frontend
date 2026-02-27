@@ -170,17 +170,33 @@
 
   function restoreSharedGuestOptions() {
     if (!guestInput) return;
+    var cap = (exp && Number(exp.maxGuests)) || 2;
+    cap = Math.max(1, Math.min(cap, 50));
+
+    var dd = (exp && exp.dynamicDiscounts && exp.dynamicDiscounts.group && exp.dynamicDiscounts.group.host) || {};
+    var hostEnabled = Boolean(dd.enabled);
+    var tiers = (hostEnabled && Array.isArray(dd.tiers)) ? dd.tiers : [];
+
     guestInput.disabled = false;
     guestInput.textContent = "";
-    defaultGuestOptions.forEach(function (item) {
+    for (var i = 1; i <= cap; i++) {
       var opt = document.createElement("option");
-      opt.value = item.value;
-      opt.textContent = item.text;
-      guestInput.appendChild(opt);
-    });
+      opt.value = String(i);
+      var label = i + (i === 1 ? " guest" : " guests");
 
-    const target = String(lastSharedGuestCount || "1");
-    const hasTarget = Array.from(guestInput.options).some((opt) => String(opt.value || "") === target);
+      var bestPct = 0;
+      for (var t = 0; t < tiers.length; t++) {
+        var tier = tiers[t] || {};
+        if (Number(tier.minGuests) <= i && Number(tier.percent) > bestPct) bestPct = Number(tier.percent);
+      }
+      if (bestPct > 0) label += " (" + bestPct + "% OFF)";
+
+      opt.textContent = label;
+      guestInput.appendChild(opt);
+    }
+
+    var target = String(lastSharedGuestCount || "1");
+    var hasTarget = Array.from(guestInput.options).some(function (o) { return String(o.value) === target; });
     if (hasTarget) guestInput.value = target;
     else if (guestInput.options.length > 0) guestInput.value = guestInput.options[0].value;
   }
@@ -703,7 +719,16 @@
       setText("exp-requirements", exp.requirements);
       show("requirements-section");
     }
-    if (exp.duration) {
+    var durationMinutes = Number(exp.eventDurationMinutes);
+    if (durationMinutes > 0) {
+      var hrs = Math.floor(durationMinutes / 60);
+      var mins = durationMinutes % 60;
+      var durationText = hrs > 0
+        ? (hrs + (hrs === 1 ? " hour" : " hours") + (mins > 0 ? " " + mins + " min" : ""))
+        : (mins + " minutes");
+      setText("exp-duration", durationText);
+      show("duration-section");
+    } else if (exp.duration) {
       setText("exp-duration", exp.duration);
       show("duration-section");
     }

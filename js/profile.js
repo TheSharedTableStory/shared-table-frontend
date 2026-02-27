@@ -116,6 +116,9 @@
 
       if (profilePicPreview && user.profilePic) window.tstsSafeImg(profilePicPreview, user.profilePic, "/assets/avatar-default.svg");
 
+      var photoNudge = document.getElementById("photo-nudge");
+      if (photoNudge) photoNudge.classList.toggle("hidden", !!user.profilePic);
+
       const prev = getStoredUser();
       const merged = Object.assign({}, prev, user);
       setStoredUser(merged);
@@ -200,6 +203,8 @@
       } catch (_) {}
       if (uploadBtn) uploadBtn.classList.remove("hidden");
       setUploadStatus("info", "Ready to upload.");
+      var photoNudge = document.getElementById("photo-nudge");
+      if (photoNudge) photoNudge.classList.add("hidden");
     });
   }
 

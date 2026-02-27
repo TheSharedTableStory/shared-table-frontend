@@ -57,6 +57,10 @@
   const cutoffLockedBanner = document.getElementById("cutoff-locked-banner");
   const requirementsInput = document.getElementById("requirements");
   const eventDurationMinutesInput = document.getElementById("eventDurationMinutes");
+  const discountEnabledInput = document.getElementById("discountEnabled");
+  const discountTiersContainer = document.getElementById("discount-tiers-container");
+  const discountTiersList = document.getElementById("discount-tiers-list");
+  const addDiscountTierBtn = document.getElementById("add-discount-tier");
 
   const CLOUDINARY_URL = (window.CLOUDINARY_URL || "");
 
@@ -144,6 +148,73 @@
     locationInput.addEventListener("focus", __onCityFocus, { once: true });
   }
   // --- End AU Location Autocomplete ---
+
+  // --- Group Discount Tiers ---
+  function addDiscountTierRow(minGuests, percent) {
+    if (!discountTiersList) return;
+    var row = window.tstsEl("div", { className: "flex items-center gap-2" });
+    var mgInput = window.tstsEl("input", {
+      type: "number", min: "2", max: "50", placeholder: "Min guests",
+      className: "discount-min-guests w-28 px-3 py-1.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none"
+    });
+    if (minGuests != null) mgInput.value = String(minGuests);
+    var pctInput = window.tstsEl("input", {
+      type: "number", min: "1", max: "50", placeholder: "% off",
+      className: "discount-percent w-20 px-3 py-1.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none"
+    });
+    if (percent != null) pctInput.value = String(percent);
+    var removeBtn = window.tstsEl("button", {
+      type: "button",
+      className: "text-red-400 hover:text-red-600 text-sm",
+      "aria-label": "Remove discount tier"
+    });
+    removeBtn.textContent = "\u2715";
+    removeBtn.addEventListener("click", function () { row.remove(); });
+    row.appendChild(mgInput);
+    row.appendChild(pctInput);
+    row.appendChild(removeBtn);
+    discountTiersList.appendChild(row);
+  }
+
+  if (discountEnabledInput && discountTiersContainer) {
+    discountEnabledInput.addEventListener("change", function () {
+      discountTiersContainer.classList.toggle("hidden", !discountEnabledInput.checked);
+    });
+  }
+  if (addDiscountTierBtn) {
+    addDiscountTierBtn.addEventListener("click", function () { addDiscountTierRow(); });
+  }
+
+  function buildDynamicDiscountsFromForm() {
+    if (!discountEnabledInput || !discountEnabledInput.checked) {
+      return { group: { host: { enabled: false, tiers: [] } } };
+    }
+    var tiers = [];
+    var rows = discountTiersList ? discountTiersList.querySelectorAll(".flex.items-center") : [];
+    for (var i = 0; i < rows.length; i++) {
+      var mgEl = rows[i].querySelector(".discount-min-guests");
+      var pctEl = rows[i].querySelector(".discount-percent");
+      var mg = parseInt(mgEl ? mgEl.value : "", 10);
+      var pct = parseInt(pctEl ? pctEl.value : "", 10);
+      if (mg >= 2 && pct >= 1 && pct <= 50) tiers.push({ minGuests: mg, percent: pct });
+    }
+    if (tiers.length > 0) return { group: { host: { enabled: true, tiers: tiers } } };
+    return { group: { host: { enabled: false, tiers: [] } } };
+  }
+
+  function populateDiscountTiersFromExp(expData) {
+    if (!discountEnabledInput || !discountTiersContainer || !discountTiersList) return;
+    var dd = expData && expData.dynamicDiscounts && expData.dynamicDiscounts.group && expData.dynamicDiscounts.group.host;
+    if (!dd || !dd.enabled || !Array.isArray(dd.tiers) || dd.tiers.length === 0) return;
+    discountEnabledInput.checked = true;
+    discountTiersContainer.classList.remove("hidden");
+    while (discountTiersList.firstChild) discountTiersList.removeChild(discountTiersList.firstChild);
+    for (var i = 0; i < dd.tiers.length; i++) {
+      var t = dd.tiers[i];
+      addDiscountTierRow(t.minGuests, t.percent);
+    }
+  }
+  // --- End Group Discount Tiers ---
 
   let isEditing = false;
   let editId = null;
@@ -1310,6 +1381,9 @@
       if (cutoffHoursInput) cutoffHoursInput.value = String(Math.round((exp.bookingCutoffMinutes || 1440) / 60));
       syncCutoffUi();
 
+      // Hydrate group discount tiers
+      populateDiscountTiersFromExp(exp);
+
       currentVerifiedStatus = normalizeVerifiedStatus(exp.verifiedStatus);
       pendingEventVerificationRequest = false;
       syncPrivateConfigUi();
@@ -1567,6 +1641,9 @@
         body.bookingCutoffEnabled = cutoffEnabledInput ? cutoffEnabledInput.checked : true;
         body.bookingCutoffMinutes = cutoffHoursInput ? Math.max(0, parseInt(cutoffHoursInput.value, 10) || 0) * 60 : 1440;
 
+        // Group discounts
+        body.dynamicDiscounts = buildDynamicDiscountsFromForm();
+
         const url = isEditing ? ("/api/experiences/" + encodeURIComponent(editId)) : "/api/experiences";
         const method = isEditing ? "PUT" : "POST";
 
@@ -1782,6 +1859,9 @@
       if (cutoffEnabledInput) cutoffEnabledInput.checked = (exp.bookingCutoffEnabled !== false);
       if (cutoffHoursInput) cutoffHoursInput.value = String(Math.round((exp.bookingCutoffMinutes || 1440) / 60));
       syncCutoffUi();
+
+      // Hydrate group discount tiers
+      populateDiscountTiersFromExp(exp);
 
       var hiddenId = document.getElementById("editing-experience-id");
       if (hiddenId) hiddenId.value = id;
