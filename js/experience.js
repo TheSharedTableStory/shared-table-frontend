@@ -269,12 +269,57 @@
     return Math.max(1, Math.min(cap, fallback));
   }
 
+  function getSharedDiscountPercent(guestCount) {
+    var dd = (exp && exp.dynamicDiscounts && exp.dynamicDiscounts.group && exp.dynamicDiscounts.group.host) || {};
+    if (!dd.enabled || !Array.isArray(dd.tiers)) return 0;
+    var bestPct = 0;
+    for (var t = 0; t < dd.tiers.length; t++) {
+      var tier = dd.tiers[t] || {};
+      if (Number(tier.minGuests) <= guestCount && Number(tier.percent) > bestPct) bestPct = Number(tier.percent);
+    }
+    return bestPct;
+  }
+
+  function updateDiscountDisplay(guestCount) {
+    var discountBadge = document.getElementById("discount-badge");
+    var discountBadgeText = document.getElementById("discount-badge-text");
+    var priceBreakdown = document.getElementById("price-breakdown");
+    var mathBase = document.getElementById("math-base");
+    var mathSubtotal = document.getElementById("math-subtotal");
+    var mathDiscountRow = document.getElementById("math-discount-row");
+    var mathDiscount = document.getElementById("math-discount");
+    var mathTotal = document.getElementById("math-total");
+
+    var pct = getSharedDiscountPercent(guestCount);
+    if (pct <= 0 || bookingMode === "private") {
+      if (discountBadge) discountBadge.classList.add("hidden");
+      if (priceBreakdown) priceBreakdown.classList.add("hidden");
+      return;
+    }
+
+    var basePerGuest = Number(sharedUnitPrice) || 0;
+    var subtotal = basePerGuest * guestCount;
+    var discountAmt = Math.round(subtotal * pct / 100);
+    var total = subtotal - discountAmt;
+
+    if (discountBadge) discountBadge.classList.remove("hidden");
+    if (discountBadgeText) discountBadgeText.textContent = pct + "% Group Discount Applied!";
+    if (priceBreakdown) priceBreakdown.classList.remove("hidden");
+    if (mathBase) mathBase.textContent = guestCount + " × $" + moneyNumberString(basePerGuest);
+    if (mathSubtotal) mathSubtotal.textContent = "$" + moneyNumberString(subtotal);
+    if (mathDiscountRow) mathDiscountRow.classList.remove("hidden");
+    if (mathDiscount) mathDiscount.textContent = "-$" + moneyNumberString(discountAmt);
+    if (mathTotal) mathTotal.textContent = "$" + moneyNumberString(total);
+  }
+
   function updateDisplayedPrice() {
     if (!expPriceValueEl) return;
     const isPrivate = bookingMode === "private" && privateBookingEnabled;
     if (!isPrivate) {
       expPriceValueEl.textContent = moneyNumberString(sharedUnitPrice);
       if (expPriceSuffixEl) expPriceSuffixEl.textContent = " AUD per guest (pre-tax)";
+      var gc = guestInput ? parseInt(guestInput.value, 10) || 1 : 1;
+      updateDiscountDisplay(gc);
       return;
     }
 
@@ -287,6 +332,7 @@
 
     expPriceValueEl.textContent = moneyNumberString(total);
     if (expPriceSuffixEl) expPriceSuffixEl.textContent = " AUD private total";
+    updateDiscountDisplay(0);
   }
 
   function setBookingMode(nextMode) {
