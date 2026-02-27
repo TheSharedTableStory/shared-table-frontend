@@ -1161,7 +1161,7 @@ function injectFooter() {
       ]),
       tstsEl("span", { className: "leading-none flex flex-col" }, [
         tstsEl("h3", { className: "text-2xl font-bold text-orange-500 font-serif" }, "The Shared Table Story"),
-        tstsEl("span", { className: "text-xs font-normal text-gray-400 tracking-wide mt-1" }, "Reconnect with the world, one meal at a time.")
+        tstsEl("span", { className: "text-[10px] font-normal text-gray-400 tracking-wide mt-1 whitespace-nowrap" }, "Reconnect with the world, one meal at a time.")
       ])
     ])
   ]);
