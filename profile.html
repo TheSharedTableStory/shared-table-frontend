@@ -82,7 +82,18 @@
 
                     <div>
                         <label for="mobile" class="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
-                        <input type="tel" id="mobile" maxlength="40" autocomplete="tel" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="Add mobile number for host verification">
+                        <div class="flex gap-2">
+                            <select id="mobileCountryCode" aria-label="Country code" class="px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 outline-none text-sm w-28 shrink-0">
+                                <option value="+61" selected>🇦🇺 +61</option>
+                                <option value="+1">🇺🇸 +1</option>
+                                <option value="+44">🇬🇧 +44</option>
+                                <option value="+64">🇳🇿 +64</option>
+                                <option value="+65">🇸🇬 +65</option>
+                                <option value="+60">🇲🇾 +60</option>
+                                <option value="+91">🇮🇳 +91</option>
+                            </select>
+                            <input type="tel" id="mobile" maxlength="15" autocomplete="tel-national" class="flex-1 px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="412 345 678">
+                        </div>
                     </div>
 
                     <div>
@@ -222,7 +233,7 @@
     <footer id="footer-placeholder" role="contentinfo"></footer>
     <script src="js/runtime-config.js?v=20260224a"></script>
   <script src="js/common.js?v=20260224a"></script>
-    <script src="js/profile.js?v=20260224a"></script>
+    <script src="js/profile.js?v=20260227a"></script>
 
     
 

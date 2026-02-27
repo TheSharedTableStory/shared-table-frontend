@@ -1498,6 +1498,20 @@
           }
         }
 
+        // ISS-018: nudge when publishing without a cover photo
+        const hasImage = (imageInput && imageInput.files && imageInput.files.length > 0) || !!existingImageUrl;
+        if (!hasImage) {
+          const proceed = await window.tstsConfirm(
+            "No cover photo added. Experiences with a photo get significantly more attention — would you still like to publish?",
+            { confirmText: "Publish Anyway", cancelText: "Add a Photo" }
+          );
+          if (!proceed) {
+            if (submitBtn) submitBtn.disabled = false;
+            if (imageInput) imageInput.click();
+            return;
+          }
+        }
+
         let imageUrl = existingImageUrl || "";
 
         // If user selected a new image, try upload. If upload fails, do NOT break the entire flow.

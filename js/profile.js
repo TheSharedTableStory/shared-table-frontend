@@ -5,6 +5,7 @@
   const nameInput = document.getElementById("name");
   const emailDisplay = document.getElementById("email");
   const mobileInput = document.getElementById("mobile");
+  const mobileCountryCode = document.getElementById("mobileCountryCode");
   const bioInput = document.getElementById("bio");
   const handleInput = document.getElementById("handle");
   const allowHandleSearchToggle = document.getElementById("allow-handle-search");
@@ -91,7 +92,21 @@
 
       try { if (nameInput) nameInput.value = user.name || ""; } catch (_) {}
       try { if (emailDisplay) emailDisplay.value = user.email || ""; } catch (_) {}
-      try { if (mobileInput) mobileInput.value = user.mobile || ""; } catch (_) {}
+      try {
+        if (mobileInput && user.mobile) {
+          const knownCodes = ["+61", "+44", "+64", "+65", "+60", "+91", "+1"];
+          let matched = false;
+          for (const code of knownCodes) {
+            if (user.mobile.startsWith(code)) {
+              if (mobileCountryCode) mobileCountryCode.value = code;
+              mobileInput.value = user.mobile.slice(code.length);
+              matched = true;
+              break;
+            }
+          }
+          if (!matched) mobileInput.value = user.mobile;
+        }
+      } catch (_) {}
       try { if (bioInput) bioInput.value = user.bio || ""; } catch (_) {}
       try { if (handleInput) handleInput.value = user.handle || ""; } catch (_) {}
       try { if (allowHandleSearchToggle) allowHandleSearchToggle.checked = !!user.allowHandleSearch; } catch (_) {}
@@ -247,7 +262,9 @@
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
       const name = nameInput ? String(nameInput.value || "").trim() : "";
-      const mobile = mobileInput ? String(mobileInput.value || "").trim() : "";
+      const mobileLocal = mobileInput ? String(mobileInput.value || "").trim() : "";
+      const countryCode = mobileCountryCode ? (mobileCountryCode.value || "+61") : "+61";
+      const mobile = mobileLocal ? countryCode + mobileLocal.replace(/^0/, "") : "";
       const bio = bioInput ? String(bioInput.value || "").trim() : "";
       const handle = handleInput ? String(handleInput.value || "").trim() : "";
 
