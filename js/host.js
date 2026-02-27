@@ -1552,6 +1552,19 @@
           showNotice("error", "End date must be on or after start date.");
           return;
         }
+        var timeRe = /^([01]\d|2[0-3]):([0-5]\d)$/;
+        if (startTime && !timeRe.test(startTime)) {
+          showNotice("error", "Start time must be a valid time (HH:MM).");
+          return;
+        }
+        if (endTime && !timeRe.test(endTime)) {
+          showNotice("error", "End time must be a valid time (HH:MM).");
+          return;
+        }
+        if (startTime && endTime && endTime <= startTime) {
+          showNotice("error", "End time must be after start time.");
+          return;
+        }
         if (privateEnabled) {
           if (privatePrice == null || privatePrice <= 0) {
             showNotice("error", "Private base price must be greater than 0.");
