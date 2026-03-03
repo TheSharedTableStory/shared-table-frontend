@@ -236,6 +236,120 @@
     }
   }
 
+  // E1: Outgoing (Sent) Requests
+  const outLoading = document.getElementById("outgoing-loading");
+  const outEmpty = document.getElementById("outgoing-empty");
+  const outList = document.getElementById("outgoing-list");
+  const outRefresh = document.getElementById("refresh-outgoing");
+
+  function showOut(which) {
+    [outLoading, outEmpty, outList].forEach((el) => el && el.classList.add("hidden"));
+    if (which) which.classList.remove("hidden");
+  }
+
+  async function loadOutgoing() {
+    if (!(await requireAuth())) return;
+    showOut(outLoading);
+    try {
+      const res = await window.authFetch("/api/social/outgoing-requests", { method: "GET" });
+      const raw = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error("outgoing");
+      const d = (raw && raw.data) ? raw.data : raw;
+      const list = Array.isArray(d) ? d : (Array.isArray(d && d.requests) ? d.requests : []);
+      if (!outList) return;
+      outList.textContent = "";
+      if (list.length === 0) {
+        if (outEmpty) outEmpty.textContent = "You haven\u2019t sent any connection requests.";
+        showOut(outEmpty);
+        return;
+      }
+      const El = window.tstsEl;
+      list.forEach(function(r) {
+        var target = r.to || r.addressee || r.user || {};
+        var reqId = r._id || r.id || "";
+        var wrap = El("div", { className: "p-4 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-between gap-3" }, [
+          userRowEl(target),
+          El("button", { className: "px-3 py-2 rounded-xl border border-red-200 bg-white text-xs font-bold text-red-600 hover:bg-red-50", "data-action": "cancel-outgoing", "data-id": reqId, textContent: "Cancel Request" })
+        ]);
+        outList.appendChild(wrap);
+      });
+      showOut(outList);
+    } catch (_) {
+      if (outEmpty) { outEmpty.textContent = "Unable to load sent requests."; showOut(outEmpty); }
+    }
+  }
+
+  async function onOutgoingClick(e) {
+    var btn = e && e.target ? e.target.closest("button[data-action]") : null;
+    if (!btn) return;
+    var action = btn.getAttribute("data-action");
+    var id = btn.getAttribute("data-id");
+    if (action === "cancel-outgoing" && id) {
+      try {
+        await post("/api/social/outgoing-requests/" + encodeURIComponent(id) + "/cancel");
+        await loadOutgoing();
+      } catch (err) { window.tstsNotify((err && err.message) ? err.message : "Cancel failed", "error"); }
+    }
+  }
+
+  // E2: Blocked Users
+  const blkLoading = document.getElementById("blocked-loading");
+  const blkEmpty = document.getElementById("blocked-empty");
+  const blkList = document.getElementById("blocked-list");
+  const blkRefresh = document.getElementById("refresh-blocked");
+
+  function showBlk(which) {
+    [blkLoading, blkEmpty, blkList].forEach((el) => el && el.classList.add("hidden"));
+    if (which) which.classList.remove("hidden");
+  }
+
+  async function loadBlocked() {
+    if (!(await requireAuth())) return;
+    showBlk(blkLoading);
+    try {
+      const res = await window.authFetch("/api/social/blocked", { method: "GET" });
+      const raw = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error("blocked");
+      const d = (raw && raw.data) ? raw.data : raw;
+      const list = Array.isArray(d) ? d : (Array.isArray(d && d.users) ? d.users : []);
+      if (!blkList) return;
+      blkList.textContent = "";
+      if (list.length === 0) {
+        if (blkEmpty) blkEmpty.textContent = "You haven\u2019t blocked anyone.";
+        showBlk(blkEmpty);
+        return;
+      }
+      const El = window.tstsEl;
+      list.forEach(function(b) {
+        var user = b.user || b;
+        var userId = (user && (user._id || user.id)) || "";
+        var wrap = El("div", { className: "p-4 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-between gap-3" }, [
+          userRowEl(user),
+          El("button", { className: "px-3 py-2 rounded-xl border border-blue-200 bg-white text-xs font-bold text-blue-700 hover:bg-blue-50", "data-action": "unblock", "data-userid": userId, textContent: "Unblock User" })
+        ]);
+        blkList.appendChild(wrap);
+      });
+      showBlk(blkList);
+    } catch (_) {
+      if (blkEmpty) { blkEmpty.textContent = "Unable to load blocked users."; showBlk(blkEmpty); }
+    }
+  }
+
+  async function onBlockedClick(e) {
+    var btn = e && e.target ? e.target.closest("button[data-action]") : null;
+    if (!btn) return;
+    var action = btn.getAttribute("data-action");
+    var userId = btn.getAttribute("data-userid");
+    if (action === "unblock" && userId) {
+      try {
+        var res = await window.authFetch("/api/social/block/" + encodeURIComponent(userId), { method: "DELETE" });
+        if (!res.ok) { var d = await res.json().catch(() => ({})); throw new Error((d && d.message) || "Unblock failed"); }
+        window.tstsNotify("User unblocked.", "success");
+        await loadBlocked();
+      } catch (err) { window.tstsNotify((err && err.message) ? err.message : "Unblock failed", "error"); }
+    }
+  }
+
   document.addEventListener("DOMContentLoaded", async () => {
     if (!(await requireAuth())) return;
 
@@ -244,8 +358,14 @@
     if (connRefresh) connRefresh.addEventListener("click", loadConnections);
     if (reqList) reqList.addEventListener("click", onRequestsClick);
     if (connList) connList.addEventListener("click", onConnectionsClick);
+    if (outRefresh) outRefresh.addEventListener("click", loadOutgoing);
+    if (outList) outList.addEventListener("click", onOutgoingClick);
+    if (blkRefresh) blkRefresh.addEventListener("click", loadBlocked);
+    if (blkList) blkList.addEventListener("click", onBlockedClick);
 
     loadRequests();
     loadConnections();
+    loadOutgoing();
+    loadBlocked();
   });
 })();

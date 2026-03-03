@@ -62,6 +62,7 @@ function renderProfile(profile) {
 
     loadReviews().catch(() => {});
     loadHostExperiences().catch(() => {});
+    loadVisibleBookings().catch(() => {});
 }
 
 async function loadReviews() {
@@ -187,6 +188,33 @@ function createExperienceCard(exp) {
         ])
     ]);
     return card;
+}
+
+async function loadVisibleBookings() {
+    var container = document.getElementById("visible-bookings-container");
+    var listEl = document.getElementById("visible-bookings-list");
+    if (!container || !listEl || !userId) return;
+    try {
+        var res = await window.authFetch("/api/social/user/" + encodeURIComponent(userId) + "/visible-bookings", { method: "GET" });
+        var raw = await res.json().catch(function () { return {}; });
+        if (!res.ok) return; // silently skip if not connected or self
+        var d = (raw && raw.data) ? raw.data : raw;
+        var bookings = Array.isArray(d) ? d : (Array.isArray(d && d.bookings) ? d.bookings : []);
+        if (bookings.length === 0) return;
+        container.classList.remove("hidden");
+        var El = window.tstsEl;
+        bookings.forEach(function (b) {
+            var title = String((b.experience && b.experience.title) || b.experienceTitle || "Experience");
+            var dateStr = b.bookingDate || "";
+            listEl.appendChild(El("div", { className: "p-4 rounded-xl border border-gray-100 bg-white flex items-center justify-between gap-3" }, [
+                El("div", {}, [
+                    El("div", { className: "font-bold text-tsts-ink text-sm", textContent: title }),
+                    dateStr ? El("div", { className: "text-xs text-slate-500", textContent: dateStr }) : null
+                ].filter(Boolean)),
+                El("i", { className: "fa-solid fa-calendar-check text-orange-400" })
+            ]));
+        });
+    } catch (_) {}
 }
 
 function showError() {

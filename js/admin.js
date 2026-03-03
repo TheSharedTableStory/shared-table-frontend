@@ -1380,7 +1380,7 @@ function renderUsers(users) {
     var deleteBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-red-200 text-red-600 hover:bg-red-50", textContent: "Delete" });
     deleteBtn.addEventListener("click", function() { handleDeleteUser(id); });
     var actionButtons = [];
-    if (!isAdmin && emailVerified && accountStatus === "active") {
+    if (!isAdmin && emailVerified && accountStatus === "active" && String(email || "").toLowerCase().endsWith("@thesharedtablestory.com")) {
       var grantBtn = El("button", {
         className: "px-3 py-1 text-xs font-bold rounded border border-emerald-200 text-emerald-700 hover:bg-emerald-50",
         textContent: "Grant Admin"
