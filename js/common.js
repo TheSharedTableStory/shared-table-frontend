@@ -313,8 +313,9 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
 
     var message = window.tstsEl("p", { className: "text-gray-700 text-center mb-4" }, String(msg || "Enter value:"));
 
+    var inputType = options.inputType || "text";
     var input = window.tstsEl("input", {
-      type: "text",
+      type: inputType,
       className: "w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-100 focus:border-orange-400 outline-none transition mb-2",
       placeholder: placeholder,
       value: String(defaultValue || "")

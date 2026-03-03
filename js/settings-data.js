@@ -17,6 +17,21 @@
   const exportedAtEl = document.getElementById("exported-at");
   const retentionMetaEl = document.getElementById("retention-meta");
 
+  // Notification preference elements
+  const notifPrefsLoading = document.getElementById("notif-prefs-loading");
+  const notifPrefsError = document.getElementById("notif-prefs-error");
+  const notifPrefsList = document.getElementById("notif-prefs-list");
+  const notifPrefsStatus = document.getElementById("notif-prefs-status");
+
+  const NOTIF_KEYS = [
+    "bookingConfirmations",
+    "bookingReminders",
+    "newReviews",
+    "communityActivity",
+    "hostDigest",
+    "promotional"
+  ];
+
   let latestExportPayload = null;
 
   function showState(which) {
@@ -107,21 +122,21 @@
       const res = await window.authFetch("/api/policy/active", { method: "GET" });
       const payload = await res.json().catch(() => null);
       if (!res.ok || !payload || payload.ok !== true) {
-        retentionMetaEl.textContent = "Current policy details could not be loaded.";
+        retentionMetaEl.textContent = "";
         return;
       }
       const policy = (payload.data && payload.data.policy) ? payload.data.policy : (payload.policy || {});
       const version = safeString(policy && policy.version).trim();
       const effective = formatDate(policy && policy.effectiveFrom);
       if (!version) {
-        retentionMetaEl.textContent = "Current policy details could not be loaded.";
+        retentionMetaEl.textContent = "";
         return;
       }
       retentionMetaEl.textContent = effective
         ? ("Current policy: " + version + " (effective " + effective + ").")
         : ("Current policy: " + version + ".");
     } catch (_) {
-      retentionMetaEl.textContent = "Current policy details could not be loaded.";
+      retentionMetaEl.textContent = "";
     }
   }
 
@@ -150,7 +165,7 @@
     if (!exportBtn) return;
     setActionStatus("Preparing export...", "info");
     exportBtn.disabled = true;
-    const previousLabel = exportBtn.textContent;
+    var previousLabel = exportBtn.textContent;
     exportBtn.textContent = "Preparing...";
     try {
       const res = await window.authFetch("/api/me/export", { method: "GET" });
@@ -165,25 +180,44 @@
       setActionStatus((err && err.message) ? err.message : "Data export failed.", "error");
     } finally {
       exportBtn.disabled = false;
-      exportBtn.textContent = previousLabel || "Export My Data";
+      exportBtn.textContent = previousLabel || "Download My Data";
     }
   }
 
   async function deleteAccountNow() {
     if (!deleteBtn) return;
-    const confirmed = await window.tstsConfirm(
-      "Delete your account and scrub personal profile data now? This action signs you out immediately.",
-      { destructive: true, confirmText: "Delete account", cancelText: "Keep account" }
+
+    // Step 1: Confirm intent
+    var confirmed = await window.tstsConfirm(
+      "Deleting your account is permanent. All your data, bookings, reviews, and connections will be removed. This cannot be undone.",
+      { destructive: true, confirmText: "Delete My Account", cancelText: "Cancel" }
     );
     if (!confirmed) return;
 
+    // Step 2: Ask for password
+    var password = await window.tstsPrompt("Enter your password to confirm account deletion.", "", {
+      confirmText: "Confirm Deletion",
+      cancelText: "Cancel",
+      placeholder: "Your password",
+      inputType: "password",
+      minLength: 1
+    });
+    if (!password) {
+      setActionStatus("", "info");
+      return;
+    }
+
     setActionStatus("Deleting account...", "info");
     deleteBtn.disabled = true;
-    const previousLabel = deleteBtn.textContent;
+    var previousLabel = deleteBtn.textContent;
     deleteBtn.textContent = "Deleting...";
     try {
-      const res = await window.authFetch("/api/me", { method: "DELETE" });
-      const payload = await res.json().catch(() => null);
+      var res = await window.authFetch("/api/auth/delete-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: password })
+      });
+      var payload = await res.json().catch(function () { return {}; });
       if (!res.ok || !payload || payload.ok !== true) {
         throw new Error((payload && payload.message) ? payload.message : "Account deletion failed.");
       }
@@ -198,6 +232,89 @@
       deleteBtn.textContent = previousLabel || "Delete My Account";
     }
   }
+
+  // === F3: Notification Preferences ===
+
+  function showNotifPrefs(which) {
+    [notifPrefsLoading, notifPrefsError, notifPrefsList].forEach(function (el) {
+      if (el) el.classList.add("hidden");
+    });
+    if (which) which.classList.remove("hidden");
+  }
+
+  function setNotifStatus(msg, kind) {
+    if (!notifPrefsStatus) return;
+    notifPrefsStatus.textContent = String(msg || "");
+    notifPrefsStatus.classList.remove("text-gray-500", "text-red-600", "text-emerald-700");
+    if (kind === "error") notifPrefsStatus.classList.add("text-red-600");
+    else if (kind === "success") notifPrefsStatus.classList.add("text-emerald-700");
+    else notifPrefsStatus.classList.add("text-gray-500");
+  }
+
+  async function loadNotificationPreferences() {
+    showNotifPrefs(notifPrefsLoading);
+    setNotifStatus("", "info");
+    try {
+      var res = await window.authFetch("/api/user/notification-preferences", { method: "GET" });
+      var raw = await res.json().catch(function () { return {}; });
+      if (!res.ok || !raw || raw.ok !== true) throw new Error("load_failed");
+      var data = (raw.data && typeof raw.data === "object") ? raw.data : {};
+
+      NOTIF_KEYS.forEach(function (key) {
+        var el = document.getElementById("notif-" + key);
+        if (el) el.checked = !!data[key];
+      });
+
+      showNotifPrefs(notifPrefsList);
+    } catch (_) {
+      if (notifPrefsError) {
+        notifPrefsError.textContent = "Unable to load notification preferences.";
+        showNotifPrefs(notifPrefsError);
+      }
+    }
+  }
+
+  async function saveNotificationPreference(key, value) {
+    setNotifStatus("Saving...", "info");
+    try {
+      var body = {};
+      body[key] = value;
+      var res = await window.authFetch("/api/user/notification-preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      var raw = await res.json().catch(function () { return {}; });
+      if (!res.ok || !raw || raw.ok !== true) {
+        throw new Error((raw && raw.message) ? raw.message : "Save failed");
+      }
+      // Sync all toggles with server response
+      var data = (raw.data && typeof raw.data === "object") ? raw.data : {};
+      NOTIF_KEYS.forEach(function (k) {
+        var el = document.getElementById("notif-" + k);
+        if (el && data.hasOwnProperty(k)) el.checked = !!data[k];
+      });
+      setNotifStatus("Saved.", "success");
+      setTimeout(function () { setNotifStatus("", "info"); }, 2000);
+    } catch (err) {
+      // Revert toggle on failure
+      var el = document.getElementById("notif-" + key);
+      if (el) el.checked = !value;
+      setNotifStatus((err && err.message) ? err.message : "Save failed.", "error");
+    }
+  }
+
+  function onNotifToggle(e) {
+    var target = e && e.target;
+    if (!target) return;
+    var id = target.id || "";
+    if (!id.startsWith("notif-")) return;
+    var key = id.replace("notif-", "");
+    if (NOTIF_KEYS.indexOf(key) === -1) return;
+    saveNotificationPreference(key, target.checked);
+  }
+
+  // === Page Load ===
 
   async function load() {
     showState(loadingEl);
@@ -222,6 +339,9 @@
       renderExportData(payload.data);
       await loadPolicyMeta();
       showState(readyEl);
+
+      // Load notification preferences after main content is ready
+      loadNotificationPreferences();
     } catch (err) {
       if (errorMessageEl) errorMessageEl.textContent = (err && err.message) ? err.message : "Try again in a moment.";
       showState(errorEl);
@@ -232,6 +352,13 @@
     if (retryBtn) retryBtn.addEventListener("click", load);
     if (exportBtn) exportBtn.addEventListener("click", exportDataNow);
     if (deleteBtn) deleteBtn.addEventListener("click", deleteAccountNow);
+
+    // Wire notification toggle listeners
+    NOTIF_KEYS.forEach(function (key) {
+      var el = document.getElementById("notif-" + key);
+      if (el) el.addEventListener("change", onNotifToggle);
+    });
+
     if (latestExportPayload == null) load();
   });
 })();
