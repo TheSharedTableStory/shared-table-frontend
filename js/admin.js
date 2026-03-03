@@ -2320,7 +2320,9 @@ async function handleViewRedemptions(code) {
 }
 
 // Tab switching functionality (local, no window.* exposure)
+var _currentAdminTab = "";
 function switchTab(tabName) {
+  _currentAdminTab = tabName;
   const views = ['dashboard', 'listings', 'pricing', 'verification', 'action-items', 'users', 'coupons', 'moderation', 'private-requests', 'incidents', 'fees-charges', 'audit'];
   const activeClass = "border-tsts-clay text-tsts-clay border-b-2 py-4 px-1 font-bold text-sm";
   const inactiveClass = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm";
@@ -3162,7 +3164,7 @@ async function boot() {
     renderShortfallReconciliation(shortfallData);
     renderShortfallSettlementCases(shortfallData);
     renderActionItems(actionItems);
-    switchTab(resolveInitialAdminTab());
+    switchTab(_currentAdminTab || resolveInitialAdminTab());
   } catch (e) {
     window.tstsNotify("Admin load failed.", "error");
   }
