@@ -1523,7 +1523,7 @@
         const requirements = requirementsInput ? String(requirementsInput.value || "").trim() : "";
         const eventDurationMinutes = eventDurationMinutesInput ? (parseInt(eventDurationMinutesInput.value, 10) || null) : null;
 
-        if (!title || !description || price == null || !startDate || !endDate || !startTime || !city || !suburb || !postcode || !addressLine || capacity == null) {
+        if (!title || !description || price == null || !startDate || !endDate || !startTime || !endTime || !city || !suburb || !postcode || !addressLine || capacity == null) {
           showNotice("error", "Please fill all required fields.");
           return;
         }
