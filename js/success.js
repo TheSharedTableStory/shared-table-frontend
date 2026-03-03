@@ -245,17 +245,34 @@ function populateBookingSummary(booking) {
   generateInviteLink(experienceId, booking);
 }
 
-// Generate invite link and update UI
+// Generate invite link via API (fallback to plain experience link)
 function generateInviteLink(expId, booking) {
   const baseUrl = window.location.origin + "/experience.html";
   if (!inviteLinkInputEl) return;
 
-  // Use experience ID only - no PII in URL
-  const inviteUrl = expId
-    ? `${baseUrl}?id=${encodeURIComponent(expId)}`
-    : baseUrl;
+  // Fallback URL (plain experience link)
+  const fallbackUrl = expId ? baseUrl + "?id=" + encodeURIComponent(expId) : baseUrl;
+  inviteLinkInputEl.value = fallbackUrl;
 
-  inviteLinkInputEl.value = inviteUrl;
+  // Try to create an invite via API for a proper tracked link
+  if (expId && window.authFetch) {
+    var body = { experienceId: expId };
+    if (booking && booking.bookingDate) body.bookingDate = String(booking.bookingDate);
+    if (booking && booking.timeSlot) body.timeSlot = String(booking.timeSlot);
+    window.authFetch("/api/invites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      if (!res.ok) return;
+      return res.json();
+    }).then(function (raw) {
+      var d = (raw && raw.data) ? raw.data : raw;
+      if (d && d.inviteUrl) inviteLinkInputEl.value = d.inviteUrl;
+    }).catch(function () {
+      // Keep fallback URL — no error shown
+    });
+  }
 }
 
 // Copy invite URL to clipboard

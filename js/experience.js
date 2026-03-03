@@ -411,6 +411,7 @@
   }
 
   const experienceId = qs("id");
+  const inviteToken = qs("invite");
   const bookingForm = document.getElementById("booking-form");
   const dateInput = document.getElementById("booking-date");
   const guestInput = document.getElementById("guest-count");
@@ -1764,6 +1765,7 @@
           policyVersionAccepted: policyVer,
           termsVersionAccepted: TERMS_VERSION
         };
+        if (inviteToken && inviteToken.length === 48) bookingPayload.inviteToken = inviteToken;
 
         async function submitBookingOnce() {
           return af(`/api/experiences/${experienceId}/book`, {
@@ -1836,7 +1838,131 @@
   }
 
 
-  loadExperience().catch(() => {
+  // --- Invite banner handling ---
+  async function handleInviteBanner() {
+    if (!inviteToken || inviteToken.length !== 48 || !/^[0-9a-f]+$/i.test(inviteToken)) return;
+    try {
+      const res = await af("/api/invites/" + encodeURIComponent(inviteToken), { method: "GET" });
+      if (!res.ok) return;
+      const raw = await res.json().catch(function () { return {}; });
+      const d = (raw && raw.data) ? raw.data : raw;
+      const viewer = (d && d.viewer) ? d.viewer : {};
+      const inviter = (d && d.inviter) ? d.inviter : {};
+      const inviterName = String(inviter.name || "Someone");
+
+      // Remove any existing invite banner
+      var existingBanner = document.getElementById("tsts-invite-banner");
+      if (existingBanner) existingBanner.remove();
+
+      // Don't show banner if already claimed or viewer is inviter
+      if (viewer.alreadyClaimed || viewer.isInviter) return;
+
+      var banner = document.createElement("div");
+      banner.id = "tsts-invite-banner";
+      banner.className = "bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3";
+
+      if (viewer.isBlocked) {
+        // Blocked variant
+        var msgEl = window.tstsEl("span", "You have received an invitation from " + inviterName + ", do you wish to proceed?");
+        msgEl.className = "text-tsts-ink text-sm flex-1";
+        banner.appendChild(msgEl);
+
+        var btnWrap = document.createElement("div");
+        btnWrap.className = "flex gap-2 flex-shrink-0";
+
+        var unblockBtn = document.createElement("button");
+        unblockBtn.className = "bg-tsts-ink text-white text-sm px-4 py-2 rounded-full hover:opacity-90 transition";
+        unblockBtn.textContent = "Unblock & Accept";
+        unblockBtn.addEventListener("click", async function () {
+          unblockBtn.disabled = true;
+          try {
+            // Unblock first
+            await af("/api/social/block/" + encodeURIComponent(String(inviter.userId)), { method: "DELETE" });
+            // Then accept
+            var accRes = await af("/api/invites/" + encodeURIComponent(inviteToken) + "/accept", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+            if (accRes.ok) {
+              window.tstsNotify("Invite accepted! You and " + inviterName + " are now connected.", "success");
+              banner.remove();
+            } else {
+              var errData = await accRes.json().catch(function () { return {}; });
+              window.tstsNotify((errData && errData.error) || "Could not accept invite.", "error");
+              unblockBtn.disabled = false;
+            }
+          } catch (_) {
+            window.tstsNotify("Something went wrong.", "error");
+            unblockBtn.disabled = false;
+          }
+        });
+
+        var dismissBtn = document.createElement("button");
+        dismissBtn.className = "text-tsts-ink text-sm px-4 py-2 rounded-full border border-tsts-ink hover:bg-tsts-ink hover:text-white transition";
+        dismissBtn.textContent = "Dismiss";
+        dismissBtn.addEventListener("click", function () { banner.remove(); });
+
+        btnWrap.appendChild(unblockBtn);
+        btnWrap.appendChild(dismissBtn);
+        banner.appendChild(btnWrap);
+      } else if (viewer.canAccept) {
+        // Normal accept variant
+        var msgEl2 = window.tstsEl("span", inviterName + " would love for you to join this experience.");
+        msgEl2.className = "text-tsts-ink text-sm flex-1";
+        banner.appendChild(msgEl2);
+
+        var acceptBtn = document.createElement("button");
+        acceptBtn.className = "bg-tsts-ink text-white text-sm px-5 py-2 rounded-full hover:opacity-90 transition flex-shrink-0";
+        acceptBtn.textContent = "Accept & Book";
+        acceptBtn.addEventListener("click", async function () {
+          acceptBtn.disabled = true;
+          try {
+            var accRes2 = await af("/api/invites/" + encodeURIComponent(inviteToken) + "/accept", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+            if (accRes2.ok) {
+              window.tstsNotify("Invite accepted! You and " + inviterName + " are now connected.", "success");
+              banner.remove();
+              // Pre-fill date/time from invite if available
+              var invData = (d && d.invite) ? d.invite : {};
+              if (invData.bookingDate && dateInput) dateInput.value = invData.bookingDate;
+              if (invData.timeSlot && timeSlotInput) timeSlotInput.value = invData.timeSlot;
+            } else {
+              var errData2 = await accRes2.json().catch(function () { return {}; });
+              window.tstsNotify((errData2 && errData2.error) || "Could not accept invite.", "error");
+              acceptBtn.disabled = false;
+            }
+          } catch (_) {
+            window.tstsNotify("Something went wrong.", "error");
+            acceptBtn.disabled = false;
+          }
+        });
+        banner.appendChild(acceptBtn);
+      } else if (!viewer.isAuthenticated) {
+        // Not logged in — prompt login
+        var msgEl3 = window.tstsEl("span", "You have been invited to this experience. Log in to accept.");
+        msgEl3.className = "text-tsts-ink text-sm flex-1";
+        banner.appendChild(msgEl3);
+
+        var loginBtn = document.createElement("button");
+        loginBtn.className = "bg-tsts-ink text-white text-sm px-5 py-2 rounded-full hover:opacity-90 transition flex-shrink-0";
+        loginBtn.textContent = "Log In";
+        loginBtn.addEventListener("click", function () { redirectToLogin(); });
+        banner.appendChild(loginBtn);
+      } else {
+        return; // No actionable state
+      }
+
+      // Insert banner at top of main content
+      var mainContent = document.getElementById("experience-detail") || document.querySelector("main") || document.body;
+      if (mainContent.firstChild) {
+        mainContent.insertBefore(banner, mainContent.firstChild);
+      } else {
+        mainContent.appendChild(banner);
+      }
+    } catch (_) {
+      // Silent fail — invite banner is enhancement, not critical
+    }
+  }
+
+  loadExperience().then(function () {
+    handleInviteBanner();
+  }).catch(() => {
     showNotFound("We could not load this experience right now. Please try again.");
   });
 })();

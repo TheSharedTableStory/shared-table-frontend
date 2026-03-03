@@ -577,6 +577,8 @@ async function loadTrips(loadToken) {
       contentEl.textContent = "";
       var _connPanel = renderConnectionActionPanel(pendingConnections);
       if (_connPanel) contentEl.appendChild(_connPanel);
+      var _invPanel = await renderInvitationsPanel();
+      if (_invPanel) contentEl.appendChild(_invPanel);
       contentEl.appendChild(
         El("div", { className: "text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm" }, [
           El("div", { className: "text-5xl mb-4", textContent: "🌏" }),
@@ -593,6 +595,8 @@ async function loadTrips(loadToken) {
     contentEl.textContent = "";
     var _connPanel2 = renderConnectionActionPanel(pendingConnections);
     if (_connPanel2) contentEl.appendChild(_connPanel2);
+    var _invPanel2 = await renderInvitationsPanel();
+    if (_invPanel2) contentEl.appendChild(_invPanel2);
     // Phase 6C: Group guest bookings by occurrence before rendering
     var _tripGroups = _groupByKey(bookings, _occurrenceKey);
     _tripGroups.order.forEach(function(key) {
@@ -607,6 +611,87 @@ async function loadTrips(loadToken) {
   } catch (_) {
     if (!isDashboardLoadActive("trips", token)) return;
     setError("Failed to load bookings.");
+  }
+}
+
+// --- My Invitations Panel ---
+async function renderInvitationsPanel() {
+  var El = window.tstsEl;
+  try {
+    var sentRes = await window.authFetch("/api/invites/my-sent?limit=50", { method: "GET" });
+    var sentRaw = await sentRes.json().catch(function () { return {}; });
+    var sentInvites = (sentRaw && sentRaw.data && Array.isArray(sentRaw.data.invites)) ? sentRaw.data.invites : [];
+
+    var recvRes = await window.authFetch("/api/invites/my-received?limit=50", { method: "GET" });
+    var recvRaw = await recvRes.json().catch(function () { return {}; });
+    var recvInvites = (recvRaw && recvRaw.data && Array.isArray(recvRaw.data.invites)) ? recvRaw.data.invites : [];
+
+    if (sentInvites.length === 0 && recvInvites.length === 0) return null;
+
+    var statusColor = { PENDING: "bg-amber-100 text-amber-700", ACCEPTED: "bg-green-100 text-green-700", EXPIRED: "bg-gray-100 text-gray-500", REVOKED: "bg-red-100 text-red-600" };
+
+    var section = El("section", { className: "space-y-4 mb-8", id: "tsts-invitations-panel" });
+    section.appendChild(El("h2", { className: "text-xl font-bold text-tsts-ink heading-serif", textContent: "My Invitations" }));
+
+    // Shared by Me
+    if (sentInvites.length > 0) {
+      section.appendChild(El("h3", { className: "text-sm font-bold text-gray-600 mt-3 mb-2", textContent: "Shared by Me" }));
+      sentInvites.forEach(function (inv) {
+        var badgeClass = statusColor[inv.status] || "bg-gray-100 text-gray-600";
+        var card = El("div", { className: "bg-white p-4 rounded-xl border border-gray-100 flex flex-col md:flex-row md:items-center gap-3 mb-2" });
+        card.appendChild(El("div", { className: "flex-1" }, [
+          El("p", { className: "text-sm font-bold text-tsts-ink", textContent: inv.experienceTitle || "Experience" }),
+          El("p", { className: "text-xs text-gray-500", textContent: (inv.bookingDate || "") + (inv.timeSlot ? " \u00B7 " + inv.timeSlot : "") }),
+          inv.claimedByName ? El("p", { className: "text-xs text-gray-500", textContent: "Claimed by " + inv.claimedByName }) : null
+        ].filter(Boolean)));
+        var rightSide = El("div", { className: "flex items-center gap-2" });
+        rightSide.appendChild(El("span", { className: "px-2 py-1 text-xs font-bold rounded-full " + badgeClass, textContent: inv.status }));
+        if (inv.status === "PENDING" && inv.token) {
+          var copyBtn = El("button", {
+            className: "px-3 py-1 text-xs font-bold text-tsts-ink border border-gray-200 rounded-full hover:bg-gray-50 transition",
+            textContent: "Copy Link",
+            "data-action": "invite-copy-link",
+            "data-invite-url": location.origin + "/experience.html?id=" + encodeURIComponent(inv.experienceId) + "&invite=" + encodeURIComponent(inv.token)
+          });
+          rightSide.appendChild(copyBtn);
+        }
+        card.appendChild(rightSide);
+        section.appendChild(card);
+      });
+    }
+
+    // Shared with Me
+    if (recvInvites.length > 0) {
+      section.appendChild(El("h3", { className: "text-sm font-bold text-gray-600 mt-3 mb-2", textContent: "Shared with Me" }));
+      recvInvites.forEach(function (inv) {
+        var badgeClass = statusColor[inv.status] || "bg-gray-100 text-gray-600";
+        var card = El("div", { className: "bg-white p-4 rounded-xl border border-gray-100 flex flex-col md:flex-row md:items-center gap-3 mb-2" });
+        card.appendChild(El("div", { className: "flex-1" }, [
+          El("p", { className: "text-sm font-bold text-tsts-ink", textContent: inv.experienceTitle || "Experience" }),
+          El("p", { className: "text-xs text-gray-500", textContent: "From " + (inv.inviterName || "a friend") }),
+          El("p", { className: "text-xs text-gray-500", textContent: (inv.bookingDate || "") + (inv.timeSlot ? " \u00B7 " + inv.timeSlot : "") })
+        ]));
+        var rightSide2 = El("div", { className: "flex items-center gap-2" });
+        if (inv.status === "ACCEPTED" && inv.resultBookingId) {
+          rightSide2.appendChild(El("span", { className: "px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700", textContent: "Booked" }));
+        } else if (inv.status === "ACCEPTED") {
+          rightSide2.appendChild(El("span", { className: "px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700", textContent: "Accepted" }));
+          rightSide2.appendChild(El("a", {
+            href: "experience.html?id=" + encodeURIComponent(inv.experienceId),
+            className: "px-3 py-1 text-xs font-bold text-tsts-ink border border-gray-200 rounded-full hover:bg-gray-50 transition",
+            textContent: "View Experience"
+          }));
+        } else {
+          rightSide2.appendChild(El("span", { className: "px-2 py-1 text-xs font-bold rounded-full " + badgeClass, textContent: inv.status }));
+        }
+        card.appendChild(rightSide2);
+        section.appendChild(card);
+      });
+    }
+
+    return section;
+  } catch (_) {
+    return null;
   }
 }
 
@@ -739,6 +824,15 @@ function renderTripCard(booking) {
         className: "w-full md:w-auto px-5 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-bold rounded-lg hover:bg-emerald-100 transition",
         "data-action": "view-otp", "data-booking-id": bookingId, textContent: "View Entry Code"
       }));
+      // Share This Experience button
+      nodes.push(El("button", {
+        className: "w-full md:w-auto px-5 py-2 bg-amber-50 border border-amber-200 text-amber-700 text-sm font-bold rounded-lg hover:bg-amber-100 transition flex items-center justify-center gap-2",
+        "data-action": "share-experience",
+        "data-exp-id": expId,
+        "data-booking-date": safeStr(booking.bookingDate),
+        "data-time-slot": safeStr(booking.timeSlot),
+        "data-exp-title": safeStr(expTitle)
+      }, [El("i", { className: "fas fa-share-nodes" }), " Share This Experience"]));
     }
     if (visibilityToggleBtn) nodes.push(visibilityToggleBtn);
     actionArea = El("div", { className: "w-full md:w-auto flex flex-col gap-2 md:items-end" }, nodes);
@@ -3470,6 +3564,266 @@ function closeReviewModal() {
   _closeModal(reviewModal);
 }
 
+/* ====================== SHARE EXPERIENCE MODAL ====================== */
+
+function openShareModal(expId, bookingDate, timeSlot, expTitle) {
+  var El = window.tstsEl;
+  // Remove existing share modal
+  var existing = document.getElementById("tsts-share-modal");
+  if (existing) existing.remove();
+
+  var overlay = El("div", {
+    id: "tsts-share-modal",
+    className: "fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+  });
+
+  var modal = El("div", {
+    className: "bg-white rounded-2xl shadow-lg w-full max-w-md mx-4 p-6 relative max-h-[90vh] overflow-y-auto"
+  });
+
+  // Title
+  modal.appendChild(El("h2", {
+    className: "text-lg font-bold text-tsts-ink heading-serif mb-4",
+    textContent: "Share " + (expTitle || "Experience")
+  }));
+
+  // Close button
+  var closeBtn = El("button", {
+    className: "absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl",
+    textContent: "\u00D7",
+    "aria-label": "Close"
+  });
+  closeBtn.addEventListener("click", function () { overlay.remove(); });
+  modal.appendChild(closeBtn);
+
+  // --- Section 3: Get a Shareable Link (first because it's most useful) ---
+  var linkSection = El("div", { className: "mb-5" });
+  linkSection.appendChild(El("h3", { className: "text-sm font-bold text-tsts-ink mb-2", textContent: "Get a Shareable Link" }));
+
+  var linkRow = El("div", { className: "flex gap-2 items-center" });
+  var linkInput = El("input", {
+    type: "text",
+    className: "flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 bg-gray-50 text-gray-600",
+    readOnly: true,
+    value: "Generating link..."
+  });
+  linkRow.appendChild(linkInput);
+
+  var copyBtn = El("button", {
+    className: "px-3 py-2 bg-tsts-ink text-white text-sm rounded-lg hover:opacity-90 transition",
+    textContent: "Copy",
+    "data-action": "invite-copy-link",
+    "data-invite-url": ""
+  });
+  linkRow.appendChild(copyBtn);
+
+  if (navigator.share) {
+    var nativeShareBtn = El("button", {
+      className: "px-3 py-2 border border-tsts-ink text-tsts-ink text-sm rounded-lg hover:bg-tsts-ink hover:text-white transition",
+      textContent: "Share",
+      "data-action": "invite-native-share",
+      "data-invite-url": "",
+      "data-exp-title": expTitle || ""
+    });
+    linkRow.appendChild(nativeShareBtn);
+  }
+
+  linkSection.appendChild(linkRow);
+  modal.appendChild(linkSection);
+
+  // Generate invite link via API
+  (async function () {
+    try {
+      var body = { experienceId: expId };
+      if (bookingDate) body.bookingDate = bookingDate;
+      if (timeSlot) body.timeSlot = timeSlot;
+      var res = await window.authFetch("/api/invites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      var raw = await res.json().catch(function () { return {}; });
+      var d = (raw && raw.data) ? raw.data : raw;
+      if (res.ok && d && d.inviteUrl) {
+        linkInput.value = d.inviteUrl;
+        copyBtn.setAttribute("data-invite-url", d.inviteUrl);
+        if (nativeShareBtn) nativeShareBtn.setAttribute("data-invite-url", d.inviteUrl);
+        window.tstsNotify("Experience shared!", "success");
+      } else {
+        linkInput.value = "Could not generate link.";
+        var errMsg = (d && d.error) ? String(d.error) : "Failed";
+        if (errMsg === "INVITE_LIMIT_REACHED") linkInput.value = "Invite limit reached (5 per hour).";
+      }
+    } catch (_) {
+      linkInput.value = "Could not generate link.";
+    }
+  })();
+
+  // --- Section 1: Invite Friend (connections) ---
+  var friendSection = El("div", { className: "mb-5" });
+  friendSection.appendChild(El("h3", { className: "text-sm font-bold text-tsts-ink mb-2", textContent: "Invite Friend" }));
+  var friendList = El("div", { className: "space-y-2 max-h-40 overflow-y-auto" });
+  friendSection.appendChild(friendList);
+  modal.appendChild(friendSection);
+
+  // Load connections
+  (async function () {
+    try {
+      var res = await window.authFetch("/api/social/connections?status=accepted&limit=50", { method: "GET" });
+      var raw = await res.json().catch(function () { return {}; });
+      var connections = window.unwrapApiList ? window.unwrapApiList(raw, "connections") : (raw && raw.data && Array.isArray(raw.data.connections) ? raw.data.connections : []);
+      if (!connections || connections.length === 0) {
+        friendList.appendChild(El("p", { className: "text-sm text-gray-400 italic", textContent: "No connections yet." }));
+        return;
+      }
+      connections.forEach(function (c) {
+        var name = String(c.name || c.displayName || "User");
+        var pic = String(c.profilePic || "");
+        var userId = String(c.userId || c._id || "");
+        var row = El("div", { className: "flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50" });
+
+        var avatar = El("img", { className: "w-8 h-8 rounded-full object-cover", alt: name });
+        window.tstsSafeImg(avatar, pic, "/assets/avatar-default.svg");
+        row.appendChild(avatar);
+
+        row.appendChild(El("span", { className: "text-sm text-tsts-ink flex-1", textContent: name }));
+
+        var inviteBtn = El("button", {
+          className: "px-3 py-1 text-xs font-bold text-amber-700 border border-amber-200 rounded-full hover:bg-amber-50 transition",
+          textContent: "Invite"
+        });
+        inviteBtn.addEventListener("click", async function () {
+          inviteBtn.disabled = true;
+          inviteBtn.textContent = "Sending...";
+          try {
+            var body = { experienceId: expId, targetUserId: userId };
+            if (bookingDate) body.bookingDate = bookingDate;
+            if (timeSlot) body.timeSlot = timeSlot;
+            var r = await window.authFetch("/api/invites", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body)
+            });
+            if (r.ok) {
+              inviteBtn.textContent = "Sent!";
+              inviteBtn.className = "px-3 py-1 text-xs font-bold text-green-700 border border-green-200 rounded-full bg-green-50";
+              window.tstsNotify("Experience shared!", "success");
+            } else {
+              var errRaw = await r.json().catch(function () { return {}; });
+              var errCode = (errRaw && errRaw.error) ? String(errRaw.error) : "";
+              if (errCode === "BLOCKED") {
+                inviteBtn.textContent = "Blocked";
+              } else if (errCode === "INVITE_LIMIT_REACHED") {
+                inviteBtn.textContent = "Limit reached";
+              } else {
+                inviteBtn.textContent = "Failed";
+              }
+              inviteBtn.disabled = false;
+            }
+          } catch (_) {
+            inviteBtn.textContent = "Failed";
+            inviteBtn.disabled = false;
+          }
+        });
+        row.appendChild(inviteBtn);
+        friendList.appendChild(row);
+      });
+    } catch (_) {
+      friendList.appendChild(El("p", { className: "text-sm text-gray-400 italic", textContent: "Could not load connections." }));
+    }
+  })();
+
+  // --- Section 2: Find Someone ---
+  var findSection = El("div", { className: "mb-4" });
+  findSection.appendChild(El("h3", { className: "text-sm font-bold text-tsts-ink mb-2", textContent: "Find Someone" }));
+  var findRow = El("div", { className: "flex gap-2" });
+  var findInput = El("input", {
+    type: "text",
+    className: "flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2",
+    placeholder: "Email or handle"
+  });
+  findRow.appendChild(findInput);
+  var findBtn = El("button", { className: "px-4 py-2 bg-tsts-ink text-white text-sm rounded-lg hover:opacity-90 transition", textContent: "Search" });
+  findRow.appendChild(findBtn);
+  findSection.appendChild(findRow);
+  var findResult = El("div", { className: "mt-2" });
+  findSection.appendChild(findResult);
+  modal.appendChild(findSection);
+
+  findBtn.addEventListener("click", async function () {
+    var query = String(findInput.value || "").trim();
+    if (!query) return;
+    findResult.textContent = "";
+    findBtn.disabled = true;
+    findBtn.textContent = "Searching...";
+    try {
+      var res = await window.authFetch("/api/users/search?q=" + encodeURIComponent(query) + "&limit=5", { method: "GET" });
+      var raw = await res.json().catch(function () { return {}; });
+      var users = window.unwrapApiList ? window.unwrapApiList(raw, "users") : (raw && raw.data && Array.isArray(raw.data.users) ? raw.data.users : []);
+      findBtn.disabled = false;
+      findBtn.textContent = "Search";
+      if (!users || users.length === 0) {
+        findResult.appendChild(El("p", { className: "text-sm text-gray-400 italic", textContent: "No users found. Use the shareable link above instead." }));
+        return;
+      }
+      users.forEach(function (u) {
+        var name = String(u.name || u.displayName || "User");
+        var userId = String(u._id || u.id || "");
+        var row = El("div", { className: "flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50" });
+
+        var avatar = El("img", { className: "w-8 h-8 rounded-full object-cover", alt: name });
+        window.tstsSafeImg(avatar, String(u.profilePic || ""), "/assets/avatar-default.svg");
+        row.appendChild(avatar);
+        row.appendChild(El("span", { className: "text-sm text-tsts-ink flex-1", textContent: name }));
+
+        var invBtn = El("button", {
+          className: "px-3 py-1 text-xs font-bold text-amber-700 border border-amber-200 rounded-full hover:bg-amber-50 transition",
+          textContent: "Invite"
+        });
+        invBtn.addEventListener("click", async function () {
+          invBtn.disabled = true;
+          invBtn.textContent = "Sending...";
+          try {
+            var body = { experienceId: expId, targetUserId: userId };
+            if (bookingDate) body.bookingDate = bookingDate;
+            if (timeSlot) body.timeSlot = timeSlot;
+            var r = await window.authFetch("/api/invites", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body)
+            });
+            if (r.ok) {
+              invBtn.textContent = "Sent!";
+              invBtn.className = "px-3 py-1 text-xs font-bold text-green-700 border border-green-200 rounded-full bg-green-50";
+              window.tstsNotify("Experience shared!", "success");
+            } else {
+              invBtn.textContent = "Failed";
+              invBtn.disabled = false;
+            }
+          } catch (_) {
+            invBtn.textContent = "Failed";
+            invBtn.disabled = false;
+          }
+        });
+        row.appendChild(invBtn);
+        findResult.appendChild(row);
+      });
+    } catch (_) {
+      findBtn.disabled = false;
+      findBtn.textContent = "Search";
+      findResult.appendChild(El("p", { className: "text-sm text-gray-400 italic", textContent: "Search failed." }));
+    }
+  });
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  // Close on overlay click
+  overlay.addEventListener("click", function (e) {
+    if (e.target === overlay) overlay.remove();
+  });
+}
+
 /* ====================== A11Y: MODAL FOCUS TRAP ====================== */
 
 var _modalTrigger = null;
@@ -3581,6 +3935,30 @@ document.addEventListener("DOMContentLoaded", async () => {
       var replyAt = btn.getAttribute("data-reply-at") || "";
       openHostReplyModal(reviewId2, replyText, replyAt);
     }
+    if (action === "share-experience") {
+      var shareExpId = btn.getAttribute("data-exp-id") || "";
+      var shareDate = btn.getAttribute("data-booking-date") || "";
+      var shareSlot = btn.getAttribute("data-time-slot") || "";
+      var shareTitle = btn.getAttribute("data-exp-title") || "";
+      openShareModal(shareExpId, shareDate, shareSlot, shareTitle);
+    }
+    if (action === "invite-copy-link") {
+      var copyUrl = btn.getAttribute("data-invite-url") || "";
+      if (navigator.clipboard && copyUrl) {
+        navigator.clipboard.writeText(copyUrl).then(function () {
+          window.tstsNotify("Link copied!", "success");
+        }).catch(function () {
+          window.tstsNotify("Could not copy link.", "error");
+        });
+      }
+    }
+    if (action === "invite-native-share") {
+      var shareUrl = btn.getAttribute("data-invite-url") || "";
+      var shareExpTitle = btn.getAttribute("data-exp-title") || "Check out this experience";
+      if (navigator.share && shareUrl) {
+        navigator.share({ title: shareExpTitle, url: shareUrl }).catch(function () {});
+      }
+    }
   });
 
   // Close guest modal
@@ -3625,6 +4003,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       closeHostReplyModal();
       closeCheckinModal();
       closeEntryPass();
+      var shareModal = document.getElementById("tsts-share-modal");
+      if (shareModal) shareModal.remove();
       return;
     }
     _trapFocus(e);
