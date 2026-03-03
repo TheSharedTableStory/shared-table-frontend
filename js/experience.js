@@ -173,12 +173,37 @@
     var cap = (exp && Number(exp.maxGuests)) || 2;
     cap = Math.max(1, Math.min(cap, 50));
 
+    // Per-checkout cap is 6; per-user-per-occurrence cap is 10
+    var checkoutCap = 6;
+    var effectiveCap = Math.min(cap, checkoutCap);
+
+    // If my-seats data is loaded, further cap by per-user remaining
+    if (_mySeatsLoaded) {
+      var userRemaining = Math.max(0, _perUserCap - _userExistingSeats);
+      var occRemaining = Math.max(0, (_occurrenceMaxGuests || cap) - _occurrenceReserved);
+      effectiveCap = Math.min(effectiveCap, userRemaining, occRemaining);
+    }
+    cap = Math.max(0, effectiveCap);
+
     var dd = (exp && exp.dynamicDiscounts && exp.dynamicDiscounts.group && exp.dynamicDiscounts.group.host) || {};
     var hostEnabled = Boolean(dd.enabled);
     var tiers = (hostEnabled && Array.isArray(dd.tiers)) ? dd.tiers : [];
 
-    guestInput.disabled = false;
     guestInput.textContent = "";
+
+    if (cap <= 0 && _mySeatsLoaded) {
+      // User has reached their seat limit for this occurrence
+      guestInput.disabled = true;
+      var noOpt = document.createElement("option");
+      noOpt.value = "0";
+      noOpt.textContent = "No spots available";
+      guestInput.appendChild(noOpt);
+      if (submitBtn) submitBtn.disabled = true;
+      if (seatsInfoEl) seatsInfoEl.textContent = "You have reached the maximum of " + String(_perUserCap) + " spots for this session.";
+      return;
+    }
+
+    guestInput.disabled = false;
     for (var i = 1; i <= cap; i++) {
       var opt = document.createElement("option");
       opt.value = String(i);
@@ -193,6 +218,13 @@
 
       opt.textContent = label;
       guestInput.appendChild(opt);
+    }
+
+    // Show existing seat info if user already has seats for this occurrence
+    if (_mySeatsLoaded && _userExistingSeats > 0 && seatsInfoEl) {
+      seatsInfoEl.textContent = "You already have " + String(_userExistingSeats) + " spot" + (_userExistingSeats === 1 ? "" : "s") + " booked for this session.";
+    } else if (seatsInfoEl && _mySeatsLoaded && _userExistingSeats === 0) {
+      seatsInfoEl.textContent = "";
     }
 
     var target = String(lastSharedGuestCount || "1");
@@ -459,6 +491,38 @@
   let bookableDates = [];
   let bookableDateSet = new Set();
   let bookingDateSelect = null;
+
+  // Per-user-per-occurrence seat tracking
+  var _userExistingSeats = 0;
+  var _occurrenceMaxGuests = 0;
+  var _occurrenceReserved = 0;
+  var _perUserCap = 10;
+  var _mySeatsLoaded = false;
+
+  async function _fetchMySeats(date, slot) {
+    _userExistingSeats = 0;
+    _occurrenceMaxGuests = 0;
+    _occurrenceReserved = 0;
+    _mySeatsLoaded = false;
+    if (!date || !slot || !experienceId) return;
+    try {
+      var session = window.tstsGetSession ? await window.tstsGetSession() : null;
+      if (!session || !session.token) return;
+      var msRes = await af("/api/experiences/" + encodeURIComponent(experienceId) + "/my-seats?date=" + encodeURIComponent(date) + "&slot=" + encodeURIComponent(slot));
+      if (msRes.ok) {
+        var msData = await msRes.json().catch(function () { return null; });
+        if (msData && msData.ok && msData.data) {
+          _userExistingSeats = Math.max(0, Number(msData.data.existingSeats) || 0);
+          _occurrenceMaxGuests = Math.max(0, Number(msData.data.maxGuests) || 0);
+          _occurrenceReserved = Math.max(0, Number(msData.data.reservedGuests) || 0);
+          _perUserCap = Math.max(1, Number(msData.data.perUserCap) || 10);
+          _mySeatsLoaded = true;
+        }
+      }
+    } catch (_) {}
+    // Re-cap guest dropdown with new seat data
+    if (bookingMode === "shared") restoreSharedGuestOptions();
+  }
 
   function normalizeExperience(payload) {
     if (!payload) return null;
@@ -948,10 +1012,18 @@
       } catch (_) {}
       renderAvailableTimeSlotsForDate(selected);
       checkCutoff();
+      // Fetch per-user seat data for the selected date + first slot
+      var _slotForSeats = (timeSlotInput && timeSlotInput.value) ? String(timeSlotInput.value) : "";
+      if (selected && _slotForSeats) _fetchMySeats(selected, _slotForSeats).catch(function () {});
     };
     if (dateInput) dateInput.addEventListener("change", onBookingDateChanged);
     if (bookingDateSelect) bookingDateSelect.addEventListener("change", onBookingDateChanged);
-    if (timeSlotInput) timeSlotInput.addEventListener("change", checkCutoff);
+    if (timeSlotInput) timeSlotInput.addEventListener("change", function () {
+      checkCutoff();
+      var _d = readSelectedBookingDate();
+      var _s = (timeSlotInput && timeSlotInput.value) ? String(timeSlotInput.value) : "";
+      if (_d && _s) _fetchMySeats(_d, _s).catch(function () {});
+    });
     checkCutoff();
 
     // === WAITLIST ===
@@ -1671,6 +1743,16 @@
           window.tstsNotify("Please select a time slot.", "warning");
           if (submitBtn) submitBtn.disabled = false;
           return;
+        }
+
+        // Repeat booking confirmation — if user already has seats for this occurrence
+        if (_mySeatsLoaded && _userExistingSeats > 0 && !isPrivateBooking) {
+          var _confirmMsg = "You already have " + String(_userExistingSeats) + " spot" + (_userExistingSeats === 1 ? "" : "s") + " booked for this session. Book " + String(numGuests) + " more?";
+          var _confirmed = window.tstsConfirm ? await window.tstsConfirm(_confirmMsg) : confirm(_confirmMsg);
+          if (!_confirmed) {
+            if (submitBtn) submitBtn.disabled = false;
+            return;
+          }
         }
 
         const bookingPayload = {
