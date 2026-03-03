@@ -1863,8 +1863,7 @@
 
       if (viewer.isBlocked) {
         // Blocked variant
-        var msgEl = window.tstsEl("span", "You have received an invitation from " + inviterName + ", do you wish to proceed?");
-        msgEl.className = "text-tsts-ink text-sm flex-1";
+        var msgEl = window.tstsEl("span", { className: "text-tsts-ink text-sm flex-1" }, "You have received an invitation from " + inviterName + ", do you wish to proceed?");
         banner.appendChild(msgEl);
 
         var btnWrap = document.createElement("div");
@@ -1904,8 +1903,7 @@
         banner.appendChild(btnWrap);
       } else if (viewer.canAccept) {
         // Normal accept variant
-        var msgEl2 = window.tstsEl("span", inviterName + " would love for you to join this experience.");
-        msgEl2.className = "text-tsts-ink text-sm flex-1";
+        var msgEl2 = window.tstsEl("span", { className: "text-tsts-ink text-sm flex-1" }, inviterName + " would love for you to join this experience.");
         banner.appendChild(msgEl2);
 
         var acceptBtn = document.createElement("button");
@@ -1935,8 +1933,7 @@
         banner.appendChild(acceptBtn);
       } else if (!viewer.isAuthenticated) {
         // Not logged in — prompt login
-        var msgEl3 = window.tstsEl("span", "You have been invited to this experience. Log in to accept.");
-        msgEl3.className = "text-tsts-ink text-sm flex-1";
+        var msgEl3 = window.tstsEl("span", { className: "text-tsts-ink text-sm flex-1" }, "You have been invited to this experience. Log in to accept.");
         banner.appendChild(msgEl3);
 
         var loginBtn = document.createElement("button");
