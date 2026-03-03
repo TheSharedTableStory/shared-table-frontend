@@ -962,7 +962,7 @@
           if (_isOnWaitlist) {
             await af("/api/experiences/" + encodeURIComponent(experienceId) + "/waitlist", { method: "DELETE" });
             _isOnWaitlist = false;
-            joinWaitlistBtn.textContent = "Join waitlist";
+            joinWaitlistBtn.textContent = "Get on the Waitlist";
             if (waitlistStatusEl) waitlistStatusEl.classList.add("hidden");
             if (window.tstsNotify) window.tstsNotify("Removed from waitlist.", "info");
           } else {
@@ -976,8 +976,8 @@
               body: JSON.stringify(wlBody),
             });
             _isOnWaitlist = true;
-            joinWaitlistBtn.textContent = "Leave waitlist";
-            if (waitlistStatusEl) { waitlistStatusEl.textContent = "You are on the waitlist."; waitlistStatusEl.classList.remove("hidden"); }
+            joinWaitlistBtn.textContent = "Leave Waitlist";
+            if (waitlistStatusEl) { waitlistStatusEl.textContent = "You\u2019re on the waitlist"; waitlistStatusEl.classList.remove("hidden"); }
             if (window.tstsNotify) window.tstsNotify("Added to waitlist!", "success");
           }
         } catch (e) {
@@ -994,8 +994,8 @@
           var wlData = await wlRes.json();
           if (wlData && wlData.ok && wlData.data && wlData.data.isOnWaitlist) {
             _isOnWaitlist = true;
-            if (joinWaitlistBtn) joinWaitlistBtn.textContent = "Leave waitlist";
-            if (waitlistStatusEl) { waitlistStatusEl.textContent = "You are on the waitlist."; waitlistStatusEl.classList.remove("hidden"); }
+            if (joinWaitlistBtn) joinWaitlistBtn.textContent = "Leave Waitlist";
+            if (waitlistStatusEl) { waitlistStatusEl.textContent = "You\u2019re on the waitlist"; waitlistStatusEl.classList.remove("hidden"); }
           }
         }
       }

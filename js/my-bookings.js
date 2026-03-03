@@ -1719,7 +1719,21 @@ function renderHostListingsSection(listings, hostBookings) {
             El("h3", { className: "font-bold text-lg text-gray-900", textContent: sanitizeExperienceTitle(String((exp && exp.title) || "Untitled listing")) })
           ].concat(chips)),
           El("p", { className: "text-sm text-gray-500", textContent: String((exp && exp.city) || "Location TBA") + " • " + formatPriceLabel(exp && exp.price) }),
-          El("p", { className: "text-xs text-gray-500", textContent: "Bookings received: " + bookingCount })
+          El("p", { className: "text-xs text-gray-500", textContent: "Bookings received: " + bookingCount }),
+          (function() {
+            var wlEl = El("p", { className: "text-xs text-gray-500", textContent: "" });
+            if (expId) {
+              window.authFetch("/api/host/experiences/" + encodeURIComponent(expId) + "/waitlist", { method: "GET" })
+                .then(function(r) { return r.json().catch(function() { return {}; }); })
+                .then(function(d) {
+                  var total = (d && d.ok && d.data) ? Number(d.data.total || 0) : 0;
+                  if (total > 0) wlEl.textContent = total + " people waiting";
+                  else wlEl.textContent = "No one waiting.";
+                })
+                .catch(function() { /* silently skip */ });
+            }
+            return wlEl;
+          })()
         ]),
         El("div", { className: "flex flex-wrap items-center gap-2" }, [
           El("a", {
