@@ -519,6 +519,30 @@ async function deactivateCoupon(code) {
   return data.promo || null;
 }
 
+async function activateCoupon(code) {
+  const res = await adminFetch("/api/admin/promo-codes/" + encodeURIComponent(code) + "/active", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ active: true })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to activate coupon");
+  }
+  return data.promo || null;
+}
+
+async function loadRedemptions(code) {
+  const res = await adminFetch("/api/admin/promo-codes/" + encodeURIComponent(code) + "/redemptions", {
+    method: "GET"
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to load redemptions");
+  }
+  return Array.isArray(data.data) ? data.data : (Array.isArray(data.redemptions) ? data.redemptions : []);
+}
+
 async function toggleExperience(id) {
   const res = await adminFetch("/api/admin/experiences/" + encodeURIComponent(id) + "/toggle", {
     method: "PATCH"
@@ -1492,7 +1516,7 @@ function renderCoupons(promos) {
   var list = Array.isArray(promos) ? promos : [];
   if (list.length === 0) {
     tbody.appendChild(El("tr", {}, [
-      El("td", { className: "px-6 py-6 text-center text-sm text-slate-500", colSpan: "6", textContent: "No coupons." })
+      El("td", { className: "px-6 py-6 text-center text-sm text-slate-500", colSpan: "6", textContent: "No promo codes yet. Create one to get started." })
     ]));
     return;
   }
@@ -1502,24 +1526,43 @@ function renderCoupons(promos) {
     var active = !!(promo && promo.active);
     var statusClass = active ? "text-emerald-700" : "text-amber-700";
     var statusText = active ? "Active" : "Inactive";
+    var maxUses = Number(promo && promo.maxUsesTotal) || 0;
+    var used = Number(promo && promo.usedCount) || 0;
+    var maxUsesText = maxUses > 0 ? String(maxUses) : "Unlimited";
 
     var editBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-slate-200 text-slate-700 hover:bg-slate-50", textContent: "Edit" });
     editBtn.addEventListener("click", function() { handleEditCoupon(code, promo); });
-    var stopBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-red-200 text-red-600 hover:bg-red-50", textContent: "Deactivate" });
-    stopBtn.disabled = !active;
-    stopBtn.classList.toggle("opacity-50", !active);
-    stopBtn.addEventListener("click", function() { handleDeactivateCoupon(code); });
+
+    var actionBtns = [editBtn];
+
+    if (active) {
+      var stopBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-red-200 text-red-600 hover:bg-red-50", textContent: "Deactivate" });
+      stopBtn.addEventListener("click", function() { handleDeactivateCoupon(code); });
+      actionBtns.push(stopBtn);
+    } else {
+      var startBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-emerald-200 text-emerald-700 hover:bg-emerald-50", textContent: "Activate" });
+      startBtn.addEventListener("click", function() { handleActivateCoupon(code); });
+      actionBtns.push(startBtn);
+    }
+
+    var viewBtn = El("button", { className: "px-3 py-1 text-xs font-bold rounded border border-blue-200 text-blue-700 hover:bg-blue-50", textContent: "View Redemptions" });
+    viewBtn.addEventListener("click", function() { handleViewRedemptions(code); });
+    actionBtns.push(viewBtn);
+
+    // Interleave spacers between buttons
+    var actionChildren = [];
+    actionBtns.forEach(function(btn, i) {
+      actionChildren.push(btn);
+      if (i < actionBtns.length - 1) actionChildren.push(El("span", { textContent: " " }));
+    });
 
     tbody.appendChild(El("tr", {}, [
-      El("td", { className: "px-6 py-4 text-sm font-semibold text-slate-800", textContent: code || "—" }),
-      El("td", { className: "px-6 py-4 text-sm text-slate-600" }, [
-        El("div", { className: "font-semibold text-slate-700", textContent: formatPromoScope(promo) }),
-        El("div", { className: "text-xs text-slate-500 mt-1", textContent: "Funding: Platform subsidy (current pricing policy)" })
-      ]),
+      El("td", { className: "px-6 py-4 text-sm font-semibold text-slate-800", textContent: code || "\u2014" }),
       El("td", { className: "px-6 py-4 text-sm text-slate-700 font-semibold", textContent: formatPromoDiscount(promo) }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-600", textContent: maxUsesText }),
+      El("td", { className: "px-6 py-4 text-sm text-slate-600 font-semibold", textContent: String(used) }),
       El("td", { className: "px-6 py-4 text-sm " + statusClass, textContent: statusText }),
-      El("td", { className: "px-6 py-4 text-sm text-slate-500", textContent: formatPromoWindow(promo) }),
-      El("td", { className: "px-6 py-4 text-sm text-right" }, [editBtn, El("span", { textContent: " " }), stopBtn])
+      El("td", { className: "px-6 py-4 text-sm" }, actionChildren)
     ]));
   });
 }
@@ -2229,6 +2272,37 @@ async function handleDeactivateCoupon(code) {
     await loadCoupons().then(renderCoupons);
   } catch (err) {
     window.tstsNotify((err && err.message) ? err.message : "Deactivate failed", "error");
+  }
+}
+
+async function handleActivateCoupon(code) {
+  var confirmed = await window.tstsConfirm("Activate coupon " + code + "?", { confirmText: "Activate" });
+  if (!confirmed) return;
+  try {
+    await activateCoupon(code);
+    window.tstsNotify("Coupon activated.", "success");
+    await loadCoupons().then(renderCoupons);
+  } catch (err) {
+    window.tstsNotify((err && err.message) ? err.message : "Activate failed", "error");
+  }
+}
+
+async function handleViewRedemptions(code) {
+  try {
+    var redemptions = await loadRedemptions(code);
+    var El = window.tstsEl;
+    if (redemptions.length === 0) {
+      window.tstsNotify("No redemptions for " + code + ".", "info");
+      return;
+    }
+    var lines = redemptions.map(function(r) {
+      var userId = String((r && (r.userId || r.user)) || "unknown").slice(0, 10);
+      var date = formatDateValue(r && r.createdAt);
+      return userId + "... \u2014 " + date;
+    });
+    await window.tstsConfirm("Redemptions for " + code + " (" + String(redemptions.length) + "):\n\n" + lines.join("\n"), { confirmText: "Close", cancelText: "" });
+  } catch (err) {
+    window.tstsNotify((err && err.message) ? err.message : "Failed to load redemptions", "error");
   }
 }
 
