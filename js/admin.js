@@ -2031,12 +2031,7 @@ async function handleToggleExperience(id) {
 async function handleDeleteExperience(id) {
   var confirmed = await window.tstsConfirm("Delete this experience?", { destructive: true, confirmText: "Delete" });
   if (!confirmed) return;
-  var otpToken = await window.tstsOtpVerify("experience_delete", {
-    message: "Admin verification required to delete this listing.",
-    actionLabel: "Verify & Delete"
-  });
-  if (!otpToken) return;
-  try { await deleteExperience(id, otpToken); await boot(); } catch (e) { window.tstsNotify(e.message || "Failed", "error"); }
+  try { await deleteExperience(id); await boot(); } catch (e) { window.tstsNotify(e.message || "Failed", "error"); }
 }
 async function handleLifecycleAction(id, action) {
   var reasonPrompt = action === "force-delete"
@@ -2053,17 +2048,8 @@ async function handleLifecycleAction(id, action) {
   }
   var confirmed = await window.tstsConfirm(confirmMsg, { destructive: true, confirmText: action === "force-delete" ? "Force Delete" : "Force Pause" });
   if (!confirmed) return;
-  var otpToken = null;
-  if (action === "force-delete") {
-    otpToken = await window.tstsOtpVerify("admin_force_delete_experience", {
-      message: "Admin verification required to force-delete this listing.",
-      actionLabel: "Verify & Delete"
-    });
-    if (!otpToken) return;
-  }
   try {
     var bodyPayload = { action: action, reason: reason };
-    if (otpToken) bodyPayload.otpToken = otpToken;
     var res = await adminFetch("/api/admin/experiences/" + encodeURIComponent(id) + "/lifecycle", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -2093,23 +2079,13 @@ async function handleRejectVerifiedExperience(id) {
 async function handleDeleteUser(id) {
   var confirmed = await window.tstsConfirm("Delete this user?", { destructive: true, confirmText: "Delete" });
   if (!confirmed) return;
-  var otpToken = await window.tstsOtpVerify("admin_delete_user", {
-    message: "Admin verification required to delete this user.",
-    actionLabel: "Verify & Delete"
-  });
-  if (!otpToken) return;
-  try { await deleteUser(id, otpToken); await boot(); } catch (e) { window.tstsNotify(e.message || "Failed", "error"); }
+  try { await deleteUser(id); await boot(); } catch (e) { window.tstsNotify(e.message || "Failed", "error"); }
 }
 async function handleGrantAdmin(id, label) {
   var confirmed = await window.tstsConfirm("Grant admin access to " + String(label || "this user") + "?", { confirmText: "Grant Admin" });
   if (!confirmed) return;
-  var otpToken = await window.tstsOtpVerify("admin_grant_admin", {
-    message: "Admin verification required to grant admin privileges.",
-    actionLabel: "Verify & Grant"
-  });
-  if (!otpToken) return;
   try {
-    await grantAdmin(id, otpToken);
+    await grantAdmin(id);
     window.tstsNotify("Admin access granted.", "success");
     await Promise.all([
       loadUsers().then(renderUsers),
@@ -2550,17 +2526,8 @@ async function handleSuspendUser(userId, currentStatus) {
   var msg = isSuspended ? "Restore this user account?" : "Are you sure you want to suspend this user?";
   var ok = await window.tstsConfirm(msg);
   if (!ok) return;
-  var otpToken = null;
-  if (!isSuspended) {
-    otpToken = await window.tstsOtpVerify("admin_suspend_user", {
-      message: "Admin verification required to suspend this user.",
-      actionLabel: "Verify & Suspend"
-    });
-    if (!otpToken) return;
-  }
   try {
     var bodyPayload = { status: isSuspended ? "active" : "suspended" };
-    if (otpToken) bodyPayload.otpToken = otpToken;
     var res = await adminFetch("/api/admin/users/" + encodeURIComponent(userId) + "/status", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
