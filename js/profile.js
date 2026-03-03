@@ -338,6 +338,13 @@
       if (!newEmail) { setChangeEmailStatus("error", "Please enter a new email address."); return; }
       if (!password) { setChangeEmailStatus("error", "Please enter your current password."); return; }
 
+      // OTP dual-auth verification for email change
+      var otpToken = await window.tstsOtpVerify("email_change", {
+        message: "To change your email, verify your identity.",
+        actionLabel: "Verify & Change"
+      });
+      if (!otpToken) { return; }
+
       changeEmailSubmit.disabled = true;
       setChangeEmailStatus("info", "Sending verification...");
 
@@ -345,7 +352,7 @@
         const res = await window.authFetch("/api/auth/change-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ newEmail: newEmail, password: password })
+          body: JSON.stringify({ newEmail: newEmail, password: password, otpToken: otpToken })
         });
 
         if (handleUnauthorized(res)) return;

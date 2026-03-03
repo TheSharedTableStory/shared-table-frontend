@@ -1158,8 +1158,20 @@ async function cancelBooking(id, skipInlineConfirm) {
     if (!confirmed) return false;
   }
 
+  // OTP dual-auth verification for booking cancellation
+  var otpToken = await window.tstsOtpVerify("booking_cancel", {
+    message: "To confirm booking cancellation, verify your identity.",
+    actionLabel: "Verify & Cancel",
+    meta: { bookingId: id }
+  });
+  if (!otpToken) return false;
+
   try {
-    const res = await window.authFetch(`/api/bookings/${id}/cancel`, { method: "POST" });
+    const res = await window.authFetch("/api/bookings/" + encodeURIComponent(id) + "/cancel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ otpToken: otpToken })
+    });
     const envelope = await res.json().catch(() => ({}));
     const data = (envelope && envelope.data) ? envelope.data : envelope;
 

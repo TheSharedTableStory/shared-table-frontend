@@ -194,15 +194,12 @@
     );
     if (!confirmed) return;
 
-    // Step 2: Ask for password
-    var password = await window.tstsPrompt("Enter your password to confirm account deletion.", "", {
-      confirmText: "Confirm Deletion",
-      cancelText: "Cancel",
-      placeholder: "Your password",
-      inputType: "password",
-      minLength: 1
+    // Step 2: OTP verification (replaces password prompt)
+    var otpToken = await window.tstsOtpVerify("account_delete", {
+      message: "To confirm account deletion, verify your identity.",
+      actionLabel: "Verify & Delete"
     });
-    if (!password) {
+    if (!otpToken) {
       setActionStatus("", "info");
       return;
     }
@@ -215,7 +212,7 @@
       var res = await window.authFetch("/api/auth/delete-account", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: password })
+        body: JSON.stringify({ otpToken: otpToken })
       });
       var payload = await res.json().catch(function () { return {}; });
       if (!res.ok || !payload || payload.ok !== true) {

@@ -1891,8 +1891,20 @@
         if (!ok2) return;
       }
 
+      // OTP dual-auth verification for experience deletion
+      var otpToken = await window.tstsOtpVerify("experience_delete", {
+        message: "To confirm listing deletion, verify your identity.",
+        actionLabel: "Verify & Delete",
+        meta: { experienceId: id }
+      });
+      if (!otpToken) return;
+
       // Proceed with delete
-      var dRes = await window.authFetch("/api/experiences/" + encodeURIComponent(id), { method: "DELETE" });
+      var dRes = await window.authFetch("/api/experiences/" + encodeURIComponent(id), {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otpToken: otpToken })
+      });
       var dData = await dRes.json().catch(function () { return {}; });
       if (!dRes.ok) {
         if (window.tstsNotify) window.tstsNotify(String((dData && dData.message) || "Delete failed. Please try again."), "error");

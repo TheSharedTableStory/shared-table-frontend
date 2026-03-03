@@ -32,10 +32,10 @@ async function handleForgotPassword(e) {
     } catch (_) {}
 
     try {
-        const res = await window.authFetch("/api/auth/forgot-password", {
+        const res = await window.authFetch("/api/auth/otp/request-reset", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email })
+            body: JSON.stringify({ email: email })
         });
 
         const data = await res.json().catch(() => ({}));
@@ -47,10 +47,17 @@ async function handleForgotPassword(e) {
             return;
         }
         const inner = (data && data.data && typeof data.data === "object") ? data.data : data;
-        const msg = (inner && inner.message) ? String(inner.message) : "If an account exists, you will receive instructions.";
+        var otpSessionId = (inner && inner.otpSessionId) ? String(inner.otpSessionId) : "";
 
-        // Always show privacy-safe message on 2xx; backend is intentionally non-enumerating.
-        showModal("Reset Password", msg, "success");
+        // Redirect to reset-password page with OTP session
+        if (otpSessionId) {
+            showModal("Reset Password", "A verification code has been sent to your email.", "success");
+            setTimeout(function() {
+                location.href = "reset-password.html?otpSessionId=" + encodeURIComponent(otpSessionId) + "&email=" + encodeURIComponent(email);
+            }, 1200);
+        } else {
+            showModal("Reset Password", "If an account exists, you will receive a verification code.", "success");
+        }
     } catch (_) {
         showModal("Reset Password", "Could not reach the server. Please try again.", "error");
     } finally {

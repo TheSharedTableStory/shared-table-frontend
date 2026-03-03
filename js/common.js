@@ -400,6 +400,91 @@ window.tstsPrompt = function(msg, defaultValue, opts) {
   });
 };
 
+// === OTP_DUAL_AUTH_V1: Universal OTP verification flow ===
+window.tstsOtpVerify = function(purpose, opts) {
+  var options = opts || {};
+  var meta = options.meta || {};
+  var message = options.message || "For your security, we need to verify this action.";
+  var actionLabel = options.actionLabel || "Verify";
+
+  return (async function() {
+    // Step 1: Request OTP
+    try {
+      var reqBody = { purpose: purpose };
+      if (meta && typeof meta === "object" && Object.keys(meta).length > 0) reqBody.meta = meta;
+      var reqRes = await window.authFetch("/api/auth/otp/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reqBody)
+      });
+      var reqData = await reqRes.json().catch(function() { return {}; });
+      if (!reqRes.ok || !reqData || reqData.ok !== true) {
+        var errMsg = (reqData && reqData.message) ? reqData.message : "Could not send verification code.";
+        if (window.tstsNotify) window.tstsNotify(errMsg, "error");
+        return null;
+      }
+      var otpSessionId = (reqData.data && reqData.data.otpSessionId) ? reqData.data.otpSessionId : null;
+      if (!otpSessionId) {
+        if (window.tstsNotify) window.tstsNotify("Could not initiate verification.", "error");
+        return null;
+      }
+      if (window.tstsNotify) window.tstsNotify("A verification code has been sent to your email.", "success");
+    } catch (e) {
+      if (window.tstsNotify) window.tstsNotify("Could not send verification code. Please try again.", "error");
+      return null;
+    }
+
+    // Step 2: Prompt for code (loop for retries)
+    var attemptsLeft = 5;
+    while (attemptsLeft > 0) {
+      var code = await window.tstsPrompt(
+        message + "\n\nEnter the 6-digit code sent to your email:",
+        "",
+        {
+          confirmText: actionLabel,
+          cancelText: "Cancel",
+          placeholder: "000000",
+          inputType: "text",
+          minLength: 6
+        }
+      );
+      if (!code) return null;
+      code = String(code).trim();
+      if (!/^\d{6}$/.test(code)) {
+        if (window.tstsNotify) window.tstsNotify("Please enter a valid 6-digit code.", "error");
+        attemptsLeft--;
+        continue;
+      }
+
+      // Step 3: Verify OTP
+      try {
+        var verRes = await window.authFetch("/api/auth/otp/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ otpSessionId: otpSessionId, code: code })
+        });
+        var verData = await verRes.json().catch(function() { return {}; });
+        if (verRes.ok && verData && verData.ok === true && verData.data && verData.data.otpToken) {
+          return verData.data.otpToken;
+        }
+        var verMsg = (verData && verData.message) ? verData.message : "Invalid code.";
+        if (window.tstsNotify) window.tstsNotify(verMsg, "error");
+        var remaining = (verData && verData.data && typeof verData.data.attemptsRemaining === "number") ? verData.data.attemptsRemaining : null;
+        if (remaining !== null && remaining <= 0) {
+          return null;
+        }
+        attemptsLeft--;
+      } catch (e) {
+        if (window.tstsNotify) window.tstsNotify("Verification failed. Please try again.", "error");
+        attemptsLeft--;
+      }
+    }
+    if (window.tstsNotify) window.tstsNotify("Verification failed after maximum attempts.", "error");
+    return null;
+  })();
+};
+// === END OTP_DUAL_AUTH_V1 ===
+
 // WS-FE-04: Dev guard - throws if helpers are missing (catches load order issues)
 (function() {
   var isDev = (location.hostname === "localhost" || location.hostname === "127.0.0.1");
