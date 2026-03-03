@@ -73,13 +73,14 @@ const dashboardDeepLink = {
   panel: String(dashboardQueryParams.get("panel") || "").trim().toLowerCase(),
   requestId: String(dashboardQueryParams.get("requestId") || "").trim()
 };
-const HOSTING_SECTION_KEYS = Object.freeze(["overview", "listings", "bookings", "private-requests", "verification-payout", "reviews", "fees-charges"]);
+const HOSTING_SECTION_KEYS = Object.freeze(["overview", "listings", "bookings", "private-requests", "verification-payout", "earnings-payouts", "reviews", "fees-charges"]);
 const HOSTING_SECTION_LABELS = Object.freeze({
   overview: "Overview",
   listings: "My Listings",
   bookings: "Booking Requests",
   "private-requests": "Private Requests",
   "verification-payout": "Verification & Payout",
+  "earnings-payouts": "Earnings & Payouts",
   reviews: "Reviews & Performance",
   "fees-charges": "Fees & Charges"
 });
@@ -90,6 +91,7 @@ const hostDashboardState = {
   privateRequests: { status: "idle", rows: [], message: "" },
   verification: { status: "idle", data: null, message: "" },
   reviews: { status: "idle", data: null, message: "" },
+  earnings: { status: "idle", data: null, message: "" },
   feesCharges: { status: "idle", rows: [], message: "" }
 };
 const dashboardRequestState = {
@@ -1665,6 +1667,29 @@ function renderHostVerificationSection(verificationData) {
   ]);
 }
 
+async function requestVerifiedBadge(expId) {
+  var ok = await window.tstsConfirm("Request a verified badge for this experience? An admin will review your listing.");
+  if (!ok) return;
+  try {
+    var csrf = (document.cookie.match(/tsts_csrf=([^;]+)/) || [])[1] || "";
+    var res = await window.authFetch("/api/host/experiences/" + encodeURIComponent(expId) + "/verified-opt-in", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-csrf-token": csrf },
+      body: JSON.stringify({})
+    });
+    var payload = await res.json().catch(function () { return {}; });
+    if (!res.ok) {
+      window.tstsNotify(String((payload && payload.message) || "Could not submit verification request."), "error");
+      return;
+    }
+    window.tstsNotify("Verification request submitted.", "success");
+    // Refresh listings to update badge
+    loadHost(hostDashboardState.section);
+  } catch (_) {
+    window.tstsNotify("Could not submit verification request.", "error");
+  }
+}
+
 function renderHostListingsSection(listings, hostBookings) {
   const El = window.tstsEl;
   const wrap = El("section", { className: "space-y-4 mb-8" });
@@ -1706,8 +1731,15 @@ function renderHostListingsSection(listings, hostBookings) {
             href: "experience.html?id=" + encodeURIComponent(expId),
             className: "inline-flex items-center px-4 py-2 border border-gray-200 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-50 transition",
             textContent: "View Public Page"
-          })
-        ])
+          }),
+          (verifiedStatus === "none" || verifiedStatus === "" || verifiedStatus === "rejected") && String((exp && exp.status) || "").toUpperCase() === "ACTIVE"
+            ? El("button", {
+                className: "inline-flex items-center px-4 py-2 border border-blue-200 text-blue-700 bg-blue-50 text-sm font-bold rounded-xl hover:bg-blue-100 transition",
+                textContent: "Request Verified Badge",
+                onclick: function () { requestVerifiedBadge(expId); }
+              })
+            : null
+        ].filter(Boolean))
       ])
     );
   });
@@ -2070,6 +2102,190 @@ function renderHostFeesChargesSection(rows) {
   });
 
   return El("div", { className: "space-y-3" }, cards);
+}
+
+async function loadHostEarnings() {
+  hostDashboardState.earnings = { status: "loading", data: null, message: "" };
+  renderHostingDashboard();
+  try {
+    var res = await window.authFetch("/api/host/earnings", { method: "GET" });
+    var payload = await res.json().catch(function () { return {}; });
+    if (!res.ok) {
+      hostDashboardState.earnings = { status: "error", data: null, message: String((payload && payload.error) || "Failed to load earnings.") };
+      renderHostingDashboard();
+      return;
+    }
+    var d = (payload && payload.data) ? payload.data : {};
+    // Also fetch Stripe Connect status
+    var connectStatus = "not_connected";
+    try {
+      var cRes = await window.authFetch("/api/host/stripe-connect/status", { method: "GET" });
+      var cPayload = await cRes.json().catch(function () { return {}; });
+      if (cRes.ok && cPayload && cPayload.data) connectStatus = String(cPayload.data.status || "not_connected");
+    } catch (_) {}
+    d.stripeConnectStatus = connectStatus;
+    // Also fetch cancellation charges for recovery deductions summary
+    var recoveryCents = 0;
+    try {
+      var fRes = await window.authFetch("/api/host/cancellation-charges", { method: "GET" });
+      var fPayload = await fRes.json().catch(function () { return {}; });
+      if (fRes.ok && fPayload && fPayload.data) {
+        var charges = Array.isArray(fPayload.data.charges) ? fPayload.data.charges : [];
+        charges.forEach(function (ch) { recoveryCents += (Number(ch.chargeCents) || 0) - (Number(ch.appliedCents) || 0); });
+      }
+    } catch (_) {}
+    d.recoveryDeductionCents = Math.max(0, recoveryCents);
+    hostDashboardState.earnings = { status: "ready", data: d, message: "" };
+    renderHostingDashboard();
+  } catch (_) {
+    hostDashboardState.earnings = { status: "error", data: null, message: "Failed to load earnings." };
+    renderHostingDashboard();
+  }
+}
+
+function renderHostEarningsSection(data) {
+  var El = window.tstsEl;
+  var d = data || {};
+  var totalEarned = Number(d.totalEarned) || 0;
+  var totalFees = Number(d.totalFees) || 0;
+  var netPayout = Number(d.netPayout) || 0;
+  var recoveryDeductions = Number(d.recoveryDeductionCents) || 0;
+  var bookings = Array.isArray(d.bookings) ? d.bookings : [];
+  var connectStatus = String(d.stripeConnectStatus || "not_connected");
+
+  function cents(v) { return "$" + (v / 100).toFixed(2); }
+
+  // Empty state
+  if (bookings.length === 0 && totalEarned === 0) {
+    return El("div", { className: "text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm" }, [
+      El("div", { className: "text-5xl mb-4", textContent: "\uD83D\uDCB0" }),
+      El("h3", { className: "heading-serif text-xl font-bold text-tsts-ink mb-2", textContent: "No earnings yet" }),
+      El("p", { className: "text-slate-500", textContent: "No earnings yet. Host your first experience to start earning." })
+    ]);
+  }
+
+  var section = El("div", { className: "space-y-6" });
+
+  // Stripe Connect status banner
+  if (connectStatus === "not_connected") {
+    var connectBanner = El("div", { className: "bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3" }, [
+      El("i", { className: "fa-solid fa-link text-amber-600 mt-0.5" }),
+      El("div", { className: "flex-1" }, [
+        El("p", { className: "text-sm text-amber-800 font-semibold", textContent: "Connect your Stripe account to receive payouts for your experiences." }),
+        El("button", {
+          className: "mt-2 text-xs font-bold text-amber-700 underline hover:text-amber-900",
+          textContent: "Set Up Payouts",
+          onclick: function () { initiateStripeConnect(); }
+        })
+      ])
+    ]);
+    section.appendChild(connectBanner);
+  } else if (connectStatus === "connected") {
+    var connectedBadge = El("div", { className: "bg-emerald-50 border border-emerald-200 rounded-2xl p-3 flex items-center gap-2" }, [
+      El("i", { className: "fa-solid fa-circle-check text-emerald-600" }),
+      El("span", { className: "text-sm text-emerald-700 font-semibold", textContent: "Payouts active" })
+    ]);
+    section.appendChild(connectedBadge);
+  } else if (connectStatus === "pending") {
+    var pendingBadge = El("div", { className: "bg-blue-50 border border-blue-200 rounded-2xl p-3 flex items-center gap-2" }, [
+      El("i", { className: "fa-solid fa-clock text-blue-600" }),
+      El("span", { className: "text-sm text-blue-700 font-semibold", textContent: "Stripe account setup in progress" })
+    ]);
+    section.appendChild(pendingBadge);
+  }
+
+  // Summary cards
+  var summaryGrid = El("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-4" }, [
+    El("div", { className: "bg-white rounded-2xl border border-slate-100 shadow-sm p-4 text-center" }, [
+      El("span", { className: "text-xs text-slate-400 block", textContent: "Total Earned" }),
+      El("span", { className: "text-lg font-bold text-tsts-ink block mt-1", textContent: cents(totalEarned) })
+    ]),
+    El("div", { className: "bg-white rounded-2xl border border-slate-100 shadow-sm p-4 text-center" }, [
+      El("span", { className: "text-xs text-slate-400 block", textContent: "Platform Fees" }),
+      El("span", { className: "text-lg font-bold text-tsts-ink block mt-1", textContent: cents(totalFees) })
+    ]),
+    El("div", { className: "bg-white rounded-2xl border border-slate-100 shadow-sm p-4 text-center" }, [
+      El("span", { className: "text-xs text-slate-400 block", textContent: "Net Payout" }),
+      El("span", { className: "text-lg font-bold text-emerald-700 block mt-1", textContent: cents(netPayout) })
+    ]),
+    El("div", { className: "bg-white rounded-2xl border border-slate-100 shadow-sm p-4 text-center" }, [
+      El("span", { className: "text-xs text-slate-400 block", textContent: "Recovery Deductions" }),
+      El("span", { className: "text-lg font-bold text-orange-600 block mt-1", textContent: cents(recoveryDeductions) }),
+      recoveryDeductions > 0 ? El("button", {
+        className: "text-xs text-orange-600 underline mt-1",
+        textContent: "View details",
+        onclick: function () { setHostingSection("fees-charges"); }
+      }) : null
+    ].filter(Boolean))
+  ]);
+  section.appendChild(summaryGrid);
+
+  // Booking-level breakdown
+  if (bookings.length > 0) {
+    var tableWrap = El("div", { className: "bg-white rounded-2xl border border-slate-100 shadow-sm overflow-x-auto" });
+    var table = El("table", { className: "w-full text-sm" });
+    var thead = El("thead", {}, [
+      El("tr", { className: "border-b border-slate-200 text-left" }, [
+        El("th", { className: "py-3 px-4 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Experience" }),
+        El("th", { className: "py-3 px-4 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Date" }),
+        El("th", { className: "py-3 px-4 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Guests" }),
+        El("th", { className: "py-3 px-4 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Gross" }),
+        El("th", { className: "py-3 px-4 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Fees" }),
+        El("th", { className: "py-3 px-4 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Net" }),
+        El("th", { className: "py-3 px-4 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Status" })
+      ])
+    ]);
+    table.appendChild(thead);
+    var tbody = El("tbody", {});
+    bookings.forEach(function (b) {
+      var ps = b.pricingSnapshot || {};
+      var gross = Number(ps.totalCents) || 0;
+      var fee = Number(ps.platformFeeCents) || 0;
+      var net = Number(ps.hostNetCents) || 0;
+      var dateStr = b.bookingDate || "";
+      var statusText = String(b.payoutStatus || b.status || "").replace(/_/g, " ");
+      var statusClass = "text-xs font-semibold px-2 py-0.5 rounded-full ";
+      if (statusText === "paid") statusClass += "bg-emerald-50 text-emerald-700";
+      else if (statusText === "pending") statusClass += "bg-yellow-50 text-yellow-700";
+      else statusClass += "bg-slate-50 text-slate-600";
+
+      tbody.appendChild(El("tr", { className: "border-b border-slate-100 hover:bg-slate-50" }, [
+        El("td", { className: "py-2 px-4 text-tsts-ink font-medium truncate max-w-[200px]", textContent: String(b.experienceTitle || "") }),
+        El("td", { className: "py-2 px-4 text-slate-600", textContent: dateStr }),
+        El("td", { className: "py-2 px-4 text-slate-600", textContent: String(b.numGuests || 0) }),
+        El("td", { className: "py-2 px-4 text-tsts-ink", textContent: cents(gross) }),
+        El("td", { className: "py-2 px-4 text-slate-500", textContent: cents(fee) }),
+        El("td", { className: "py-2 px-4 text-tsts-ink font-bold", textContent: cents(net) }),
+        El("td", { className: "py-2 px-4" }, [El("span", { className: statusClass, textContent: statusText })])
+      ]));
+    });
+    table.appendChild(tbody);
+    tableWrap.appendChild(table);
+    section.appendChild(tableWrap);
+  }
+
+  return section;
+}
+
+async function initiateStripeConnect() {
+  try {
+    var csrf = (document.cookie.match(/tsts_csrf=([^;]+)/) || [])[1] || "";
+    var res = await window.authFetch("/api/host/stripe-connect/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-csrf-token": csrf },
+      body: JSON.stringify({})
+    });
+    var payload = await res.json().catch(function () { return {}; });
+    if (!res.ok) {
+      window.tstsNotify(String((payload && payload.message) || "Could not start Stripe setup."), "error");
+      return;
+    }
+    var url = (payload && payload.data && payload.data.url) ? payload.data.url : "";
+    if (url) window.location.href = url;
+    else window.tstsNotify("No Stripe onboarding URL returned.", "error");
+  } catch (_) {
+    window.tstsNotify("Could not start Stripe setup.", "error");
+  }
 }
 
 async function handleDigestOptOutToggle(currentOptOut) {
@@ -2641,6 +2857,17 @@ function renderHostingSectionContent() {
     if (verificationState.status === "loading") return renderHostSourceLoading("Loading verification and payout status...");
     if (verificationState.status === "error") return renderHostSourceError("Verification and payout unavailable", verificationState.message, "Retry Verification");
     return renderHostVerificationSection(verificationState.data);
+  }
+
+  if (section === "earnings-payouts") {
+    var earnState = hostDashboardState.earnings || {};
+    if (earnState.status === "loading") return renderHostSourceLoading("Loading earnings and payouts...");
+    if (earnState.status === "error") return renderHostSourceError("Earnings unavailable", earnState.message, "Retry Earnings");
+    if (earnState.status === "idle") {
+      loadHostEarnings();
+      return renderHostSourceLoading("Loading earnings and payouts...");
+    }
+    return renderHostEarningsSection(earnState.data);
   }
 
   if (section === "reviews") {
