@@ -64,6 +64,23 @@ if (starContainer) {
 
 let hostBookingsCache = []; // for modal lookup by booking id
 let guestBookingsCache = []; // for complaint modal lookup by booking id
+
+// Phase 6: occurrence-key helper for grouping bookings by occurrence
+function _occurrenceKey(b) {
+  return String((b && b.experienceId) || (b && b.experience && (b.experience._id || b.experience.id)) || "") +
+    "|" + String((b && b.bookingDate) || "") +
+    "|" + String((b && b.timeSlot) || "");
+}
+function _groupByKey(arr, keyFn) {
+  var groups = {};
+  var order = [];
+  for (var i = 0; i < arr.length; i++) {
+    var k = keyFn(arr[i]);
+    if (!groups[k]) { groups[k] = []; order.push(k); }
+    groups[k].push(arr[i]);
+  }
+  return { groups: groups, order: order };
+}
 let activePolicySnapshot = null;
 const reviewModalState = { mode: "create", reviewId: "", canEdit: true, editableUntil: null };
 const dashboardQueryParams = new URLSearchParams(window.location.search || "");
@@ -576,7 +593,16 @@ async function loadTrips(loadToken) {
     contentEl.textContent = "";
     var _connPanel2 = renderConnectionActionPanel(pendingConnections);
     if (_connPanel2) contentEl.appendChild(_connPanel2);
-    bookings.forEach(function(b) { contentEl.appendChild(renderTripCard(b)); });
+    // Phase 6C: Group guest bookings by occurrence before rendering
+    var _tripGroups = _groupByKey(bookings, _occurrenceKey);
+    _tripGroups.order.forEach(function(key) {
+      var group = _tripGroups.groups[key];
+      if (group.length === 1) {
+        contentEl.appendChild(renderTripCard(group[0]));
+      } else {
+        contentEl.appendChild(renderGroupedTripCard(group));
+      }
+    });
     focusDashboardDeepLinkPanel();
   } catch (_) {
     if (!isDashboardLoadActive("trips", token)) return;
@@ -753,6 +779,135 @@ function renderTripCard(booking) {
   ]);
 
   return card;
+}
+
+// Phase 6C: Grouped trip card for multi-booking occurrences
+function renderGroupedTripCard(bookings) {
+  var El = window.tstsEl;
+  var first = bookings[0];
+  var exp = (first && (first.experience || first.experienceDetails)) || {};
+  var title = sanitizeExperienceTitle(exp.title || first.title || "Unknown Experience");
+  var dt = safeDate(first.bookingDate || first.experienceDate || first.date || first.createdAt);
+  var dateStr = dt ? fmtTripDate(dt) : "Date TBA";
+  var city = exp.city || first.city || "Location TBA";
+  var timeSlot = first.timeSlot || "";
+
+  var totalSeats = 0;
+  var confirmedCount = 0;
+  var activeBookingForOtp = null;
+  for (var i = 0; i < bookings.length; i++) {
+    totalSeats += Math.max(1, Number(bookings[i].numGuests || bookings[i].guests || bookings[i].guestCount) || 1);
+    var bStatus = safeStr(bookings[i].status).toLowerCase();
+    if (bStatus === "confirmed") confirmedCount++;
+    if (bStatus === "confirmed" && String(bookings[i].paymentStatus || "").toLowerCase() === "paid" && !activeBookingForOtp) {
+      activeBookingForOtp = bookings[i];
+    }
+  }
+
+  var fallbackImg = "/assets/experience-default.jpg";
+  var imgUrl = window.tstsSafeUrl(exp.imageUrl || (Array.isArray(exp.images) && exp.images[0]) || first.imageUrl, fallbackImg);
+  var imgEl = El("img", { className: "w-full h-full object-cover", alt: "Experience" });
+  window.tstsSafeImg(imgEl, imgUrl, fallbackImg);
+
+  var today = new Date();
+  today.setHours(0, 0, 0, 0);
+  var isPast = dt ? (dt < today) : false;
+
+  // Group action buttons
+  var groupActions = [];
+  if (activeBookingForOtp && !isPast) {
+    groupActions.push(El("button", {
+      className: "w-full md:w-auto px-5 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-bold rounded-lg hover:bg-emerald-100 transition",
+      "data-action": "view-otp", "data-booking-id": activeBookingForOtp._id || "", textContent: "View Entry Code"
+    }));
+  }
+
+  // Expandable per-booking details
+  var subCardContainer = El("div", { className: "hidden mt-4 space-y-3 border-t border-gray-100 pt-4" });
+  for (var j = 0; j < bookings.length; j++) {
+    subCardContainer.appendChild(_renderSubBookingRow(bookings[j], isPast));
+  }
+
+  var toggleBtn = El("button", {
+    className: "text-sm text-tsts-ink font-bold underline underline-offset-2 hover:text-orange-600 transition mt-2"
+  });
+  toggleBtn.textContent = "Show " + bookings.length + " bookings";
+  toggleBtn.addEventListener("click", function() {
+    var isHidden = subCardContainer.classList.contains("hidden");
+    if (isHidden) {
+      subCardContainer.classList.remove("hidden");
+      toggleBtn.textContent = "Hide bookings";
+    } else {
+      subCardContainer.classList.add("hidden");
+      toggleBtn.textContent = "Show " + bookings.length + " bookings";
+    }
+  });
+
+  var card = El("div", { className: "bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-4 mb-4 hover:shadow-md transition" }, [
+    El("div", { className: "flex flex-col md:flex-row gap-6" }, [
+      El("div", { className: "w-full md:w-48 h-32 md:h-auto bg-gray-100 rounded-xl overflow-hidden flex-shrink-0" }, [imgEl]),
+      El("div", { className: "flex-grow flex flex-col justify-between min-w-0" }, [
+        El("div", {}, [
+          El("div", { className: "flex justify-between items-start mb-2 gap-4" }, [
+            El("h3", { className: "font-bold text-xl text-gray-900 leading-tight truncate", textContent: title }),
+            El("span", { className: "px-2 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-700 whitespace-nowrap", textContent: totalSeats + " seats (" + bookings.length + " bookings)" })
+          ]),
+          El("div", { className: "text-gray-500 text-sm flex flex-col gap-1" }, [
+            El("span", { className: "flex items-center gap-2" }, [El("i", { className: "far fa-calendar w-4" }), " " + dateStr + (timeSlot ? " • " + timeSlot : "")]),
+            El("span", { className: "flex items-center gap-2" }, [El("i", { className: "fas fa-user-friends w-4" }), " " + totalSeats + " Guests total"]),
+            El("span", { className: "flex items-center gap-2" }, [El("i", { className: "fas fa-map-marker-alt w-4" }), " " + city])
+          ])
+        ]),
+        El("div", { className: "mt-4 md:mt-0 pt-4 md:pt-0 flex flex-col gap-2 items-stretch md:items-end" }, groupActions)
+      ])
+    ]),
+    toggleBtn,
+    subCardContainer
+  ]);
+
+  return card;
+}
+
+// Phase 6C: Sub-booking row within grouped card
+function _renderSubBookingRow(booking, isPast) {
+  var El = window.tstsEl;
+  var bookingId = booking._id || "";
+  var guests = booking.guests || booking.numGuests || booking.guestCount || 1;
+  var status = safeStr(booking.status).toLowerCase();
+  var isCancelled = status.includes("cancel");
+  var statusLabel = stateLabel(status);
+  var statusColors = { confirmed: "bg-green-100 text-green-700", completed: "bg-blue-100 text-blue-700", cancelled: "bg-red-100 text-red-700", cancelled_by_host: "bg-red-100 text-red-700", expired: "bg-gray-100 text-gray-500", pending_payment: "bg-yellow-100 text-yellow-700", refunded: "bg-gray-100 text-gray-600" };
+  var badgeClass = statusColors[status] || "bg-slate-100 text-slate-700";
+
+  var rowActions = [];
+  if (status === "confirmed" && !isCancelled) {
+    rowActions.push(El("button", {
+      className: "px-3 py-1 border border-red-200 text-red-600 text-xs font-bold rounded-lg hover:bg-red-50 transition",
+      "data-action": "cancel", "data-booking-id": bookingId, textContent: "Cancel"
+    }));
+  }
+  if (status === "completed") {
+    var reviewInfo = (booking && booking.review && typeof booking.review === "object") ? booking.review : null;
+    var hasReview = !!String((reviewInfo && reviewInfo.id) || "").trim();
+    var expId = (booking.experience && (booking.experience._id || booking.experience.id)) || booking.experienceId || "";
+    rowActions.push(El("button", {
+      className: "px-3 py-1 tsts-btn-primary text-xs font-bold rounded-lg transition",
+      "data-action": "review", "data-booking-id": bookingId, "data-exp-id": expId, textContent: hasReview ? "View Review" : "Write Review"
+    }));
+  }
+
+  var refundDecision = booking && booking.refundDecision ? booking.refundDecision : {};
+  var refundCents = Number(refundDecision.amountCents);
+  var refundText = (Number.isFinite(refundCents) && refundCents > 0) ? "Refund: " + centsToMoney(refundCents) : "";
+
+  return El("div", { className: "bg-gray-50 p-3 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-2" }, [
+    El("div", { className: "flex items-center gap-3 flex-wrap" }, [
+      El("span", { className: "text-sm font-bold text-gray-700", textContent: guests + " seat" + (guests === 1 ? "" : "s") }),
+      El("span", { className: "px-2 py-0.5 text-[11px] font-bold rounded-full " + badgeClass, textContent: statusLabel }),
+      refundText ? El("span", { className: "text-xs text-slate-500", textContent: refundText }) : El("span", { className: "hidden" })
+    ]),
+    El("div", { className: "flex gap-2 flex-shrink-0" }, rowActions)
+  ]);
 }
 
 /* ====================== REVIEW ====================== */
@@ -1785,7 +1940,25 @@ function renderHostBookingsSection(bookings) {
     return wrap;
   }
 
-  bookings.forEach(function(b) {
+  // Phase 6D: Group host bookings by guestId + occurrenceKey
+  var _hostGroups = _groupByKey(bookings, function(b) {
+    var gid = String((b.guestId && typeof b.guestId === "object") ? (b.guestId._id || b.guestId.id || "") : (b.guestId || b.guestUserId || ""));
+    return gid + "|" + _occurrenceKey(b);
+  });
+  _hostGroups.order.forEach(function(groupKey) {
+    var group = _hostGroups.groups[groupKey];
+    if (group.length === 1) {
+      wrap.appendChild(_renderHostBookingCard(El, group[0]));
+    } else {
+      wrap.appendChild(_renderGroupedHostBookingCard(El, group));
+    }
+  });
+
+  return wrap;
+}
+
+// Single host booking card (extracted from original forEach)
+function _renderHostBookingCard(El, b) {
     const dt = safeDate(b.bookingDate || b.experienceDate || b.createdAt);
     const month = dt ? dt.toLocaleString("default", { month: "short" }) : "--";
     const day = dt ? dt.getDate() : "--";
@@ -1885,10 +2058,116 @@ function renderHostBookingsSection(bookings) {
       ]),
       El("div", { className: "flex flex-col gap-2 items-end flex-shrink-0" }, hostActionBtns)
     ]);
-    wrap.appendChild(card);
+    return card;
+}
+
+// Phase 6D: Grouped host booking card for multi-booking guest+occurrence
+function _renderGroupedHostBookingCard(El, group) {
+  var first = group[0];
+  var dt = safeDate(first.bookingDate || first.experienceDate || first.createdAt);
+  var month = dt ? dt.toLocaleString("default", { month: "short" }) : "--";
+  var day = dt ? dt.getDate() : "--";
+  var exp = first.experience || {};
+  var title = sanitizeExperienceTitle(exp.title || first.title || "Listing");
+  var guest = first.guestId || first.user || {};
+  var guestName = guest.name || first.guestName || "Unknown Guest";
+
+  var totalSeats = 0;
+  var checkinBookingId = null;
+  var allCheckedIn = true;
+  var anyCheckedIn = false;
+  var anyNoShow = false;
+  for (var i = 0; i < group.length; i++) {
+    totalSeats += Math.max(1, Number(group[i].numGuests || group[i].guests || group[i].guestCount) || 1);
+    var st = normalizeState(group[i].status);
+    var att = group[i].attendanceStatus || null;
+    if (att === "checked_in") anyCheckedIn = true; else allCheckedIn = false;
+    if (att === "no_show") anyNoShow = true;
+    if (st === "confirmed" && group[i].paymentStatus === "paid" && !checkinBookingId) {
+      checkinBookingId = group[i]._id || "";
+    }
+  }
+
+  // Attendance badge + check-in button
+  var hostActionBtns = [];
+  if (allCheckedIn && group.length > 0) {
+    hostActionBtns.push(El("span", { className: "px-3 py-1.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700", textContent: "All checked in" }));
+  } else if (anyCheckedIn) {
+    hostActionBtns.push(El("span", { className: "px-3 py-1.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700", textContent: "Partially checked in" }));
+  }
+  if (checkinBookingId && !allCheckedIn) {
+    hostActionBtns.push(El("button", {
+      className: "w-full md:w-auto bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-700 transition whitespace-nowrap",
+      "data-action": "otp-checkin", "data-booking-id": checkinBookingId, textContent: "Check In"
+    }));
+  }
+
+  // Expandable sub-booking rows
+  var subContainer = El("div", { className: "hidden mt-4 space-y-2 border-t border-gray-100 pt-3" });
+  for (var k = 0; k < group.length; k++) {
+    subContainer.appendChild(_renderHostSubBookingRow(El, group[k]));
+  }
+  var toggleBtn = El("button", {
+    className: "text-sm text-tsts-ink font-bold underline underline-offset-2 hover:text-orange-600 transition mt-2"
+  });
+  toggleBtn.textContent = "Show " + group.length + " bookings";
+  toggleBtn.addEventListener("click", function() {
+    var isHidden = subContainer.classList.contains("hidden");
+    if (isHidden) {
+      subContainer.classList.remove("hidden");
+      toggleBtn.textContent = "Hide bookings";
+    } else {
+      subContainer.classList.add("hidden");
+      toggleBtn.textContent = "Show " + group.length + " bookings";
+    }
   });
 
-  return wrap;
+  return El("div", { className: "bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3 mb-4" }, [
+    El("div", { className: "flex flex-col md:flex-row justify-between items-start md:items-center gap-4" }, [
+      El("div", { className: "flex items-center gap-4 w-full" }, [
+        El("div", { className: "bg-orange-50 text-orange-600 w-16 h-16 rounded-xl flex flex-col items-center justify-center border border-orange-100 flex-shrink-0" }, [
+          El("span", { className: "text-xs font-bold uppercase", textContent: month }),
+          El("span", { className: "text-xl font-bold", textContent: String(day) })
+        ]),
+        El("div", {}, [
+          El("h3", { className: "font-bold text-lg text-gray-900 mb-1", textContent: title }),
+          El("p", { className: "text-sm text-gray-500" }, [
+            "Guest: ", El("span", { className: "font-bold text-gray-700", textContent: guestName }),
+            " — " + totalSeats + " seat" + (totalSeats === 1 ? "" : "s") + " (" + group.length + " bookings)"
+          ])
+        ])
+      ]),
+      El("div", { className: "flex flex-col gap-2 items-end flex-shrink-0" }, hostActionBtns)
+    ]),
+    toggleBtn,
+    subContainer
+  ]);
+}
+
+// Phase 6D: Individual booking row inside grouped host card
+function _renderHostSubBookingRow(El, b) {
+  var pax = b.guests || b.numGuests || b.guestCount || 1;
+  var paid = b.amountTotal || (b.pricing && b.pricing.totalPrice) || "";
+  var statusNorm = normalizeState(b.status);
+  var statusColors = { confirmed: "bg-green-100 text-green-700", completed: "bg-blue-100 text-blue-700", cancelled: "bg-red-100 text-red-700", cancelled_by_host: "bg-red-100 text-red-700", pending_payment: "bg-gray-100 text-gray-600" };
+  var badgeClass = statusColors[statusNorm] || "bg-slate-100 text-slate-700";
+  var att = b.attendanceStatus || null;
+  var attBadge = att === "checked_in" ? El("span", { className: "px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-700", textContent: "Checked in" })
+    : att === "no_show" ? El("span", { className: "px-2 py-0.5 text-[10px] font-bold rounded-full bg-gray-100 text-gray-500", textContent: "No show" })
+    : El("span", { className: "hidden" });
+  var viewBtn = El("button", {
+    className: "px-3 py-1 bg-white border border-gray-200 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-50 transition",
+    "data-action": "guest", "data-booking-id": b._id || "", textContent: "Details"
+  });
+  return El("div", { className: "bg-gray-50 p-3 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-2" }, [
+    El("div", { className: "flex items-center gap-3 flex-wrap" }, [
+      El("span", { className: "text-sm font-bold text-gray-700", textContent: pax + " seat" + (pax === 1 ? "" : "s") }),
+      El("span", { className: "px-2 py-0.5 text-[11px] font-bold rounded-full " + badgeClass, textContent: stateLabel(statusNorm) }),
+      attBadge,
+      El("span", { className: "text-xs text-gray-400", textContent: paid !== "" ? "$" + paid : "" })
+    ]),
+    El("div", { className: "flex gap-2 flex-shrink-0" }, [viewBtn])
+  ]);
 }
 
 function computeListingsSummary(rows, fallbackSummary) {
@@ -2402,18 +2681,32 @@ function closeHostReplyModal() {
 function openCheckinModal(bookingId) {
   var b = hostBookingsCache.find(function (x) { return (x._id || "") === bookingId; });
   if (!b) return;
+
+  // Phase 6E: occurrence-scoped seat total — sum across all bookings for same guest+occurrence
+  var _occKey = _occurrenceKey(b);
+  var _guestId = String((b.guestId && typeof b.guestId === "object") ? (b.guestId._id || b.guestId.id || "") : (b.guestId || b.guestUserId || ""));
+  var _totalOccurrenceSeats = 0;
+  for (var _ci = 0; _ci < hostBookingsCache.length; _ci++) {
+    var _cb = hostBookingsCache[_ci];
+    var _cbGid = String((_cb.guestId && typeof _cb.guestId === "object") ? (_cb.guestId._id || _cb.guestId.id || "") : (_cb.guestId || _cb.guestUserId || ""));
+    if (_cbGid === _guestId && _occurrenceKey(_cb) === _occKey && normalizeState(_cb.status) === "confirmed" && _cb.paymentStatus === "paid") {
+      _totalOccurrenceSeats += Math.max(1, Number(_cb.numGuests || _cb.guests || _cb.guestCount) || 1);
+    }
+  }
+  var maxSeats = Math.max(_totalOccurrenceSeats, Math.max(1, Number(b.numGuests) || 1));
+
   var nameEl = document.getElementById("checkin-guest-name");
-  if (nameEl) nameEl.textContent = "Guest: " + (b.guestName || "—") + " (" + (b.numGuests || 1) + " pax)";
+  if (nameEl) nameEl.textContent = "Guest: " + (b.guestName || "—") + " (" + maxSeats + " pax)";
   var otpInput = document.getElementById("checkin-otp");
   if (otpInput) otpInput.value = "";
   var seatsSelect = document.getElementById("checkin-seats");
   if (seatsSelect) {
     seatsSelect.textContent = "";
-    for (var i = 1; i <= (b.numGuests || 1); i++) {
+    for (var i = 1; i <= maxSeats; i++) {
       var opt = document.createElement("option");
       opt.value = String(i);
       opt.textContent = String(i);
-      if (i === (b.numGuests || 1)) opt.selected = true;
+      if (i === maxSeats) opt.selected = true;
       seatsSelect.appendChild(opt);
     }
   }
