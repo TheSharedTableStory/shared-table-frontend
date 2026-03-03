@@ -73,14 +73,15 @@ const dashboardDeepLink = {
   panel: String(dashboardQueryParams.get("panel") || "").trim().toLowerCase(),
   requestId: String(dashboardQueryParams.get("requestId") || "").trim()
 };
-const HOSTING_SECTION_KEYS = Object.freeze(["overview", "listings", "bookings", "private-requests", "verification-payout", "reviews"]);
+const HOSTING_SECTION_KEYS = Object.freeze(["overview", "listings", "bookings", "private-requests", "verification-payout", "reviews", "fees-charges"]);
 const HOSTING_SECTION_LABELS = Object.freeze({
   overview: "Overview",
   listings: "My Listings",
   bookings: "Booking Requests",
   "private-requests": "Private Requests",
   "verification-payout": "Verification & Payout",
-  reviews: "Reviews & Performance"
+  reviews: "Reviews & Performance",
+  "fees-charges": "Fees & Charges"
 });
 const hostDashboardState = {
   section: "overview",
@@ -88,7 +89,8 @@ const hostDashboardState = {
   bookings: { status: "idle", rows: [], message: "" },
   privateRequests: { status: "idle", rows: [], message: "" },
   verification: { status: "idle", data: null, message: "" },
-  reviews: { status: "idle", data: null, message: "" }
+  reviews: { status: "idle", data: null, message: "" },
+  feesCharges: { status: "idle", rows: [], message: "" }
 };
 const dashboardRequestState = {
   activeTab: resolveDashboardTab(dashboardDeepLink.tab),
@@ -1999,6 +2001,77 @@ async function loadHostReviewsSummary() {
   }
 }
 
+async function loadHostFeesCharges() {
+  hostDashboardState.feesCharges = { status: "loading", rows: [], message: "" };
+  renderHostingDashboard();
+  try {
+    var res = await window.authFetch("/api/host/cancellation-charges", { method: "GET" });
+    var payload = await res.json().catch(function () { return {}; });
+    if (!res.ok) {
+      hostDashboardState.feesCharges = { status: "error", rows: [], message: String((payload && payload.error) || "Failed to load fees and charges.") };
+      renderHostingDashboard();
+      return;
+    }
+    var d = (payload && payload.data) ? payload.data : payload;
+    var rows = Array.isArray(d && d.charges) ? d.charges : (Array.isArray(d) ? d : []);
+    hostDashboardState.feesCharges = { status: "ready", rows: rows, message: "" };
+    renderHostingDashboard();
+  } catch (_) {
+    hostDashboardState.feesCharges = { status: "error", rows: [], message: "Failed to load fees and charges." };
+    renderHostingDashboard();
+  }
+}
+
+function renderHostFeesChargesSection(rows) {
+  var El = window.tstsEl;
+  var items = Array.isArray(rows) ? rows : [];
+
+  if (items.length === 0) {
+    return El("div", { className: "text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm" }, [
+      El("div", { className: "text-5xl mb-4", textContent: "\u2705" }),
+      El("h3", { className: "heading-serif text-xl font-bold text-tsts-ink mb-2", textContent: "No cancellation charges" }),
+      El("p", { className: "text-slate-500", textContent: "No cancellation charges. You're all clear." })
+    ]);
+  }
+
+  var cards = items.map(function (ch) {
+    var title = String(ch.experienceTitle || "Experience");
+    var date = ch.bookingDate ? new Date(ch.bookingDate).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" }) : "";
+    var chargeCents = Number(ch.chargeCents) || 0;
+    var appliedCents = Number(ch.appliedCents) || 0;
+    var chargeStr = "$" + (chargeCents / 100).toFixed(2);
+    var appliedStr = "$" + (appliedCents / 100).toFixed(2);
+    var status = String(ch.status || "outstanding").toLowerCase();
+
+    var badgeClass = "text-xs font-semibold px-2 py-0.5 rounded-full ";
+    if (status === "recovered") badgeClass += "bg-emerald-50 text-emerald-700";
+    else if (status === "partial") badgeClass += "bg-yellow-50 text-yellow-700";
+    else badgeClass += "bg-orange-50 text-orange-700";
+
+    var badgeText = status === "recovered" ? "Recovered" : (status === "partial" ? "Partial" : "Outstanding");
+
+    return El("div", { className: "bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col gap-2" }, [
+      El("div", { className: "flex items-center justify-between gap-2" }, [
+        El("h4", { className: "font-bold text-tsts-ink text-sm truncate flex-1", textContent: title }),
+        El("span", { className: badgeClass, textContent: badgeText })
+      ]),
+      date ? El("p", { className: "text-xs text-slate-500", textContent: date }) : null,
+      El("div", { className: "flex items-center gap-4 mt-1" }, [
+        El("div", {}, [
+          El("span", { className: "text-xs text-slate-400 block", textContent: "Charge" }),
+          El("span", { className: "text-sm font-bold text-tsts-ink", textContent: chargeStr })
+        ]),
+        El("div", {}, [
+          El("span", { className: "text-xs text-slate-400 block", textContent: "Recovered" }),
+          El("span", { className: "text-sm font-bold text-tsts-ink", textContent: appliedStr })
+        ])
+      ])
+    ].filter(Boolean));
+  });
+
+  return El("div", { className: "space-y-3" }, cards);
+}
+
 async function handleDigestOptOutToggle(currentOptOut) {
   var next = !currentOptOut;
   try {
@@ -2579,6 +2652,17 @@ function renderHostingSectionContent() {
       return renderHostSourceLoading("Loading reviews and performance data...");
     }
     return renderHostReviewsSection(reviewsState.data);
+  }
+
+  if (section === "fees-charges") {
+    var fcState = hostDashboardState.feesCharges || {};
+    if (fcState.status === "loading") return renderHostSourceLoading("Loading fees and charges...");
+    if (fcState.status === "error") return renderHostSourceError("Fees and charges unavailable", fcState.message, "Retry Fees & Charges");
+    if (fcState.status === "idle") {
+      loadHostFeesCharges();
+      return renderHostSourceLoading("Loading fees and charges...");
+    }
+    return renderHostFeesChargesSection(fcState.rows);
   }
 
   return renderHostOverviewSection();

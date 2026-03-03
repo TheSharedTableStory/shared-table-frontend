@@ -2226,7 +2226,7 @@ async function handleDeactivateCoupon(code) {
 
 // Tab switching functionality (local, no window.* exposure)
 function switchTab(tabName) {
-  const views = ['dashboard', 'listings', 'pricing', 'verification', 'action-items', 'users', 'coupons', 'moderation', 'private-requests', 'audit'];
+  const views = ['dashboard', 'listings', 'pricing', 'verification', 'action-items', 'users', 'coupons', 'moderation', 'private-requests', 'fees-charges', 'audit'];
   const activeClass = "border-tsts-clay text-tsts-clay border-b-2 py-4 px-1 font-bold text-sm";
   const inactiveClass = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm";
 
@@ -2313,6 +2313,9 @@ function switchTab(tabName) {
       renderDashboardSummary(results[2]);
     });
   }
+  if (tabName === 'fees-charges') {
+    loadAdminFeesCharges().then(renderAdminFeesCharges).catch(function () { window.tstsNotify("Failed to load fees and charges.", "error"); renderAdminFeesCharges([]); });
+  }
   if (tabName === 'audit') {
     refreshAuditLogs().catch(function () { window.tstsNotify("Failed to load audit logs.", "error"); renderAuditLogs([]); });
   }
@@ -2330,9 +2333,72 @@ function resolveInitialAdminTab() {
     "coupons": true,
     "moderation": true,
     "private-requests": true,
+    "fees-charges": true,
     "audit": true
   };
   return allowed[requested] ? requested : "dashboard";
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ADMIN FEES & CHARGES
+
+async function loadAdminFeesCharges() {
+  const res = await adminFetch("/api/admin/cancellation-charges", { method: "GET" });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(String((payload && payload.error) || "Failed to load admin fees."));
+  const d = (payload && payload.data) ? payload.data : payload;
+  return Array.isArray(d && d.charges) ? d.charges : (Array.isArray(d) ? d : []);
+}
+
+function renderAdminFeesCharges(rows) {
+  const El = window.tstsEl;
+  const body = document.getElementById("admin-fees-charges-body");
+  if (!body) return;
+  body.textContent = "";
+
+  var items = Array.isArray(rows) ? rows : [];
+  if (items.length === 0) {
+    body.appendChild(El("p", { className: "text-sm text-slate-500 text-center py-8", textContent: "No cancellation charges. You're all clear." }));
+    return;
+  }
+
+  var table = El("table", { className: "w-full text-sm" });
+  var thead = El("thead", {}, [
+    El("tr", { className: "border-b border-slate-200 text-left" }, [
+      El("th", { className: "py-2 px-2 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Host" }),
+      El("th", { className: "py-2 px-2 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Experience" }),
+      El("th", { className: "py-2 px-2 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Date" }),
+      El("th", { className: "py-2 px-2 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Charge" }),
+      El("th", { className: "py-2 px-2 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Status" }),
+      El("th", { className: "py-2 px-2 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Balance" })
+    ])
+  ]);
+  table.appendChild(thead);
+
+  var tbody = El("tbody", {});
+  items.forEach(function (ch) {
+    var status = String(ch.status || "outstanding").toLowerCase();
+    var badgeClass = "text-xs font-semibold px-2 py-0.5 rounded-full ";
+    if (status === "recovered") badgeClass += "bg-emerald-50 text-emerald-700";
+    else if (status === "partial") badgeClass += "bg-yellow-50 text-yellow-700";
+    else badgeClass += "bg-orange-50 text-orange-700";
+    var badgeText = status === "recovered" ? "Recovered" : (status === "partial" ? "Partial" : "Outstanding");
+    var chargeCents = Number(ch.chargeCents) || 0;
+    var balanceCents = Number(ch.balanceCents) || 0;
+    var dateStr = ch.bookingDate ? new Date(ch.bookingDate).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" }) : "";
+
+    var row = El("tr", { className: "border-b border-slate-100 hover:bg-slate-50" }, [
+      El("td", { className: "py-2 px-2 text-tsts-ink", textContent: String(ch.hostName || "—") }),
+      El("td", { className: "py-2 px-2 text-tsts-ink truncate max-w-[200px]", textContent: String(ch.experienceTitle || "—") }),
+      El("td", { className: "py-2 px-2 text-slate-600", textContent: dateStr }),
+      El("td", { className: "py-2 px-2 font-bold text-tsts-ink", textContent: "$" + (chargeCents / 100).toFixed(2) }),
+      El("td", { className: "py-2 px-2" }, [El("span", { className: badgeClass, textContent: badgeText })]),
+      El("td", { className: "py-2 px-2 font-bold text-tsts-ink", textContent: "$" + (balanceCents / 100).toFixed(2) })
+    ]);
+    tbody.appendChild(row);
+  });
+  table.appendChild(tbody);
+  body.appendChild(table);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -2732,6 +2798,7 @@ function wireAdminEvents() {
   const tabCoupons = $("tab-coupons");
   const tabModeration = $("tab-moderation");
   const tabPrivateRequests = $("tab-private-requests");
+  const tabFeesCharges = $("tab-fees-charges");
   const tabAudit = $("tab-audit");
   const refreshListings = $("btn-refresh-listings");
   const refreshVerificationPolicy = $("btn-refresh-verification-policy");
@@ -2780,6 +2847,7 @@ function wireAdminEvents() {
   if (tabCoupons) tabCoupons.addEventListener("click", () => switchTab("coupons"));
   if (tabModeration) tabModeration.addEventListener("click", () => switchTab("moderation"));
   if (tabPrivateRequests) tabPrivateRequests.addEventListener("click", () => switchTab("private-requests"));
+  if (tabFeesCharges) tabFeesCharges.addEventListener("click", () => switchTab("fees-charges"));
   if (tabAudit) tabAudit.addEventListener("click", () => switchTab("audit"));
   if (refreshListings) refreshListings.addEventListener("click", () => loadExperiences().then(renderExperiences).catch(function () { window.tstsNotify("Failed to refresh listings.", "error"); renderExperiences([]); }));
   if (refreshVerificationPolicy) refreshVerificationPolicy.addEventListener("click", () => refreshVerificationViews().catch(function () { window.tstsNotify("Failed to refresh verification policy.", "error"); }));

@@ -1768,6 +1768,7 @@
       var btn = El("button", { type: "button", className: "text-xs px-3 py-1.5 rounded-lg transition " + cls, textContent: label });
       btn.addEventListener("click", function () {
         if (action === "edit") loadListingForEdit(id);
+        else if (action === "delete") doDeleteExperience(id, rawTitle);
         else doStatusAction(id, action);
       });
       return btn;
@@ -1775,11 +1776,14 @@
     if (status === "ACTIVE") {
       actionBtns.push(makeBtn("Edit", "border border-gray-300 text-gray-600 hover:bg-gray-50", "edit"));
       actionBtns.push(makeBtn("Pause", "border border-orange-300 text-orange-700 hover:bg-orange-50", "pause"));
+      actionBtns.push(makeBtn("Delete Experience", "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100", "delete"));
     } else if (status === "PAUSED") {
       actionBtns.push(makeBtn("Resume", "bg-green-600 text-white hover:bg-green-700", "resume"));
       actionBtns.push(makeBtn("Edit", "border border-gray-300 text-gray-600 hover:bg-gray-50", "edit"));
+      actionBtns.push(makeBtn("Delete Experience", "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100", "delete"));
     } else if (status === "DRAFT" || status === "PENDING_REVIEW") {
       actionBtns.push(makeBtn("Edit", "border border-gray-300 text-gray-600 hover:bg-gray-50", "edit"));
+      actionBtns.push(makeBtn("Delete Experience", "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100", "delete"));
     }
 
     var li = El("div", { className: "flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm" }, [
@@ -1842,6 +1846,63 @@
       await loadShortfallDashboard({ silent: true });
     } catch (_) {
       if (window.tstsNotify) window.tstsNotify("Action failed. Please try again.", "error");
+    }
+  }
+
+  // B1+B2: Delete experience with booking check + consent modal
+  async function doDeleteExperience(id, title) {
+    try {
+      // Check for confirmed bookings first
+      var bRes = await window.authFetch("/api/host/bookings/" + encodeURIComponent(id));
+      var bData = await bRes.json().catch(function () { return {}; });
+      var bookings = [];
+      if (bRes.ok && bData && bData.data) {
+        var raw = bData.data;
+        bookings = Array.isArray(raw.bookings) ? raw.bookings : (Array.isArray(raw) ? raw : []);
+      }
+      var confirmed = bookings.filter(function (b) {
+        var s = String((b && b.status) || "").toLowerCase();
+        return s === "confirmed" || s === "pending_payment";
+      });
+
+      if (confirmed.length === 0) {
+        // No active bookings — simple confirm
+        var ok = await window.tstsConfirm("Are you sure you want to delete this experience? It will be permanently removed.");
+        if (!ok) return;
+      } else {
+        // Has active bookings — consent modal with penalty details
+        var totalCents = 0;
+        confirmed.forEach(function (b) {
+          var amt = 0;
+          if (b.pricingSnapshot && Number.isFinite(Number(b.pricingSnapshot.totalCents))) amt = Number(b.pricingSnapshot.totalCents);
+          else if (b.feeBreakdown && Number.isFinite(Number(b.feeBreakdown.totalCents))) amt = Number(b.feeBreakdown.totalCents);
+          else if (Number.isFinite(Number(b.amountCents))) amt = Number(b.amountCents);
+          totalCents += amt;
+        });
+        var recoveryCents = Math.max(0, Math.round(totalCents * 0.05));
+        var recoveryDollars = (recoveryCents / 100).toFixed(2);
+
+        var msg = "This experience has " + confirmed.length + " confirmed booking(s). " +
+          "Deleting it will cancel all guest bookings, issue full refunds, " +
+          "and apply a 5% cancellation charge ($" + recoveryDollars + ") deducted from your future payouts. " +
+          "By proceeding, you confirm you understand and accept these terms.";
+
+        var ok2 = await window.tstsConfirm(msg, { confirmText: "Delete and Refund Guests", cancelText: "Cancel", destructive: true });
+        if (!ok2) return;
+      }
+
+      // Proceed with delete
+      var dRes = await window.authFetch("/api/experiences/" + encodeURIComponent(id), { method: "DELETE" });
+      var dData = await dRes.json().catch(function () { return {}; });
+      if (!dRes.ok) {
+        if (window.tstsNotify) window.tstsNotify(String((dData && dData.message) || "Delete failed. Please try again."), "error");
+        return;
+      }
+      if (window.tstsNotify) window.tstsNotify("Experience deleted.", "success");
+      await loadHostListings();
+      await loadShortfallDashboard({ silent: true });
+    } catch (err) {
+      if (window.tstsNotify) window.tstsNotify("Delete failed. Please try again.", "error");
     }
   }
 
