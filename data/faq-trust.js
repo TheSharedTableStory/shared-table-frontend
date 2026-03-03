@@ -17,7 +17,7 @@ const FAQ_TRUST_CONFIG = {
   escalation: {
     manageBookingsUrl: "my-bookings.html",
     reportIssueUrl: "report.html",
-    contactSupportHref: "mailto:admin@thesharedtablestory.com"
+    contactSupportHref: "mailto:Contact@thesharedtablestory.com"
   }
 };
 

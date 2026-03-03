@@ -37,13 +37,23 @@
       const tt = q.get("targetType");
       const tid = q.get("targetId");
       if (tt && targetTypeEl) targetTypeEl.value = String(tt);
-      if (tid && targetIdEl) {
-        targetIdEl.value = String(tid);
+      // FIX-06: Validate targetId — must be a 24-char hex (MongoDB ObjectId)
+      var validId = tid && /^[0-9a-fA-F]{24}$/.test(String(tid).trim());
+      if (validId && targetIdEl) {
+        targetIdEl.value = String(tid).trim();
         targetIdEl.readOnly = true;
         targetIdEl.classList.add("bg-gray-100", "cursor-not-allowed");
       } else {
-        const helper = document.getElementById("targetId-helper");
-        if (helper) helper.classList.remove("hidden");
+        // No valid target — show guidance, disable form
+        var helper = document.getElementById("targetId-helper");
+        if (helper) {
+          helper.textContent = "To report an issue, use the report button on the relevant experience or profile.";
+          helper.classList.remove("hidden");
+          helper.classList.add("text-sm", "text-slate-500", "text-center", "py-4");
+        }
+        if (form) {
+          form.querySelectorAll("input, select, textarea, button").forEach(function (el) { el.disabled = true; });
+        }
       }
     } catch (_) {}
   }

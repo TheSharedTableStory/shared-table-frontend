@@ -746,7 +746,18 @@
     }
 
     setText("exp-title", publicTitle(exp.title || ""));
-    setText("exp-city", exp.city || exp.location || "");
+    // FIX-02: Build location text + Google Maps link
+    var cityParts = [exp.city, exp.suburb, exp.postcode].filter(function (v) { return v && String(v).trim(); });
+    var cityText = cityParts.join(", ") || "";
+    var cityEl = document.getElementById("exp-city");
+    if (cityEl) {
+      cityEl.textContent = cityText;
+      if (cityText) {
+        cityEl.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(cityText + " Australia");
+      } else {
+        cityEl.removeAttribute("href");
+      }
+    }
     setText("exp-description", publicDescription(exp));
     const priceNum = Number(exp.price);
     sharedUnitPrice = Number.isFinite(priceNum) && priceNum >= 0 ? priceNum : 0;
@@ -828,6 +839,14 @@
       viewerUserId = "";
     }
     viewerIsHostForExperience = !!hostId && !!viewerUserId && viewerUserId === hostId;
+
+    // FIX-04: Hide booking form for host, show info box
+    var hostSelfViewBox = document.getElementById("host-self-view-box");
+    var bookingFormEl = document.getElementById("booking-form");
+    if (viewerIsHostForExperience) {
+      if (bookingFormEl) bookingFormEl.classList.add("hidden");
+      if (hostSelfViewBox) hostSelfViewBox.classList.remove("hidden");
+    }
 
     if (verifiedBadgeEl) verifiedBadgeEl.classList.toggle("hidden", verifiedState !== "verified");
     if (verifiedPendingBadgeEl) verifiedPendingBadgeEl.classList.toggle("hidden", verifiedState !== "pending");

@@ -64,8 +64,8 @@
           <header class="space-y-2">
             <h1 id="exp-title" class="heading-serif text-2xl sm:text-3xl lg:text-4xl font-semibold text-tsts-ink">
               </h1>
-            <p id="exp-city" class="text-sm sm:text-base text-slate-600">
-              </p>
+            <a id="exp-city" href="#" target="_blank" rel="noopener noreferrer" class="text-sm sm:text-base text-slate-600 underline hover:text-tsts-ink inline-block">
+              </a>
             <div id="exp-verified-badge" class="hidden">
               <span class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-100">
                 <i class="fa-solid fa-badge-check"></i>
@@ -201,6 +201,11 @@
                 </div>
               </div>
 
+              <div id="host-self-view-box" class="hidden bg-amber-50 text-amber-800 rounded-xl p-4 text-sm flex items-center gap-3">
+                <i class="fa-solid fa-circle-info text-lg"></i>
+                <span>You're hosting this one! Share the link so guests can book.</span>
+              </div>
+
               <form id="booking-form" class="space-y-4">
                 
                 <div id="discount-badge" class="hidden mb-4 bg-emerald-50 text-emerald-700 border border-emerald-100 px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2">
@@ -332,6 +337,10 @@
 
                 <div class="mt-4 flex flex-col gap-2 text-[0.7rem] sm:text-xs text-slate-600">
                   <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
+                    <span>The price you see is all you pay. No surprises.</span>
+                  </div>
+                  <div class="flex items-center gap-2">
                     <i class="fa-solid fa-shield-check text-emerald-500 text-sm"></i>
                     <span>Secure payment via Stripe</span>
                   </div>
@@ -362,10 +371,10 @@
   <script src="js/runtime-config.js?v=20260224a"></script>
   <script src="js/common.js?v=20260227d"></script>
   <script src="data/faq-catalog.js?v=20260224a"></script>
-  <script src="data/faq-trust.js?v=20260224a"></script>
-  <script src="js/faq-renderer.js?v=20260224a"></script>
-  <script src="js/faq-contextual.js?v=20260224a"></script>
+  <script src="data/faq-trust.js?v=20260303a"></script>
+  <script src="js/faq-renderer.js?v=20260303a"></script>
+  <script src="js/faq-contextual.js?v=20260303a"></script>
   <script src="js/faq-init.js?v=20260224a"></script>
-  <script src="js/experience.js?v=20260227c"></script>
+  <script src="js/experience.js?v=20260303a"></script>
 </body>
 </html>

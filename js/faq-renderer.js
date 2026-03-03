@@ -189,7 +189,7 @@
         : {
             manageBookingsUrl: "my-bookings.html",
             reportIssueUrl: "report.html",
-            contactSupportHref: "mailto:admin@thesharedtablestory.com"
+            contactSupportHref: "mailto:Contact@thesharedtablestory.com"
           };
 
     const manageLink = createEl(
@@ -215,11 +215,14 @@
     const contactLink = createEl(
       "a",
       {
-        href: safeHref(escalation.contactSupportHref || "mailto:admin@thesharedtablestory.com"),
+        href: safeHref(escalation.contactSupportHref || "mailto:Contact@thesharedtablestory.com"),
         className: "inline-flex items-center justify-center rounded-xl tsts-btn-primary px-3 py-2 text-xs font-semibold"
       },
       "Contact support"
     );
+
+    // FIX-05: Show email text below buttons
+    var emailNote = createEl("p", { className: "text-xs text-slate-500 mt-2" }, "You can also reach us at Contact@thesharedtablestory.com");
 
     return createEl(
       "section",
@@ -229,7 +232,8 @@
       [
         createEl("h3", { className: "heading-serif text-lg font-semibold text-tsts-ink mb-1" }, "Still Need Help?"),
         createEl("p", { className: "text-sm text-slate-600 mb-4" }, "Use one of these actions and we will route you to the right support flow."),
-        createEl("div", { className: "flex flex-wrap gap-2" }, [manageLink, reportLink, contactLink])
+        createEl("div", { className: "flex flex-wrap gap-2" }, [manageLink, reportLink, contactLink]),
+        emailNote
       ]
     );
   }

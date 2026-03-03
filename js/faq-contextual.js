@@ -152,7 +152,7 @@
           createEl(
             "a",
             {
-              href: "mailto:admin@thesharedtablestory.com",
+              href: "mailto:Contact@thesharedtablestory.com",
               className: "inline-flex items-center justify-center rounded-xl tsts-btn-primary px-3 py-2 text-xs font-semibold"
             },
             "Contact support"
