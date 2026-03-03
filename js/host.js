@@ -1658,7 +1658,15 @@
         };
         if (eventDurationMinutes != null) body.eventDurationMinutes = eventDurationMinutes;
         if (endTime) body.endTime = endTime;
-        if (startTime && endTime) body.timeSlots = [startTime + "-" + endTime];
+        if (startTime && endTime) {
+          body.timeSlots = [startTime + "-" + endTime];
+          // Build weeklySchedule: same time range for all checked days (Phase 2, backward compat)
+          var ws = {};
+          for (var di = 0; di < availableDays.length; di++) {
+            ws[availableDays[di]] = [startTime + "-" + endTime];
+          }
+          body.weeklySchedule = ws;
+        }
         if (imageUrl) body.imageUrl = imageUrl;
         else body.imageUrl = "/assets/experience-default.jpg";
         if (privateEnabled) {
