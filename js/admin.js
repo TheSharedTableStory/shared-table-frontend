@@ -1389,6 +1389,14 @@ function renderUsers(users) {
       actionButtons.push(grantBtn);
       actionButtons.push(El("span", { textContent: " " }));
     }
+    if (!isAdmin) {
+      var suspendLabel = accountStatus === "suspended" ? "Restore" : "Suspend Account";
+      var suspendClass = accountStatus === "suspended" ? "px-3 py-1 text-xs font-bold rounded border border-blue-200 text-blue-700 hover:bg-blue-50" : "px-3 py-1 text-xs font-bold rounded border border-amber-200 text-amber-700 hover:bg-amber-50";
+      var suspendBtn = El("button", { className: suspendClass, textContent: suspendLabel });
+      (function(uid, st) { suspendBtn.addEventListener("click", function() { handleSuspendUser(uid, st); }); })(id, accountStatus);
+      actionButtons.push(suspendBtn);
+      actionButtons.push(El("span", { textContent: " " }));
+    }
     actionButtons.push(deleteBtn);
 
     tbody.appendChild(El("tr", {}, [
@@ -2226,7 +2234,7 @@ async function handleDeactivateCoupon(code) {
 
 // Tab switching functionality (local, no window.* exposure)
 function switchTab(tabName) {
-  const views = ['dashboard', 'listings', 'pricing', 'verification', 'action-items', 'users', 'coupons', 'moderation', 'private-requests', 'fees-charges', 'audit'];
+  const views = ['dashboard', 'listings', 'pricing', 'verification', 'action-items', 'users', 'coupons', 'moderation', 'private-requests', 'incidents', 'fees-charges', 'audit'];
   const activeClass = "border-tsts-clay text-tsts-clay border-b-2 py-4 px-1 font-bold text-sm";
   const inactiveClass = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm";
 
@@ -2313,6 +2321,9 @@ function switchTab(tabName) {
       renderDashboardSummary(results[2]);
     });
   }
+  if (tabName === 'incidents') {
+    loadAdminIncidents().then(renderAdminIncidents).catch(function () { window.tstsNotify("Failed to load incidents.", "error"); renderAdminIncidents([]); });
+  }
   if (tabName === 'fees-charges') {
     loadAdminFeesCharges().then(renderAdminFeesCharges).catch(function () { window.tstsNotify("Failed to load fees and charges.", "error"); renderAdminFeesCharges([]); });
   }
@@ -2333,10 +2344,112 @@ function resolveInitialAdminTab() {
     "coupons": true,
     "moderation": true,
     "private-requests": true,
+    "incidents": true,
     "fees-charges": true,
     "audit": true
   };
   return allowed[requested] ? requested : "dashboard";
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ADMIN ATTENDANCE INCIDENTS
+
+async function loadAdminIncidents() {
+  const res = await adminFetch("/api/admin/incidents?status=all&limit=200", { method: "GET" });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(String((payload && payload.error) || "Failed to load incidents."));
+  const d = (payload && payload.data) ? payload.data : payload;
+  return Array.isArray(d && d.items) ? d.items : (Array.isArray(d) ? d : []);
+}
+
+async function resolveIncident(incidentId, decision) {
+  var note = await window.tstsPrompt("Admin note (optional):");
+  if (note === null) return;
+  try {
+    var res = await adminFetch("/api/admin/incidents/" + encodeURIComponent(incidentId) + "/decision", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision: decision, note: String(note || "").trim() })
+    });
+    var payload = await res.json().catch(() => ({}));
+    if (!res.ok) { window.tstsNotify(String((payload && payload.message) || "Failed to resolve incident."), "error"); return; }
+    window.tstsNotify("Incident " + decision + ".", "success");
+    loadAdminIncidents().then(renderAdminIncidents).catch(function () {});
+  } catch (_) { window.tstsNotify("Failed to resolve incident.", "error"); }
+}
+
+function renderAdminIncidents(rows) {
+  const El = window.tstsEl;
+  const body = document.getElementById("admin-incidents-body");
+  if (!body) return;
+  body.textContent = "";
+  var items = Array.isArray(rows) ? rows : [];
+  if (items.length === 0) {
+    body.appendChild(El("p", { className: "text-sm text-slate-500 text-center py-8", textContent: "All clear \u2014 no incidents." }));
+    return;
+  }
+  var table = El("table", { className: "w-full text-sm" });
+  table.appendChild(El("thead", {}, [
+    El("tr", { className: "border-b border-slate-200 text-left" }, [
+      El("th", { className: "py-2 px-2 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Type" }),
+      El("th", { className: "py-2 px-2 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Experience" }),
+      El("th", { className: "py-2 px-2 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Date" }),
+      El("th", { className: "py-2 px-2 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Severity" }),
+      El("th", { className: "py-2 px-2 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Status" }),
+      El("th", { className: "py-2 px-2 font-semibold text-slate-600 text-xs uppercase tracking-wide", textContent: "Actions" })
+    ])
+  ]));
+  var tbody = El("tbody", {});
+  items.forEach(function (inc) {
+    var status = String(inc.status || "open").toLowerCase();
+    var severity = String(inc.severity || "low").toLowerCase();
+    var badgeClass = "text-xs font-semibold px-2 py-0.5 rounded-full ";
+    if (status === "resolved") badgeClass += "bg-emerald-50 text-emerald-700";
+    else if (status === "dismissed") badgeClass += "bg-slate-50 text-slate-600";
+    else badgeClass += "bg-orange-50 text-orange-700";
+    var sevClass = "text-xs font-semibold px-2 py-0.5 rounded-full ";
+    if (severity === "high") sevClass += "bg-red-50 text-red-700";
+    else if (severity === "medium") sevClass += "bg-amber-50 text-amber-700";
+    else sevClass += "bg-blue-50 text-blue-700";
+    var dateStr = inc.createdAt ? new Date(inc.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" }) : "";
+    var actions = [];
+    if (status === "open") {
+      actions.push(El("button", { className: "text-xs font-bold text-emerald-700 hover:underline", textContent: "Resolve", onclick: function () { resolveIncident(String(inc._id || ""), "resolved"); } }));
+      actions.push(El("button", { className: "text-xs font-bold text-slate-500 hover:underline ml-2", textContent: "Dismiss", onclick: function () { resolveIncident(String(inc._id || ""), "dismissed"); } }));
+    }
+    tbody.appendChild(El("tr", { className: "border-b border-slate-100 hover:bg-slate-50" }, [
+      El("td", { className: "py-2 px-2 text-tsts-ink", textContent: String(inc.type || "—") }),
+      El("td", { className: "py-2 px-2 text-tsts-ink truncate max-w-[200px]", textContent: String(inc.experienceTitle || inc.experienceId || "—") }),
+      El("td", { className: "py-2 px-2 text-slate-600", textContent: dateStr }),
+      El("td", { className: "py-2 px-2" }, [El("span", { className: sevClass, textContent: severity })]),
+      El("td", { className: "py-2 px-2" }, [El("span", { className: badgeClass, textContent: status })]),
+      El("td", { className: "py-2 px-2" }, actions)
+    ]));
+  });
+  table.appendChild(tbody);
+  body.appendChild(table);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ADMIN SUSPEND USER
+
+async function handleSuspendUser(userId, currentStatus) {
+  var isSuspended = currentStatus === "suspended";
+  var action = isSuspended ? "restore" : "suspend";
+  var msg = isSuspended ? "Restore this user account?" : "Are you sure you want to suspend this user?";
+  var ok = await window.tstsConfirm(msg);
+  if (!ok) return;
+  try {
+    var res = await adminFetch("/api/admin/users/" + encodeURIComponent(userId) + "/status", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: isSuspended ? "active" : "suspended" })
+    });
+    var payload = await res.json().catch(() => ({}));
+    if (!res.ok) { window.tstsNotify(String((payload && payload.message) || "Failed to " + action + " user."), "error"); return; }
+    window.tstsNotify("User " + action + "d.", "success");
+    loadUsers().then(renderUsers).catch(function () {});
+  } catch (_) { window.tstsNotify("Failed to " + action + " user.", "error"); }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -2798,6 +2911,7 @@ function wireAdminEvents() {
   const tabCoupons = $("tab-coupons");
   const tabModeration = $("tab-moderation");
   const tabPrivateRequests = $("tab-private-requests");
+  const tabIncidents = $("tab-incidents");
   const tabFeesCharges = $("tab-fees-charges");
   const tabAudit = $("tab-audit");
   const refreshListings = $("btn-refresh-listings");
@@ -2847,6 +2961,7 @@ function wireAdminEvents() {
   if (tabCoupons) tabCoupons.addEventListener("click", () => switchTab("coupons"));
   if (tabModeration) tabModeration.addEventListener("click", () => switchTab("moderation"));
   if (tabPrivateRequests) tabPrivateRequests.addEventListener("click", () => switchTab("private-requests"));
+  if (tabIncidents) tabIncidents.addEventListener("click", () => switchTab("incidents"));
   if (tabFeesCharges) tabFeesCharges.addEventListener("click", () => switchTab("fees-charges"));
   if (tabAudit) tabAudit.addEventListener("click", () => switchTab("audit"));
   if (refreshListings) refreshListings.addEventListener("click", () => loadExperiences().then(renderExperiences).catch(function () { window.tstsNotify("Failed to refresh listings.", "error"); renderExperiences([]); }));
