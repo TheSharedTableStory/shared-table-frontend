@@ -7,6 +7,7 @@
   const mobileInput = document.getElementById("mobile");
   const mobileCountryCode = document.getElementById("mobileCountryCode");
   const bioInput = document.getElementById("bio");
+  const locationInput = document.getElementById("location");
   const handleInput = document.getElementById("handle");
   const allowHandleSearchToggle = document.getElementById("allow-handle-search");
   const shareToFriendsToggle = document.getElementById("share-to-friends");
@@ -108,6 +109,7 @@
         }
       } catch (_) {}
       try { if (bioInput) bioInput.value = user.bio || ""; } catch (_) {}
+      try { if (locationInput) locationInput.value = user.location || ""; } catch (_) {}
       try { if (handleInput) handleInput.value = user.handle || ""; } catch (_) {}
       try { if (allowHandleSearchToggle) allowHandleSearchToggle.checked = !!user.allowHandleSearch; } catch (_) {}
       try { if (shareToFriendsToggle) shareToFriendsToggle.checked = !!user.showExperiencesToFriends; } catch (_) {}
@@ -271,6 +273,7 @@
       const countryCode = mobileCountryCode ? (mobileCountryCode.value || "+61") : "+61";
       const mobile = mobileLocal ? countryCode + mobileLocal.replace(/^0/, "") : "";
       const bio = bioInput ? String(bioInput.value || "").trim() : "";
+      const location = locationInput ? String(locationInput.value || "").trim() : "";
       const handle = handleInput ? String(handleInput.value || "").trim() : "";
 
       const allowHandleSearch = !!(allowHandleSearchToggle && allowHandleSearchToggle.checked);
@@ -282,7 +285,7 @@
         const res = await window.authFetch("/api/auth/update", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, mobile, bio, handle, allowHandleSearch, showExperiencesToFriends, recommendationEmailOptOut, publicProfile })
+          body: JSON.stringify({ name, mobile, bio, location, handle, allowHandleSearch, showExperiencesToFriends, recommendationEmailOptOut, publicProfile })
         });
 
         if (handleUnauthorized(res)) return;
@@ -469,6 +472,84 @@
       } catch (_) {
         recommendationEmailToggle.checked = !recommendationEmailToggle.checked;
         setNotifStatus("Save failed.", "error");
+      }
+    });
+  }
+
+  // === Change Password ===
+  var cpCurrentEl = document.getElementById("current-password");
+  var cpNewEl = document.getElementById("new-password");
+  var cpRepeatEl = document.getElementById("repeat-password");
+  var cpBtn = document.getElementById("change-password-btn");
+  var cpStatusEl = document.getElementById("change-password-status");
+
+  function setCpStatus(kind, msg) {
+    if (!cpStatusEl) return;
+    cpStatusEl.textContent = msg || "";
+    cpStatusEl.classList.remove("hidden", "text-red-600", "text-green-600", "text-gray-500");
+    if (!msg) { cpStatusEl.classList.add("hidden"); return; }
+    if (kind === "error") cpStatusEl.classList.add("text-red-600");
+    else if (kind === "success") cpStatusEl.classList.add("text-green-600");
+    else cpStatusEl.classList.add("text-gray-500");
+  }
+
+  // Eye toggle for password fields
+  document.querySelectorAll(".cp-eye-toggle").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var targetId = btn.getAttribute("data-target");
+      var input = targetId ? document.getElementById(targetId) : null;
+      if (!input) return;
+      var isPassword = input.type === "password";
+      input.type = isPassword ? "text" : "password";
+      var icon = btn.querySelector("i");
+      if (icon) {
+        icon.className = isPassword ? "fas fa-eye-slash" : "fas fa-eye";
+      }
+    });
+  });
+
+  if (cpBtn) {
+    cpBtn.addEventListener("click", async function () {
+      var current = cpCurrentEl ? String(cpCurrentEl.value || "") : "";
+      var newPw = cpNewEl ? String(cpNewEl.value || "") : "";
+      var repeat = cpRepeatEl ? String(cpRepeatEl.value || "") : "";
+
+      if (!current) { setCpStatus("error", "Please enter your current password."); return; }
+      if (!newPw) { setCpStatus("error", "Please enter a new password."); return; }
+      if (newPw.length < 8) { setCpStatus("error", "Password must be at least 8 characters."); return; }
+      if (!/[a-z]/.test(newPw)) { setCpStatus("error", "Password must include a lowercase letter."); return; }
+      if (!/[A-Z]/.test(newPw)) { setCpStatus("error", "Password must include an uppercase letter."); return; }
+      if (!/[0-9]/.test(newPw)) { setCpStatus("error", "Password must include a number."); return; }
+      if (newPw !== repeat) { setCpStatus("error", "Passwords do not match."); return; }
+
+      cpBtn.disabled = true;
+      setCpStatus("info", "Updating...");
+
+      try {
+        var res = await window.authFetch("/api/auth/change-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ currentPassword: current, newPassword: newPw })
+        });
+
+        var payload = await res.json().catch(function () { return null; });
+
+        if (res.ok && payload && payload.ok) {
+          if (window.tstsNotify) window.tstsNotify("Password updated.", "success");
+          try { if (window.clearAuth) window.clearAuth(); } catch (_) {}
+          setTimeout(function () { location.replace("login.html"); }, 700);
+          return;
+        }
+
+        var msg = "Could not update password.";
+        if (payload && payload.error === "INVALID_PASSWORD") msg = "Current password is incorrect.";
+        else if (payload && payload.error === "PASSWORD_POLICY") msg = (payload.message || "Password does not meet requirements.");
+        else if (payload && payload.message) msg = String(payload.message);
+        setCpStatus("error", msg);
+      } catch (_) {
+        setCpStatus("error", "Something went wrong. Please try again.");
+      } finally {
+        cpBtn.disabled = false;
       }
     });
   }

@@ -101,6 +101,11 @@
                         <textarea id="bio" rows="4" maxlength="500" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="Share a bit about yourself..."></textarea>
                     </div>
 
+                    <div>
+                        <label for="location" class="block text-sm font-medium text-gray-700 mb-1">Where do you call home?</label>
+                        <input type="text" id="location" maxlength="100" autocomplete="address-level2" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="Melbourne, Victoria">
+                    </div>
+
                     <div id="host-payment-section" class="pt-6 border-t border-gray-100 hidden">
                         <h2 class="text-lg font-bold mb-4 flex items-center gap-2 heading-serif text-tsts-ink">
                             <i class="fas fa-concierge-bell text-orange-600"></i> Host Settings
@@ -282,7 +287,43 @@
             <p id="notif-prefs-status" class="text-xs text-gray-500 mt-3"></p>
         </div>
 
-        <!-- Section 4: Data & Account -->
+        <!-- Section 4: Change Password -->
+        <div class="bg-white rounded-3xl shadow-soft-card border border-gray-100 p-6 mb-6">
+            <h2 class="text-lg font-bold mb-2 flex items-center gap-2 heading-serif text-tsts-ink">
+                <i class="fas fa-lock text-orange-600"></i> Change Password
+            </h2>
+            <p class="text-sm text-gray-600 mb-4">Update your password to keep your account secure.</p>
+            <div class="space-y-4">
+                <div>
+                    <label for="current-password" class="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                    <div class="relative">
+                        <input type="password" id="current-password" maxlength="128" autocomplete="current-password" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none pr-10">
+                        <button type="button" class="cp-eye-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" data-target="current-password" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div>
+                    <label for="new-password" class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                    <div class="relative">
+                        <input type="password" id="new-password" maxlength="128" autocomplete="new-password" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none pr-10">
+                        <button type="button" class="cp-eye-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" data-target="new-password" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">At least 8 characters, with a lowercase letter, an uppercase letter, and a number.</p>
+                </div>
+                <div>
+                    <label for="repeat-password" class="block text-sm font-medium text-gray-700 mb-1">Repeat New Password</label>
+                    <div class="relative">
+                        <input type="password" id="repeat-password" maxlength="128" autocomplete="new-password" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none pr-10">
+                        <button type="button" class="cp-eye-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" data-target="repeat-password" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <button id="change-password-btn" type="button" class="w-full tsts-btn-primary py-3 rounded-xl font-bold transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                    Update Password
+                </button>
+                <p id="change-password-status" class="text-xs hidden"></p>
+            </div>
+        </div>
+
+        <!-- Section 5: Data & Account -->
         <div class="bg-white rounded-3xl shadow-soft-card border border-gray-100 p-6">
             <h2 class="text-lg font-bold mb-2 flex items-center gap-2 heading-serif text-tsts-ink">
                 <i class="fas fa-database text-orange-600"></i> Data & Account
@@ -321,7 +362,7 @@
 
     <footer id="footer-placeholder" role="contentinfo"></footer>
     <script src="js/runtime-config.js?v=20260224a"></script>
-  <script src="js/common.js?v=20260304g"></script>
-    <script src="js/profile.js?v=20260304f"></script>
+  <script src="js/common.js?v=20260305a"></script>
+    <script src="js/profile.js?v=20260305a"></script>
 </body>
 </html>

@@ -31,7 +31,10 @@
 
         <div id="profile-content" class="hidden max-w-5xl mx-auto space-y-12">
             
-            <div class="bg-white rounded-3xl shadow-soft-card border border-gray-100 p-8 flex flex-col md:flex-row gap-8 items-start">
+            <div class="bg-white rounded-3xl shadow-soft-card border border-gray-100 p-8 flex flex-col md:flex-row gap-8 items-start relative">
+                <button id="share-profile-btn" class="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-orange-600 transition" title="Share profile" aria-label="Share profile">
+                    <i class="fas fa-share-alt text-sm"></i>
+                </button>
                 <div class="flex-shrink-0 relative">
                     <img id="host-pic" src="/assets/avatar-default.svg" alt="Host profile picture" class="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-white shadow-lg">
                     <div id="host-badge" class="absolute bottom-2 right-2 bg-orange-100 text-orange-700 p-1.5 rounded-full border border-white shadow-sm hidden">
@@ -41,11 +44,12 @@
                 
                 <div class="flex-grow">
                     <h1 id="host-name" class="text-3xl md:text-4xl font-bold text-tsts-ink mb-2 heading-serif"></h1>
-                    <div class="flex items-center gap-4 text-sm text-gray-500 mb-6">
+                    <div class="flex items-center gap-4 text-sm text-gray-500 mb-2">
                         <span id="host-location"><i class="fas fa-map-marker-alt mr-1"></i> Global</span>
                         <span><i class="fas fa-star text-yellow-500 mr-1"></i> <span id="host-rating">New</span></span>
                     </div>
-                    
+                    <div id="host-join-date" class="text-xs text-slate-500 mb-6 hidden"><i class="fas fa-calendar-alt mr-1"></i><span id="host-join-date-text"></span></div>
+
                     <h3 class="text-lg font-bold mb-2 heading-serif text-tsts-ink">About me</h3>
                     <p id="host-bio" class="text-gray-600 leading-relaxed max-w-2xl break-words">
                         This host hasn't written a bio yet.
@@ -54,6 +58,10 @@
                         <span class="inline-flex items-center rounded-full bg-blue-100 text-blue-700 px-3 py-1 text-xs font-bold">
                             Visible to: Public
                         </span>
+                        <button id="block-user-btn" class="hidden inline-flex items-center gap-2 rounded-xl border border-red-200 text-red-600 px-3 py-1.5 text-xs font-bold hover:bg-red-50 transition">
+                            <i class="fas fa-ban"></i>
+                            Block
+                        </button>
                         <a id="report-user-link" href="report.html" class="inline-flex items-center gap-2 rounded-xl border border-red-200 text-red-700 px-3 py-1.5 text-xs font-bold hover:bg-red-50 transition">
                             <i class="fas fa-flag"></i>
                             Report this user
@@ -96,7 +104,7 @@
 
     <footer id="footer-placeholder" role="contentinfo"></footer>
     <script src="js/runtime-config.js?v=20260224a"></script>
-  <script src="js/common.js?v=20260304g"></script>
-    <script src="js/public-profile.js?v=20260304f"></script>
+  <script src="js/common.js?v=20260305a"></script>
+    <script src="js/public-profile.js?v=20260305a"></script>
 </body>
 </html>

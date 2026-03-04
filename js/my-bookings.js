@@ -66,6 +66,12 @@ if (starContainer) {
 let hostBookingsCache = []; // for modal lookup by booking id
 let guestBookingsCache = []; // for complaint modal lookup by booking id
 
+// F7: Tab count badge helper — updates tab label with count in parentheses
+function __updateTabBadge(tabEl, baseLabel, count) {
+  if (!tabEl) return;
+  tabEl.textContent = count > 0 ? baseLabel + " (" + count + ")" : baseLabel;
+}
+
 // Phase 6: occurrence-key helper for grouping bookings by occurrence
 function _occurrenceKey(b) {
   return String((b && b.experienceId) || (b && b.experience && (b.experience._id || b.experience.id)) || "") +
@@ -579,6 +585,7 @@ async function loadTrips(loadToken) {
 
     if (bookings.length === 0) {
       guestBookingsCache = [];
+      __updateTabBadge(tabTrips, "My Experience Bookings", 0);
       const El = window.tstsEl;
       contentEl.textContent = "";
       var _connPanel = renderConnectionActionPanel(pendingConnections);
@@ -598,6 +605,7 @@ async function loadTrips(loadToken) {
     }
 
     guestBookingsCache = bookings;
+    __updateTabBadge(tabTrips, "My Experience Bookings", bookings.length);
     contentEl.textContent = "";
     var _connPanel2 = renderConnectionActionPanel(pendingConnections);
     if (_connPanel2) contentEl.appendChild(_connPanel2);
@@ -3922,6 +3930,7 @@ async function loadHost(sectionOverride, loadToken) {
     hostDashboardState.privateRequests = privateRequestsState;
     hostDashboardState.verification = verificationState;
     hostBookingsCache = (bookingsState.status === "ready" && Array.isArray(bookingsState.rows)) ? bookingsState.rows : [];
+    __updateTabBadge(tabHost, "My Hosted Experience", hostBookingsCache.length);
 
     renderHostingDashboard();
     focusDashboardDeepLinkPanel();

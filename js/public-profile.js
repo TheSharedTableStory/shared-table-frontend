@@ -34,6 +34,51 @@ document.addEventListener('DOMContentLoaded', async () => {
         reportUserLinkEl.href = "report.html?targetType=user&targetId=" + encodeURIComponent(userId);
     }
 
+    // F2: Block user button — only for authenticated users viewing someone else
+    var blockBtn = document.getElementById("block-user-btn");
+    if (blockBtn) {
+        var session = window.tstsGetSession ? window.tstsGetSession() : null;
+        var myId = session && session.userId ? String(session.userId) : "";
+        if (myId && myId !== userId) {
+            blockBtn.classList.remove("hidden");
+            blockBtn.addEventListener("click", async function () {
+                var confirmed = window.tstsConfirm
+                    ? await window.tstsConfirm("They won\u2019t be able to see your profile or reach out to you. You can unblock anytime from your connections page.", { destructive: true, confirmText: "Block", cancelText: "Cancel" })
+                    : confirm("Block this user?");
+                if (!confirmed) return;
+                try {
+                    var res = await window.authFetch("/api/social/block/" + encodeURIComponent(userId), { method: "POST" });
+                    if (res.ok) {
+                        if (window.tstsNotify) window.tstsNotify("User blocked.", "success");
+                        window.location.href = "connections.html";
+                    } else {
+                        var body = await res.json().catch(function () { return {}; });
+                        if (window.tstsNotify) window.tstsNotify(body.message || "Could not block user.", "error");
+                    }
+                } catch (_) {
+                    if (window.tstsNotify) window.tstsNotify("Something went wrong.", "error");
+                }
+            });
+        }
+    }
+
+    // F3: Share profile button
+    var shareBtn = document.getElementById("share-profile-btn");
+    if (shareBtn) {
+        shareBtn.addEventListener("click", function () {
+            var profileUrl = window.location.origin + "/public-profile.html?id=" + encodeURIComponent(userId);
+            if (navigator.share) {
+                navigator.share({ title: "Check out this profile", url: profileUrl }).catch(function () {});
+            } else if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(profileUrl).then(function () {
+                    if (window.tstsNotify) window.tstsNotify("Link copied — share the love!", "success");
+                }).catch(function () {
+                    if (window.tstsNotify) window.tstsNotify("Could not copy link.", "error");
+                });
+            }
+        });
+    }
+
     try {
         const res = await window.authFetch(`/api/users/${userId}/profile`, { method: "GET" });
         const profileRaw = await res.json().catch(() => null);
@@ -54,8 +99,34 @@ function renderProfile(profile) {
     if (p.profilePic && hostPicEl) window.tstsSafeImg(hostPicEl, p.profilePic, "/assets/avatar-default.svg");
     if (p.bio) hostBioEl.textContent = p.bio;
 
+    // F6: Location from backend — fall back to "Global"
+    if (hostLocationEl) {
+        var loc = String(p.location || "").trim();
+        hostLocationEl.textContent = "";
+        var mapIcon = document.createElement("i");
+        mapIcon.className = "fas fa-map-marker-alt mr-1";
+        hostLocationEl.appendChild(mapIcon);
+        hostLocationEl.appendChild(document.createTextNode(" " + (loc || "Global")));
+    }
+
     hostRatingEl.textContent = "New";
     if (hostBadgeEl) hostBadgeEl.classList.toggle('hidden', !hostVerified);
+
+    // F5: Join date — "Fellow Traveller since March 2026"
+    if (p.createdAt) {
+        try {
+            var joinDate = new Date(p.createdAt);
+            if (!isNaN(joinDate.getTime())) {
+                var monthYear = joinDate.toLocaleDateString("en-AU", { month: "long", year: "numeric", timeZone: "Australia/Melbourne" });
+                var joinWrap = document.getElementById("host-join-date");
+                var joinText = document.getElementById("host-join-date-text");
+                if (joinWrap && joinText) {
+                    joinText.textContent = "Fellow Traveller since " + monthYear;
+                    joinWrap.classList.remove("hidden");
+                }
+            }
+        } catch (_) {}
+    }
 
     loadingEl.classList.add('hidden');
     contentEl.classList.remove('hidden');

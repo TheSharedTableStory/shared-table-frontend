@@ -12,6 +12,9 @@
   const connEmpty = document.getElementById("connections-empty");
   const connList = document.getElementById("connections-list");
   const connRefresh = document.getElementById("refresh-connections");
+  const connSearchInput = document.getElementById("connections-search");
+  const connSearchEmpty = document.getElementById("connections-search-empty");
+  var __connCache = []; // F1: cached for client-side search
 
   async function requireAuth() {
     try {
@@ -126,9 +129,55 @@
     }
   }
 
+  function renderConnectionRows(list) {
+    if (!connList) return;
+    connList.textContent = "";
+    if (connSearchEmpty) connSearchEmpty.classList.add("hidden");
+
+    if (list.length === 0 && __connCache.length > 0) {
+      // search returned nothing but connections exist
+      if (connSearchEmpty) { connSearchEmpty.classList.remove("hidden"); }
+      showConn(connList);
+      return;
+    }
+    if (list.length === 0) {
+      if (connEmpty) connEmpty.textContent = "You haven\u2019t connected with anyone yet. Search for a fellow traveller above, or connect after sharing an experience together.";
+      showConn(connEmpty);
+      return;
+    }
+
+    var El = window.tstsEl;
+    list.forEach(function(c) {
+      var userId = (c.user && (c.user._id || c.user.id)) || "";
+      var wrap = El("div", { className: "p-4 rounded-xl border border-gray-100 bg-white flex items-center justify-between gap-3" }, [
+        userRowEl(c.user),
+        El("div", { className: "flex items-center gap-2" }, [
+          El("a", { className: "text-sm font-bold text-orange-600 hover:underline", href: "public-profile.html?id=" + encodeURIComponent(userId), textContent: "View profile" }),
+          El("button", { className: "px-3 py-2 rounded-lg border border-red-200 bg-white text-xs font-bold text-red-600 hover:bg-red-50", "data-action": "remove", "data-userid": userId, textContent: "Remove" })
+        ])
+      ]);
+      connList.appendChild(wrap);
+    });
+    showConn(connList);
+  }
+
+  function filterConnections() {
+    var q = connSearchInput ? String(connSearchInput.value || "").trim().toLowerCase() : "";
+    if (!q) { renderConnectionRows(__connCache); return; }
+    var filtered = __connCache.filter(function(c) {
+      var u = c.user || {};
+      var name = String(u.name || "").toLowerCase();
+      var handle = String(u.handle || "").toLowerCase();
+      return name.indexOf(q) !== -1 || handle.indexOf(q) !== -1;
+    });
+    renderConnectionRows(filtered);
+  }
+
   async function loadConnections() {
     if (!(await requireAuth())) return;
     showConn(connLoading);
+    if (connSearchInput) connSearchInput.value = "";
+    if (connSearchEmpty) connSearchEmpty.classList.add("hidden");
 
     try {
       const res = await window.authFetch("/api/social/connections", { method: "GET" });
@@ -136,30 +185,10 @@
       if (!res.ok) throw new Error("connections");
       const list = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
 
-      if (!connList) return;
-      connList.textContent = "";
-
-      if (list.length === 0) {
-        if (connEmpty) connEmpty.textContent = "You haven\u2019t connected with anyone yet. Search for a fellow traveller above, or connect after sharing an experience together.";
-        showConn(connEmpty);
-        return;
-      }
-
-      const El = window.tstsEl;
-      list.forEach(function(c) {
-        var userId = (c.user && (c.user._id || c.user.id)) || "";
-        var wrap = El("div", { className: "p-4 rounded-xl border border-gray-100 bg-white flex items-center justify-between gap-3" }, [
-          userRowEl(c.user),
-          El("div", { className: "flex items-center gap-2" }, [
-            El("a", { className: "text-sm font-bold text-orange-600 hover:underline", href: "public-profile.html?id=" + encodeURIComponent(userId), textContent: "View profile" }),
-            El("button", { className: "px-3 py-2 rounded-lg border border-red-200 bg-white text-xs font-bold text-red-600 hover:bg-red-50", "data-action": "remove", "data-userid": userId, textContent: "Remove" })
-          ])
-        ]);
-        connList.appendChild(wrap);
-      });
-
-      showConn(connList);
+      __connCache = list;
+      renderConnectionRows(list);
     } catch (_) {
+      __connCache = [];
       if (connEmpty) {
         connEmpty.textContent = "Unable to load connections.";
         showConn(connEmpty);
@@ -462,6 +491,7 @@
     if (outList) outList.addEventListener("click", onOutgoingClick);
     if (blkRefresh) blkRefresh.addEventListener("click", loadBlocked);
     if (blkList) blkList.addEventListener("click", onBlockedClick);
+    if (connSearchInput) connSearchInput.addEventListener("input", filterConnections);
     if (feedRetryBtn) feedRetryBtn.addEventListener("click", loadFeed);
     if (feedRefresh) feedRefresh.addEventListener("click", loadFeed);
 
