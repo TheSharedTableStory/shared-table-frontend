@@ -1429,7 +1429,8 @@ function injectInlineHelp() {
     "admin.html": 1, "login.html": 1, "404.html": 1,
     "verify-email.html": 1, "verify-email-change.html": 1,
     "reset-password.html": 1, "unsubscribe.html": 1,
-    "help-center.html": 1
+    "help-center.html": 1,
+    "my-bookings.html": 1, "host.html": 1, "experience.html": 1
   };
   if (skipPages[page]) return;
 
@@ -1491,8 +1492,10 @@ function injectInlineHelp() {
   panel.appendChild(searchInput);
   panel.appendChild(resultsList);
   panel.appendChild(escalation);
-  shell.appendChild(toggleBar);
-  shell.appendChild(panel);
+  var innerWrap = tstsEl("div", { className: "max-w-7xl mx-auto" });
+  innerWrap.appendChild(toggleBar);
+  innerWrap.appendChild(panel);
+  shell.appendChild(innerWrap);
 
   // Insert before footer
   footer.parentNode.insertBefore(shell, footer);
