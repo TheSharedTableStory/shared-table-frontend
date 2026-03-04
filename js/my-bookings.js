@@ -4,6 +4,7 @@
 const contentEl = document.getElementById("content-area");
 const tabTrips = document.getElementById("tab-trips");
 const tabHost = document.getElementById("tab-hosting");
+const tabWishlist = document.getElementById("tab-wishlist");
 
 const guestModal = document.getElementById("guest-modal");
 const reviewModal = document.getElementById("review-modal");
@@ -117,7 +118,7 @@ const dashboardRequestState = {
 };
 
 function nextDashboardLoadToken(tabKey) {
-  dashboardRequestState.activeTab = (tabKey === "hosting") ? "hosting" : "trips";
+  dashboardRequestState.activeTab = (tabKey === "hosting") ? "hosting" : (tabKey === "wishlist") ? "wishlist" : "trips";
   dashboardRequestState.loadToken += 1;
   return dashboardRequestState.loadToken;
 }
@@ -199,6 +200,7 @@ async function getSessionSnapshot() {
 function resolveDashboardTab(rawTab) {
   const tab = String(rawTab || "").trim().toLowerCase();
   if (tab === "hosting") return "hosting";
+  if (tab === "wishlist") return "wishlist";
   if (tab === "experiences" || tab === "trips" || tab === "") return "trips";
   return "trips";
 }
@@ -528,15 +530,14 @@ function setComplaintStatus(msg, kind) {
 
 function toggleTab(which) {
   if (!tabTrips || !tabHost) return;
+  var active = "border-tsts-clay text-tsts-clay whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm";
+  var inactive = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm";
 
-  if (which === "trips") {
-    tabTrips.className = "border-tsts-clay text-tsts-clay whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm";
-    tabHost.className = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm";
-  } else {
-    tabHost.className = "border-tsts-clay text-tsts-clay whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm";
-    tabTrips.className = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm";
-  }
-  const loadToken = nextDashboardLoadToken(which);
+  tabTrips.className = (which === "trips") ? active : inactive;
+  tabHost.className = (which === "hosting") ? active : inactive;
+  if (tabWishlist) tabWishlist.className = (which === "wishlist") ? active : inactive;
+
+  var loadToken = nextDashboardLoadToken(which);
   syncDashboardTabQuery(which, hostDashboardState.section);
   return loadToken;
 }
@@ -3864,6 +3865,79 @@ function _trapFocus(e) {
   }
 }
 
+/* ====================== WISHLIST TAB (merged from bookmarks.js) ====================== */
+
+function sanitizeWishlistTitle(raw) {
+  var title = String(raw || "").trim();
+  var debranded = title.replace(/^world[\s_-]*class\s*[:\-]?\s*/i, "").trim();
+  if (debranded) return debranded;
+  if (title && !/^WORLDCLASS_STARTER_/i.test(title) && !/^starter[_\-\s]/i.test(title)) return title;
+  return "Shared experience";
+}
+
+function wishlistCard(exp) {
+  var El = window.tstsEl;
+  var e = exp || {};
+  var fallbackImg = "/assets/experience-default.jpg";
+  var imgUrl = window.tstsSafeUrl(e.imageUrl || (Array.isArray(e.images) ? e.images[0] : ""), fallbackImg);
+  var price = (e.price == null) ? "" : String(e.price);
+  var id = e._id || e.id || "";
+
+  var imgEl = El("img", { className: "w-full h-full object-cover group-hover:scale-105 transition duration-500" });
+  window.tstsSafeImg(imgEl, imgUrl, fallbackImg);
+
+  return El("a", { href: "experience.html?id=" + encodeURIComponent(id), className: "group block bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col" }, [
+    El("div", { className: "relative h-48 w-full overflow-hidden bg-gray-100" }, [
+      imgEl,
+      El("div", { className: "absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold shadow-sm", textContent: price ? ("$" + price) : "" })
+    ]),
+    El("div", { className: "p-4 flex flex-col gap-2 flex-grow" }, [
+      El("h3", { className: "font-bold text-gray-900 mb-1 line-clamp-2", textContent: sanitizeWishlistTitle(e.title), title: sanitizeWishlistTitle(e.title) }),
+      El("p", { className: "text-xs text-gray-500 flex items-center gap-1", textContent: e.city || "" }),
+      El("div", { className: "mt-auto pt-3 border-t border-gray-50 flex justify-between items-center" }, [
+        El("span", { className: "text-xs text-gray-500", textContent: "Saved" }),
+        El("span", { className: "text-xs text-orange-600 font-semibold group-hover:underline", textContent: "View \u2192" })
+      ])
+    ])
+  ]);
+}
+
+async function loadWishlist() {
+  if (!(await requireAuthOrRedirect())) return;
+  setLoading();
+  try {
+    var res = await window.authFetch("/api/my/bookmarks/details", { method: "GET" });
+    var data = await res.json().catch(function() { return null; });
+    if (!res.ok) throw new Error("load_failed");
+    var list = window.unwrapApiList(data, "experiences");
+    if (!contentEl) return;
+    contentEl.textContent = "";
+    if (!list || list.length === 0) {
+      var El = window.tstsEl;
+      contentEl.appendChild(El("div", { className: "text-center py-12 bg-white rounded-3xl border border-gray-100 shadow-soft-card" }, [
+        El("div", { className: "text-4xl mb-3", textContent: "\u2764\uFE0F" }),
+        El("h2", { className: "text-xl font-bold heading-serif text-tsts-ink mb-2", textContent: "Your wishlist is empty" }),
+        El("p", { className: "text-gray-500 mb-6", textContent: "Save experiences you love and come back to them anytime." }),
+        El("a", { href: "explore.html", className: "inline-block px-8 py-3 rounded-xl bg-tsts-ink text-white font-bold transition hover:opacity-90", textContent: "Explore experiences" })
+      ]));
+      return;
+    }
+    var grid = window.tstsEl("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" });
+    list.forEach(function(e) { grid.appendChild(wishlistCard(e)); });
+    contentEl.appendChild(grid);
+  } catch (_) {
+    if (contentEl) {
+      contentEl.textContent = "";
+      var El = window.tstsEl;
+      contentEl.appendChild(El("div", { className: "text-center py-12" }, [
+        El("p", { className: "text-red-600 font-bold", textContent: "Unable to load your wishlist." }),
+        El("button", { type: "button", className: "mt-4 px-6 py-2 rounded-xl bg-tsts-ink text-white text-sm font-bold transition hover:opacity-90", textContent: "Retry" })
+      ]));
+      contentEl.querySelector("button").addEventListener("click", loadWishlist);
+    }
+  }
+}
+
 /* ====================== EVENT WIRING ====================== */
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -3876,6 +3950,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (tabHost) tabHost.addEventListener("click", () => {
     const token = toggleTab("hosting");
     loadHost(hostDashboardState.section || dashboardDeepLink.section || "overview", token);
+  });
+  if (tabWishlist) tabWishlist.addEventListener("click", () => {
+    toggleTab("wishlist");
+    loadWishlist();
   });
 
   if (reviewForm) reviewForm.addEventListener("submit", submitReview);
@@ -4016,5 +4094,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   hostDashboardState.section = resolveHostingSection(dashboardDeepLink.section, dashboardDeepLink.panel);
   const initialToken = toggleTab(initialTab);
   if (initialTab === "hosting") loadHost(hostDashboardState.section, initialToken);
+  else if (initialTab === "wishlist") loadWishlist();
   else loadTrips(initialToken);
 });
