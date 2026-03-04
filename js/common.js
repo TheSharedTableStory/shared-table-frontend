@@ -1268,7 +1268,7 @@ function injectFooter() {
       tstsEl("li", {}, [tstsEl("a", { href: "terms.html", className: "hover:text-white transition" }, "Terms of Service")]),
       tstsEl("li", {}, [tstsEl("a", { href: "host-terms.html", className: "hover:text-white transition" }, "Host Terms")]),
       tstsEl("li", {}, [tstsEl("a", { href: "privacy.html", className: "hover:text-white transition" }, "Privacy Policy")]),
-      tstsEl("li", {}, [tstsEl("a", { href: "cookie-policy.html", className: "hover:text-white transition" }, "Cookie Policy")]),
+      tstsEl("li", {}, [tstsEl("a", { href: "privacy.html#cookies", className: "hover:text-white transition" }, "Cookie Policy")]),
       tstsEl("li", {}, [tstsEl("a", { href: "policy.html", className: "hover:text-white transition" }, "Cancellation Policy")]),
       tstsEl("li", {}, [tstsEl("a", { href: "settings-data.html", className: "hover:text-white transition" }, "Data & Privacy")]),
       tstsEl("li", {}, [tstsEl("a", { href: "report.html", className: "hover:text-white transition" }, "Report an Issue")])
