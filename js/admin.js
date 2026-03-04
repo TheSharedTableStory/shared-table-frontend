@@ -54,6 +54,9 @@ var experiencesTotalCount = 0;
 var shortfallReasonCodes = [];
 var shortfallSettlementReasonCodes = [];
 var shortfallWaiverReasonCodes = [];
+var bookingsPage = 0;
+var bookingsPageSize = 20;
+var bookingsTotalCount = 0;
 
 async function loadDashboardSummary() {
   const res = await adminFetch("/api/admin/dashboard-summary", { method: "GET" });
@@ -112,9 +115,11 @@ async function loadStats() {
 }
 
 async function loadBookings() {
-  const res = await adminFetch("/api/admin/bookings", { method: "GET" });
+  var skip = bookingsPage * bookingsPageSize;
+  const res = await adminFetch("/api/admin/bookings?limit=" + bookingsPageSize + "&skip=" + skip + "&sort=-createdAt", { method: "GET" });
   if (!res.ok) throw new Error("bookings");
   const body = await res.json();
+  if (body && body.meta && typeof body.meta.total === "number") bookingsTotalCount = body.meta.total;
   return (body && body.data) ? body.data : body;
 }
 
@@ -821,6 +826,21 @@ function renderBookings(bookings) {
       El("td", { className: "px-6 py-4 text-sm text-right" }, [actionWrap])
     ]));
   });
+
+  // Pagination controls
+  var pagEl = $("bookings-pagination");
+  var infoEl = $("bookings-page-info");
+  var prevBtn = $("bookings-prev");
+  var nextBtn = $("bookings-next");
+  if (pagEl && bookingsTotalCount > bookingsPageSize) {
+    pagEl.classList.remove("hidden");
+    var totalPages = Math.ceil(bookingsTotalCount / bookingsPageSize);
+    if (infoEl) infoEl.textContent = "Page " + (bookingsPage + 1) + " of " + totalPages + " (" + bookingsTotalCount + " bookings)";
+    if (prevBtn) prevBtn.disabled = (bookingsPage <= 0);
+    if (nextBtn) nextBtn.disabled = (bookingsPage >= totalPages - 1);
+  } else if (pagEl) {
+    pagEl.classList.add("hidden");
+  }
 }
 
 function renderExperiences(exps) {
@@ -3118,6 +3138,15 @@ function wireAdminEvents() {
   if (adminInviteForm) adminInviteForm.addEventListener("submit", handleInviteAdminSubmit);
   if (refreshAdminInvitesBtn) refreshAdminInvitesBtn.addEventListener("click", () => refreshAdminInvites().catch(function () { window.tstsNotify("Failed to refresh admin invites.", "error"); renderAdminInvites([]); }));
   if (couponCreateForm) couponCreateForm.addEventListener("submit", handleCreateCoupon);
+
+  // Bookings pagination
+  var bPrev = $("bookings-prev");
+  var bNext = $("bookings-next");
+  function reloadBookingsPage() {
+    loadBookings().then(renderBookings).catch(function () { window.tstsNotify("Failed to load bookings.", "error"); });
+  }
+  if (bPrev) bPrev.addEventListener("click", function () { if (bookingsPage > 0) { bookingsPage--; reloadBookingsPage(); } });
+  if (bNext) bNext.addEventListener("click", function () { var totalPages = Math.ceil(bookingsTotalCount / bookingsPageSize); if (bookingsPage < totalPages - 1) { bookingsPage++; reloadBookingsPage(); } });
 
   // Mobile sidebar toggle
   var sidebarToggle = $("admin-sidebar-toggle");
