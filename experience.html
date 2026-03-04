@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com http://localhost:* http://127.0.0.1:*; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/assets/icon-192.png">
@@ -110,17 +110,17 @@
             <h2 class="heading-serif text-xl sm:text-2xl font-semibold text-tsts-ink mb-3">
               About this experience
             </h2>
-            <p id="exp-description" class="text-sm sm:text-base leading-relaxed text-slate-800 whitespace-pre-line break-words">
+            <p id="exp-description" class="text-sm sm:text-base leading-relaxed text-slate-800 whitespace-pre-line break-words" style="overflow-wrap:anywhere">
               </p>
-            
+
             <div id="menu-section" class="mt-6 pt-6 border-t border-slate-100 hidden">
                 <h3 class="font-semibold text-tsts-ink mb-2">On the Menu</h3>
-                <p id="exp-menu" class="text-sm text-slate-700 whitespace-pre-line break-words"></p>
+                <p id="exp-menu" class="text-sm text-slate-700 whitespace-pre-line break-words" style="overflow-wrap:anywhere"></p>
             </div>
 
             <div id="requirements-section" class="mt-6 pt-6 border-t border-slate-100 hidden">
                 <h3 class="font-semibold text-tsts-ink mb-2">Good to know</h3>
-                <p id="exp-requirements" class="text-sm text-slate-700 whitespace-pre-line break-words"></p>
+                <p id="exp-requirements" class="text-sm text-slate-700 whitespace-pre-line break-words" style="overflow-wrap:anywhere"></p>
             </div>
 
             <div id="duration-section" class="mt-6 pt-6 border-t border-slate-100 hidden">

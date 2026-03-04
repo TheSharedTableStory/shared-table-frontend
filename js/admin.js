@@ -2340,8 +2340,15 @@ async function handleViewRedemptions(code) {
 }
 
 // Tab switching functionality (local, no window.* exposure)
+// ISS-UX-001: Debounce + stale-response suppression for rapid tab switching
 var _currentAdminTab = "";
+var _adminTabToken = 0;
+var _adminTabDebounceTimer = null;
 function switchTab(tabName) {
+  // Debounce: if user clicks tabs rapidly, only honour the last one within 250ms
+  clearTimeout(_adminTabDebounceTimer);
+  _adminTabToken++;
+  var myToken = _adminTabToken;
   _currentAdminTab = tabName;
   const views = ['dashboard', 'listings', 'pricing', 'verification', 'action-items', 'users', 'coupons', 'moderation', 'private-requests', 'incidents', 'fees-charges', 'audit'];
   const activeClass = "admin-sidebar-btn w-full text-left px-4 py-2.5 font-bold text-tsts-ink bg-orange-50 border-l-2 border-tsts-clay";
@@ -2370,12 +2377,21 @@ function switchTab(tabName) {
     sidebar.classList.remove("fixed", "inset-0", "z-40", "flex");
   }
 
+  // Debounce data loading by 250ms; stale-guard ensures only the latest tab renders
+  _adminTabDebounceTimer = setTimeout(function () { _adminTabLoadData(tabName, myToken); }, 250);
+};
+
+// Stale-guarded data loader: if _adminTabToken changed since invocation, skip render
+function _adminTabLoadData(tabName, token) {
+  function isStale() { return _adminTabToken !== token; }
+  function safeNotify(msg) { if (!isStale()) window.tstsNotify(msg, "error"); }
+
   if (tabName === 'users') {
-    loadUsers().then(renderUsers).catch(function () { window.tstsNotify("Failed to load users.", "error"); renderUsers([]); });
-    refreshAdminInvites().catch(function () { window.tstsNotify("Failed to load invites.", "error"); renderAdminInvites([]); });
+    loadUsers().then(function (d) { if (!isStale()) renderUsers(d); }).catch(function () { safeNotify("Failed to load users."); if (!isStale()) renderUsers([]); });
+    refreshAdminInvites().catch(function () { safeNotify("Failed to load invites."); if (!isStale()) renderAdminInvites([]); });
   }
   if (tabName === 'listings') {
-    loadExperiences().then(renderExperiences).catch(function () { window.tstsNotify("Failed to load experiences.", "error"); renderExperiences([]); });
+    loadExperiences().then(function (d) { if (!isStale()) renderExperiences(d); }).catch(function () { safeNotify("Failed to load experiences."); if (!isStale()) renderExperiences([]); });
   }
   if (tabName === 'pricing') {
     Promise.all([
@@ -2384,13 +2400,12 @@ function switchTab(tabName) {
       loadTierPolicy().catch(function () { return null; }),
       loadRefundWindowPolicy().catch(function () { return null; })
     ]).then(function (results) {
+      if (isStale()) return;
       if (results[0]) renderVerificationPolicy(results[0]);
       if (results[1]) renderMarketingEmailStatus(results[1]);
       if (results[2]) renderTierPolicy(results[2]);
       if (results[3]) renderRefundWindowPolicy(results[3]);
-    }).catch(function () {
-      window.tstsNotify("Some pricing data failed to load.", "error");
-    });
+    }).catch(function () { safeNotify("Some pricing data failed to load."); });
   }
   if (tabName === 'verification') {
     Promise.all([
@@ -2398,6 +2413,7 @@ function switchTab(tabName) {
       loadEventVerifications("all").catch(function () { return null; }),
       loadShortfallMonitor({ limit: 250 }).catch(function () { return null; })
     ]).then(function (results) {
+      if (isStale()) return;
       if (results[0]) renderHostVerifications(results[0]);
       if (results[1]) renderEventVerifications(results[1]);
       if (results[2]) {
@@ -2406,7 +2422,8 @@ function switchTab(tabName) {
         renderShortfallSettlementCases(results[2]);
       }
     }).catch(function () {
-      window.tstsNotify("Failed to load verifications.", "error");
+      if (isStale()) return;
+      safeNotify("Failed to load verifications.");
       renderHostVerifications({ data: { items: [] } });
       renderEventVerifications({ data: { items: [] } });
       renderShortfallReview({ data: { slots: [] } });
@@ -2415,38 +2432,39 @@ function switchTab(tabName) {
     });
   }
   if (tabName === 'action-items') {
-    refreshActionItemsView().catch(function () { window.tstsNotify("Failed to load action items.", "error"); renderActionItems({ data: { items: [] } }); });
+    refreshActionItemsView().catch(function () { safeNotify("Failed to load action items."); if (!isStale()) renderActionItems({ data: { items: [] } }); });
   }
   if (tabName === 'coupons') {
-    loadCoupons().then(renderCoupons).catch(function () { window.tstsNotify("Failed to load coupons.", "error"); renderCoupons([]); });
+    loadCoupons().then(function (d) { if (!isStale()) renderCoupons(d); }).catch(function () { safeNotify("Failed to load coupons."); if (!isStale()) renderCoupons([]); });
   }
   if (tabName === 'moderation') {
-    loadReports().then(renderReports).catch(function () { window.tstsNotify("Failed to load reports.", "error"); renderReports([]); });
+    loadReports().then(function (d) { if (!isStale()) renderReports(d); }).catch(function () { safeNotify("Failed to load reports."); if (!isStale()) renderReports([]); });
   }
   if (tabName === 'private-requests') {
-    loadPrivateBookingRequests().then(renderPrivateRequests).catch(function () { window.tstsNotify("Failed to load private requests.", "error"); renderPrivateRequests([]); });
+    loadPrivateBookingRequests().then(function (d) { if (!isStale()) renderPrivateRequests(d); }).catch(function () { safeNotify("Failed to load private requests."); if (!isStale()) renderPrivateRequests([]); });
   }
   if (tabName === 'dashboard') {
     Promise.all([
-      loadStats().catch(function () { window.tstsNotify("Failed to load stats.", "error"); return {}; }),
-      loadBookings().catch(function () { window.tstsNotify("Failed to load bookings.", "error"); return []; }),
+      loadStats().catch(function () { safeNotify("Failed to load stats."); return {}; }),
+      loadBookings().catch(function () { safeNotify("Failed to load bookings."); return []; }),
       loadDashboardSummary().catch(function () { return {}; })
     ]).then(function(results) {
+      if (isStale()) return;
       renderStats(results[0]);
       renderBookings(results[1]);
       renderDashboardSummary(results[2]);
     });
   }
   if (tabName === 'incidents') {
-    loadAdminIncidents().then(renderAdminIncidents).catch(function () { window.tstsNotify("Failed to load incidents.", "error"); renderAdminIncidents([]); });
+    loadAdminIncidents().then(function (d) { if (!isStale()) renderAdminIncidents(d); }).catch(function () { safeNotify("Failed to load incidents."); if (!isStale()) renderAdminIncidents([]); });
   }
   if (tabName === 'fees-charges') {
-    loadAdminFeesCharges().then(renderAdminFeesCharges).catch(function () { window.tstsNotify("Failed to load fees and charges.", "error"); renderAdminFeesCharges([]); });
+    loadAdminFeesCharges().then(function (d) { if (!isStale()) renderAdminFeesCharges(d); }).catch(function () { safeNotify("Failed to load fees and charges."); if (!isStale()) renderAdminFeesCharges([]); });
   }
   if (tabName === 'audit') {
-    refreshAuditLogs().catch(function () { window.tstsNotify("Failed to load audit logs.", "error"); renderAuditLogs([]); });
+    refreshAuditLogs().catch(function () { safeNotify("Failed to load audit logs."); if (!isStale()) renderAuditLogs([]); });
   }
-};
+}
 
 function resolveInitialAdminTab() {
   var params = new URLSearchParams(window.location.search || "");
