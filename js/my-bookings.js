@@ -2297,8 +2297,8 @@ function formatMetricValue(sourceStatus, rawValue) {
 
 function renderHostingSectionTabs(activeSection) {
   const El = window.tstsEl;
-  const nav = El("nav", { className: "bg-white rounded-2xl border border-gray-100 p-2 shadow-sm" });
-  const row = El("div", { className: "flex flex-wrap items-center gap-2" });
+  const nav = El("nav", { className: "bg-white rounded-2xl border border-gray-100 p-2 shadow-sm overflow-x-auto" });
+  const row = El("div", { className: "flex items-center gap-2 min-w-max" });
   HOSTING_SECTION_KEYS.forEach(function (key) {
     const isActive = key === activeSection;
     row.appendChild(
