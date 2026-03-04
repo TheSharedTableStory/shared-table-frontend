@@ -97,15 +97,17 @@
                             </span>
                         </label>
                     </div>
-                    <div class="w-full md:w-1/4 flex items-end">
+                    <div class="w-full md:w-1/4 flex flex-col gap-2 items-stretch">
                         <button id="apply-filters" type="button" class="w-full tsts-btn-primary px-6 py-2.5 rounded-xl font-bold transition shadow-sm">Apply</button>
+                        <button id="close-filters-btn" type="button" class="w-full md:hidden px-6 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold text-sm transition hover:bg-gray-50">Close filters</button>
                     </div>
                 </div>
             </div>
 
             <div id="active-filters-bar" aria-live="polite" aria-label="Active filters" class="flex flex-wrap gap-2 text-xs"></div>
 
-            <div class="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide" id="category-chips" aria-label="Category filters">
+            <div class="relative mt-4">
+            <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" id="category-chips" aria-label="Category filters" style="mask-image: linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%); -webkit-mask-image: linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%)">
                 <button type="button" class="filter-chip active px-4 py-2.5 tsts-indicator-ink rounded-full text-sm font-medium whitespace-nowrap transition border border-transparent" data-category="all">
                     All Stories
                 </button>
@@ -134,6 +136,7 @@
                     <i class="fas fa-dice mr-1"></i> Games & Play
                 </button>
             </div>
+            </div>
         </div>
     </div>
 
@@ -154,7 +157,8 @@
                 <i class="far fa-compass text-2xl"></i>
             </div>
             <h3 class="text-xl font-bold heading-serif text-tsts-ink mb-2">No experiences found</h3>
-            <p class="text-gray-500 mb-8">Try adjusting your filters.</p>
+            <p class="text-gray-500 mb-4">Try adjusting your filters.</p>
+            <div id="zero-result-filters" class="hidden flex flex-wrap justify-center gap-2 mb-6"></div>
             <button id="clear-filters-empty-btn" type="button" class="text-orange-600 font-bold hover:underline">Clear all filters</button>
         </div>
         <div id="load-error" class="hidden text-center py-12">
@@ -172,7 +176,7 @@
 
     <footer id="footer-placeholder" role="contentinfo"></footer>
     <script src="js/runtime-config.js?v=20260224a"></script>
-  <script src="js/common.js?v=20260304e"></script>
-    <script src="js/explore.js?v=20260304d"></script>
+  <script src="js/common.js?v=20260304f"></script>
+    <script src="js/explore.js?v=20260304f"></script>
 </body>
 </html>

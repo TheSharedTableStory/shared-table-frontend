@@ -884,15 +884,14 @@
     const hostCtaEl = document.getElementById("host-profile-cta");
     const hostId = normalizeHostId(exp);
     if (hostLinkEl) {
-      if (hostId && exp.hostDiscoverable === true) {
+      if (hostId) {
         hostLinkEl.href = "public-profile.html?id=" + encodeURIComponent(hostId);
         hostLinkEl.classList.remove("cursor-default", "pointer-events-none");
         hostLinkEl.removeAttribute("aria-disabled");
-        if (hostCtaEl) hostCtaEl.textContent = "View public profile";
+        if (hostCtaEl) hostCtaEl.textContent = "View profile";
       } else {
         hostLinkEl.removeAttribute("href");
-        hostLinkEl.classList.add("cursor-default", "pointer-events-none");
-        hostLinkEl.setAttribute("aria-disabled", "true");
+        hostLinkEl.classList.add("cursor-default");
         if (hostCtaEl) hostCtaEl.textContent = "";
       }
     }
@@ -1145,7 +1144,7 @@
     try {
       const d = new Date(String(x || ""));
       if (isNaN(d.getTime())) return String(x || "");
-      return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+      return d.toLocaleDateString("en-AU", { year: "numeric", month: "short", day: "numeric", timeZone: "Australia/Melbourne" });
     } catch (_) {
       return String(x || "");
     }
@@ -1957,8 +1956,39 @@
     }
   }
 
+  // Mobile sticky booking bar
+  function initMobileBookingBar() {
+    var bar = document.getElementById("mobile-booking-bar");
+    var barPrice = document.getElementById("mobile-bar-price");
+    var barCta = document.getElementById("mobile-bar-cta");
+    var bookingForm = document.getElementById("booking-form");
+    if (!bar || !bookingForm) return;
+
+    // Set price
+    if (barPrice && sharedUnitPrice) barPrice.textContent = "$" + moneyNumberString(sharedUnitPrice);
+
+    // Scroll to booking form on CTA click
+    if (barCta) barCta.addEventListener("click", function() {
+      bookingForm.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    // Show/hide bar based on booking form visibility
+    if (window.IntersectionObserver) {
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          bar.style.display = entry.isIntersecting ? "none" : "flex";
+        });
+      }, { threshold: 0.1 });
+      observer.observe(bookingForm);
+    } else {
+      // Fallback for old browsers: always show
+      bar.style.display = "flex";
+    }
+  }
+
   loadExperience().then(function () {
     handleInviteBanner();
+    initMobileBookingBar();
   }).catch(() => {
     showNotFound("We could not load this experience right now. Please try again.");
   });

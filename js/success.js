@@ -306,6 +306,13 @@ async function handleCopyInvite() {
 }
 
 // Main init
+function withTimeout(promise, ms) {
+  return new Promise(function(resolve, reject) {
+    var timer = setTimeout(function() { reject(new Error("Request timed out. Please try again.")); }, ms);
+    promise.then(function(v) { clearTimeout(timer); resolve(v); }, function(e) { clearTimeout(timer); reject(e); });
+  });
+}
+
 async function initSuccessPage() {
   // Basic guards
   if (!sessionId) {
@@ -316,13 +323,13 @@ async function initSuccessPage() {
   showLoading();
 
   try {
-    // 1) Verify with backend (works without auth via sessionId proof)
-    const verifyPayload = await verifyBooking(bookingIdFromUrl, sessionId);
+    // 1) Verify with backend (10s timeout)
+    const verifyPayload = await withTimeout(verifyBooking(bookingIdFromUrl, sessionId), 10000);
     const resolvedBookingId = resolveBookingId(verifyPayload, bookingIdFromUrl);
 
     // 2) Try to get booking details (cookie-auth); fall back to generic success for unauthenticated viewers.
     try {
-      const booking = await fetchBookingDetails(resolvedBookingId, sessionId);
+      const booking = await withTimeout(fetchBookingDetails(resolvedBookingId, sessionId), 10000);
       populateBookingSummary(booking);
     } catch (e) {
       const code = String((e && e.message) || "");
@@ -334,8 +341,10 @@ async function initSuccessPage() {
       }
     }
 
-    // 3) Show success state
+    // 3) Show success + next steps
     showSuccess();
+    var nextStepsEl = document.getElementById("success-next-steps");
+    if (nextStepsEl) nextStepsEl.classList.remove("hidden");
   } catch (err) {
     showError(err.message || "We couldn't confirm this booking. Please try again.");
   }
@@ -345,6 +354,10 @@ async function initSuccessPage() {
 if (copyInviteBtnEl) {
   copyInviteBtnEl.addEventListener("click", handleCopyInvite);
 }
+
+// Retry button
+var retryVerifyBtn = document.getElementById("retry-verify-btn");
+if (retryVerifyBtn) retryVerifyBtn.addEventListener("click", initSuccessPage);
 
 // Run on load
 document.addEventListener("DOMContentLoaded", initSuccessPage);

@@ -196,6 +196,17 @@
           </div>
         </section>
 
+        <!-- Next Steps -->
+        <section id="success-next-steps" class="hidden bg-tsts-soft border border-white/80 rounded-2xl p-5 space-y-2 text-sm text-slate-700">
+          <h3 class="font-bold text-tsts-ink text-base mb-2">What happens next</h3>
+          <ul class="space-y-1.5">
+            <li class="flex items-start gap-2"><span class="text-emerald-600 mt-0.5">&#10003;</span> Confirmation email sent to your inbox</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-600 mt-0.5">&#10003;</span> You'll receive your entry code before the experience</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-600 mt-0.5">&#10003;</span> Full details, address, and host contact are in My Experiences</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-600 mt-0.5">&#10003;</span> Share the invite link above to bring a friend</li>
+          </ul>
+        </section>
+
         <!-- Navigation Buttons -->
         <section class="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <a
@@ -233,6 +244,13 @@
           Something went wrong while verifying your payment. Please try again, or check your My Experiences page.
         </p>
         <div class="flex flex-col sm:flex-row justify-center gap-3 mt-4">
+          <button
+            id="retry-verify-btn"
+            type="button"
+            class="inline-flex items-center justify-center rounded-xl bg-tsts-ink text-white px-4 py-2.5 text-sm font-semibold shadow transition hover:opacity-90"
+          >
+            Try again
+          </button>
           <a
             href="my-bookings.html"
             class="inline-flex items-center justify-center rounded-xl tsts-btn-primary px-4 py-2.5 text-sm font-semibold shadow transition"
@@ -255,7 +273,7 @@
 
   <!-- Common layout (navbar/footer injection) -->
   <script src="js/runtime-config.js?v=20260224a"></script>
-  <script src="js/common.js?v=20260304e"></script>
+  <script src="js/common.js?v=20260304f"></script>
   <script src="data/faq-catalog.js?v=20260224a"></script>
   <script src="data/faq-trust.js?v=20260303a"></script>
   <script src="js/faq-renderer.js?v=20260303a"></script>

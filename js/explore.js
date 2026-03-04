@@ -680,6 +680,18 @@ document.addEventListener("DOMContentLoaded", () => {
             experiencesGrid.classList.add("hidden");
             noResultsEl.classList.remove("hidden");
             if (loadErrorEl) loadErrorEl.classList.add("hidden");
+            // Show active filters in zero-results area
+            var zeroFiltersEl = document.getElementById("zero-result-filters");
+            if (zeroFiltersEl) {
+                zeroFiltersEl.textContent = "";
+                var El = window.tstsEl;
+                var hasFilter = false;
+                if (filterState.search) { hasFilter = true; zeroFiltersEl.appendChild(makeZeroChip("Search: " + filterState.search, function() { filterState.search = ""; if (elSearch) elSearch.value = ""; fetchExperiences(); })); }
+                if (filterState.location) { hasFilter = true; zeroFiltersEl.appendChild(makeZeroChip("City: " + filterState.location, function() { filterState.location = ""; if (elLocation) elLocation.value = ""; fetchExperiences(); })); }
+                if (filterState.categories.length) { hasFilter = true; filterState.categories.forEach(function(c) { zeroFiltersEl.appendChild(makeZeroChip("Category: " + c.replace(/-/g, " "), function() { filterState.categories = filterState.categories.filter(function(x) { return x !== c; }); syncCategoryChips(); fetchExperiences(); })); }); }
+                if (filterState.minPrice > 0 || filterState.maxPrice < PRICE_SLIDER_MAX) { hasFilter = true; zeroFiltersEl.appendChild(makeZeroChip("Price: $" + filterState.minPrice + "-$" + filterState.maxPrice, function() { filterState.minPrice = 0; filterState.maxPrice = PRICE_SLIDER_MAX; fetchExperiences(); })); }
+                if (!hasFilter) zeroFiltersEl.classList.add("hidden"); else zeroFiltersEl.classList.remove("hidden");
+            }
             return;
         }
         experiencesGrid.classList.remove("hidden");
@@ -687,6 +699,23 @@ document.addEventListener("DOMContentLoaded", () => {
         if (loadErrorEl) loadErrorEl.classList.add("hidden");
         renderExperienceCards(experiences);
     };
+
+    function makeZeroChip(label, onRemove) {
+        var El = window.tstsEl;
+        var btn = El("button", { type: "button", className: "inline-flex items-center gap-1 px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-sm text-orange-700 font-medium hover:bg-orange-100 transition" });
+        var txt = document.createElement("span"); txt.textContent = label; btn.appendChild(txt);
+        var x = document.createElement("span"); x.textContent = "\u00D7"; x.className = "font-bold"; btn.appendChild(x);
+        btn.addEventListener("click", onRemove);
+        return btn;
+    }
+
+    function syncCategoryChips() {
+        categoryChips.forEach(function(chip) {
+            var cat = chip.getAttribute("data-category");
+            if (cat === "all") { chip.classList.toggle("active", filterState.categories.length === 0); return; }
+            chip.classList.toggle("active", filterState.categories.indexOf(cat) !== -1);
+        });
+    }
 
     // === HELPER: ACTIVE CHIPS ===
     const updateActiveChips = () => {
@@ -745,6 +774,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (elApplyFilters) elApplyFilters.addEventListener("click", applyFilters);
     if (elClearFilters) elClearFilters.addEventListener("click", clearFilters);
     if (elClearFiltersEmpty) elClearFiltersEmpty.addEventListener("click", clearFilters);
+    var closeFiltersBtn = document.getElementById("close-filters-btn");
+    if (closeFiltersBtn) closeFiltersBtn.addEventListener("click", function() { setFilterPanelOpen(false); });
     
     if (elSearch) {
         elSearch.addEventListener("input", () => {

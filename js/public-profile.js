@@ -79,7 +79,7 @@ async function loadReviews() {
 
     list.forEach(function(r) {
         const rating = Math.max(0, Math.min(5, parseInt(r.rating, 10) || 0));
-        const dateStr = r.date ? new Date(r.date).toLocaleDateString() : "";
+        const dateStr = r.date ? (window.tstsFormatDateShort ? window.tstsFormatDateShort(r.date) : new Date(r.date).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric", timeZone: "Australia/Melbourne" })) : "";
         const comment = (r.comment == null) ? "" : String(r.comment);
         const authorName = r.authorName || 'Guest';
 

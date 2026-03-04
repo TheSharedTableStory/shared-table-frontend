@@ -215,6 +215,96 @@ window.tstsSafeMailto = function(email) {
   };
 })();
 
+// ── Shared form validation helpers ──
+window.tstsShowFieldError = function(input, msg) {
+  if (!input) return;
+  input.style.borderColor = "#ef4444";
+  input.setAttribute("aria-invalid", "true");
+  var errId = input.id ? input.id + "-error" : "";
+  var existing = errId ? document.getElementById(errId) : null;
+  if (existing) {
+    existing.textContent = "";
+    var ic2 = document.createElement("span"); ic2.textContent = "\u26A0"; existing.appendChild(ic2);
+    var tx2 = document.createElement("span"); tx2.textContent = String(msg || ""); existing.appendChild(tx2);
+    return;
+  }
+  var errEl = document.createElement("p");
+  errEl.className = "text-red-600 text-xs mt-1 flex items-center gap-1";
+  if (errId) errEl.id = errId;
+  var icon = document.createElement("span");
+  icon.textContent = "\u26A0";
+  errEl.appendChild(icon);
+  var txt = document.createElement("span");
+  txt.textContent = String(msg || "");
+  errEl.appendChild(txt);
+  if (input.parentNode) input.parentNode.appendChild(errEl);
+  if (errId) input.setAttribute("aria-describedby", errId);
+};
+
+window.tstsClearFieldError = function(input) {
+  if (!input) return;
+  input.style.borderColor = "";
+  input.removeAttribute("aria-invalid");
+  var errId = input.id ? input.id + "-error" : "";
+  var existing = errId ? document.getElementById(errId) : null;
+  if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+  input.removeAttribute("aria-describedby");
+};
+
+window.tstsValidateField = function(input) {
+  if (!input) return true;
+  var val = String(input.value || "").trim();
+  var type = (input.type || "").toLowerCase();
+  var minLen = parseInt(input.getAttribute("minlength") || "0", 10);
+  var required = input.hasAttribute("required");
+
+  window.tstsClearFieldError(input);
+
+  if (required && !val) {
+    window.tstsShowFieldError(input, "This field is required.");
+    return false;
+  }
+  if (type === "email" && val && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+    window.tstsShowFieldError(input, "Please enter a valid email address.");
+    return false;
+  }
+  if (minLen > 0 && val.length > 0 && val.length < minLen) {
+    window.tstsShowFieldError(input, "Must be at least " + minLen + " characters.");
+    return false;
+  }
+  return true;
+};
+
+// ── Standardized date formatting helpers ──
+window.tstsFormatDate = function(dateStr) {
+  if (!dateStr) return "";
+  try {
+    var d = new Date(dateStr);
+    if (isNaN(d.getTime())) return String(dateStr);
+    return d.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "short", year: "numeric", timeZone: "Australia/Melbourne" });
+  } catch (_) { return String(dateStr); }
+};
+
+window.tstsFormatDateTime = function(dateStr) {
+  if (!dateStr) return "";
+  try {
+    var d = new Date(dateStr);
+    if (isNaN(d.getTime())) return String(dateStr);
+    var datePart = d.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "short", year: "numeric", timeZone: "Australia/Melbourne" });
+    var timePart = d.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", timeZone: "Australia/Melbourne", timeZoneName: "short" });
+    return datePart + " \u2022 " + timePart;
+  } catch (_) { return String(dateStr); }
+};
+
+window.tstsFormatDateShort = function(dateStr) {
+  if (!dateStr) return "";
+  try {
+    var d = new Date(dateStr);
+    if (isNaN(d.getTime())) return String(dateStr);
+    return d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric", timeZone: "Australia/Melbourne" });
+  } catch (_) { return String(dateStr); }
+};
+
 // WS-FE-08: Branded confirmation modal (replaces confirm())
 window.tstsConfirm = function(msg, opts) {
   return new Promise(function(resolve) {
@@ -1144,7 +1234,7 @@ window.tstsOtpVerify = function(purpose, opts) {
     const d = tstsParseDateLike(x);
     if (!d) return "";
     try {
-      return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+      return d.toLocaleDateString("en-AU", { year: "numeric", month: "short", day: "numeric", timeZone: "Australia/Melbourne" });
     } catch (_) {
       return d.toDateString();
     }
@@ -1154,7 +1244,7 @@ window.tstsOtpVerify = function(purpose, opts) {
     const d = tstsParseDateLike(x);
     if (!d) return "";
     try {
-      return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+      return d.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "Australia/Melbourne" });
     } catch (_) {
       return d.toDateString();
     }

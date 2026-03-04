@@ -132,8 +132,7 @@
           <section class="bg-tsts-soft rounded-3xl border border-white shadow-soft-card px-5 sm:px-7 py-6 sm:py-7">
             <a
               id="host-profile-link"
-              class="group flex items-start gap-4 sm:gap-5 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 cursor-default pointer-events-none"
-              aria-disabled="true"
+              class="group flex items-start gap-4 sm:gap-5 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 cursor-pointer hover:bg-white/50 transition p-2 -m-2"
             >
               <div class="flex-shrink-0">
                 <img
@@ -366,15 +365,24 @@
     </div>
   </main>
 
+  <!-- Mobile sticky booking bar -->
+  <div id="mobile-booking-bar" class="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white border-t border-gray-200 shadow-lg px-4 py-3 flex items-center justify-between gap-3" style="display:none">
+    <div>
+      <span id="mobile-bar-price" class="text-lg font-bold text-tsts-ink"></span>
+      <span class="text-xs text-gray-500 ml-1">per guest</span>
+    </div>
+    <button id="mobile-bar-cta" type="button" class="bg-tsts-ink text-white rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90">Reserve your seat</button>
+  </div>
+
   <footer id="footer-placeholder" role="contentinfo"></footer>
 
   <script src="js/runtime-config.js?v=20260224a"></script>
-  <script src="js/common.js?v=20260304e"></script>
+  <script src="js/common.js?v=20260304f"></script>
   <script src="data/faq-catalog.js?v=20260224a"></script>
   <script src="data/faq-trust.js?v=20260303a"></script>
   <script src="js/faq-renderer.js?v=20260303a"></script>
   <script src="js/faq-contextual.js?v=20260303a"></script>
   <script src="js/faq-init.js?v=20260224a"></script>
-  <script src="js/experience.js?v=20260304d"></script>
+  <script src="js/experience.js?v=20260304f"></script>
 </body>
 </html>

@@ -341,7 +341,7 @@ function formatPolicyEffective(booking) {
   const dt = safeDate(raw);
   if (!dt) return "";
   try {
-    return dt.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    return dt.toLocaleDateString("en-AU", { year: "numeric", month: "short", day: "numeric", timeZone: "Australia/Melbourne" });
   } catch (_) {
     return dt.toDateString();
   }
@@ -491,7 +491,7 @@ function fmtTripDate(dt) {
     if (window.tstsFormatDateShort) return window.tstsFormatDateShort(dt);
   } catch (_) {}
   try {
-    return dt.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" });
+    return dt.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", timeZone: "Australia/Melbourne" });
   } catch (_) {
     return dt.toDateString();
   }
