@@ -1165,6 +1165,7 @@ window.tstsOtpVerify = function(purpose, opts) {
 document.addEventListener("DOMContentLoaded", () => {
   injectNavbar();
   injectFooter();
+  injectCookieBanner();
   if (window.tstsHydrateNavAuth) {
     window.tstsHydrateNavAuth({ force: false }).catch(() => {});
   }
@@ -1282,6 +1283,40 @@ function injectFooter() {
   const copyright = tstsEl("div", { className: "border-t border-gray-800 mt-12 pt-8 text-center text-gray-500 text-sm space-y-2" }, [tstsEl("p", {}, copyrightText), companyInfo, policyMeta]);
   const footer = tstsEl("footer", { className: "bg-gray-900 text-white py-12 mt-auto" }, [grid, copyright]);
   root.appendChild(footer);
+}
+
+// Cookie consent banner — shows once, remembers via localStorage
+function injectCookieBanner() {
+  var STORAGE_KEY = "tsts_cookie_consent";
+  try { if (localStorage.getItem(STORAGE_KEY)) return; } catch (_) { return; }
+
+  var banner = tstsEl("div", { className: "bg-white border-t border-slate-200 shadow-soft-card" }, [
+    tstsEl("div", { className: "max-w-4xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-3" }, [
+      tstsEl("p", { className: "text-sm text-slate-700 flex-grow" }, [
+        tstsEl("span", {}, "We use cookies to keep you logged in and improve your experience. "),
+        tstsEl("a", { href: "privacy.html#cookies", className: "underline text-orange-600 hover:text-orange-700" }, "Learn more")
+      ]),
+      tstsEl("button", {
+        className: "rounded-xl bg-tsts-ink text-white text-sm font-semibold px-5 py-2 hover:opacity-90 transition whitespace-nowrap"
+      }, "Accept")
+    ])
+  ]);
+
+  // Fixed position at bottom
+  banner.style.cssText = "position:fixed;bottom:0;left:0;right:0;z-index:50;";
+
+  // Accept button handler
+  var btn = banner.querySelector("button");
+  if (btn) {
+    btn.addEventListener("click", function () {
+      try { localStorage.setItem(STORAGE_KEY, "1"); } catch (_) {}
+      banner.style.transition = "opacity 0.3s ease";
+      banner.style.opacity = "0";
+      setTimeout(function () { if (banner.parentNode) banner.parentNode.removeChild(banner); }, 300);
+    });
+  }
+
+  document.body.appendChild(banner);
 }
 
 function formatPolicyDate(v) {
