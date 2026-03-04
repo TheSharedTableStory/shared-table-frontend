@@ -273,6 +273,7 @@ document.addEventListener("DOMContentLoaded", () => {
         elExploreCurations.classList.remove("hidden");
         elExploreCurationsList.textContent = "";
 
+        var renderedTitles = new Set();
         collections.slice(0, 3).forEach((c) => {
           const a = document.createElement("a");
           a.className = "bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition cursor-pointer group flex flex-col justify-between h-full";
@@ -292,7 +293,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const titleDiv = document.createElement("div");
           const h3 = document.createElement("h3");
           h3.className = "text-xl font-bold font-serif text-gray-900";
-          const safeTitle = (function () {
+          var safeTitle = (function () {
             const raw = String(title || "").trim();
             if (!raw) return "Recommended experiences";
             const match = raw.match(/experiences\s+in\s+(.+)$/i);
@@ -300,6 +301,13 @@ document.addEventListener("DOMContentLoaded", () => {
             if (/^(food|explore|culture|social|move|create|learn|games)\b/i.test(raw)) return "Recommended experiences";
             return raw;
           })();
+          // Deduplicate: if this title was already used, append the subtitle or use the raw title
+          if (renderedTitles.has(safeTitle)) {
+            if (subtitle) { safeTitle = safeTitle + " \u2014 " + subtitle; }
+            else if (title && title !== safeTitle) { safeTitle = title; }
+            else { safeTitle = safeTitle + " (" + (renderedTitles.size + 1) + ")"; }
+          }
+          renderedTitles.add(safeTitle);
           h3.textContent = safeTitle;
           titleDiv.appendChild(h3);
           if (subtitle) {
