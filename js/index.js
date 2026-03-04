@@ -328,6 +328,13 @@ async function loadHomeRecommendations() {
     const recs = items.slice(0, 4);
     if (recs.length > 0) {
       section.classList.remove("hidden");
+      // Update heading based on auth state
+      if (!hasSessionHint()) {
+        var h2 = section.querySelector("h2");
+        var subtitle = section.querySelector("p");
+        if (h2) h2.textContent = "Popular Experiences";
+        if (subtitle) subtitle.textContent = "Discover what travellers are loving right now.";
+      }
       list.textContent = "";
       recs.forEach(function(exp) {
         list.appendChild(renderCard(exp));
