@@ -1379,15 +1379,29 @@ function injectCookieBanner() {
   var STORAGE_KEY = "tsts_cookie_consent";
   try { if (localStorage.getItem(STORAGE_KEY)) return; } catch (_) { return; }
 
+  var dismissBanner = function (storageValue) {
+    try { localStorage.setItem(STORAGE_KEY, storageValue); } catch (_) {}
+    banner.style.transition = "opacity 0.3s ease";
+    banner.style.opacity = "0";
+    document.body.style.paddingBottom = "";
+    setTimeout(function () { if (banner.parentNode) banner.parentNode.removeChild(banner); }, 300);
+  };
+
   var banner = tstsEl("div", { className: "bg-white border-t border-slate-200 shadow-soft-card" }, [
     tstsEl("div", { className: "max-w-4xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-3" }, [
       tstsEl("p", { className: "text-sm text-slate-700 flex-grow" }, [
-        tstsEl("span", {}, "We use cookies to keep you logged in and improve your experience. "),
+        tstsEl("span", {}, "We use cookies to help you get the most out of our platform. By continuing to browse, you agree to our use of cookies. "),
         tstsEl("a", { href: "privacy.html#cookies", className: "underline text-orange-600 hover:text-orange-700" }, "Learn more")
       ]),
-      tstsEl("button", {
-        className: "rounded-xl bg-tsts-ink text-white text-sm font-semibold px-5 py-2 hover:opacity-90 transition whitespace-nowrap"
-      }, "Accept")
+      tstsEl("div", { className: "flex items-center gap-2 shrink-0" }, [
+        tstsEl("button", {
+          className: "rounded-xl bg-tsts-ink text-white text-sm font-semibold px-5 py-2 hover:opacity-90 transition whitespace-nowrap"
+        }, "Accept"),
+        tstsEl("button", {
+          className: "text-slate-400 hover:text-slate-600 text-lg leading-none px-2 py-1 transition",
+          "aria-label": "Dismiss cookie banner"
+        }, "\u00d7")
+      ])
     ])
   ]);
 
@@ -1395,17 +1409,13 @@ function injectCookieBanner() {
   banner.style.cssText = "position:fixed;bottom:0;left:0;right:0;z-index:50;";
 
   // Accept button handler
-  var btn = banner.querySelector("button");
-  if (btn) {
-    btn.addEventListener("click", function () {
-      try { localStorage.setItem(STORAGE_KEY, "1"); } catch (_) {}
-      banner.style.transition = "opacity 0.3s ease";
-      banner.style.opacity = "0";
-      setTimeout(function () { if (banner.parentNode) banner.parentNode.removeChild(banner); }, 300);
-    });
-  }
+  var buttons = banner.querySelectorAll("button");
+  if (buttons[0]) buttons[0].addEventListener("click", function () { dismissBanner("1"); });
+  // Close (×) button handler
+  if (buttons[1]) buttons[1].addEventListener("click", function () { dismissBanner("dismissed"); });
 
   document.body.appendChild(banner);
+  document.body.style.paddingBottom = "60px";
 }
 
 // Inline help section — collapsible FAQ bar between main and footer on every page
