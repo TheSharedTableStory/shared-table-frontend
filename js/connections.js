@@ -29,6 +29,25 @@
     el.textContent = String(msg || "");
   }
 
+  function setStatus(msg, type) {
+    if (!connectStatusEl) return;
+    connectStatusEl.textContent = "";
+    connectStatusEl.className = "text-sm flex items-center gap-1";
+    if (!msg) return;
+    var colors = { error: "text-red-600", success: "text-emerald-600", loading: "text-slate-500" };
+    connectStatusEl.className = "text-sm flex items-center gap-1 " + (colors[type] || "text-gray-600");
+    var icons = { error: "\u2716", success: "\u2714", loading: "\u23F3" };
+    var icon = icons[type] || "";
+    if (icon) {
+      var span = document.createElement("span");
+      span.textContent = icon;
+      connectStatusEl.appendChild(span);
+    }
+    var txt = document.createElement("span");
+    txt.textContent = String(msg);
+    connectStatusEl.appendChild(txt);
+  }
+
   function showReq(which) {
     [reqLoading, reqEmpty, reqList].forEach((el) => el && el.classList.add("hidden"));
     if (which) which.classList.remove("hidden");
@@ -155,7 +174,7 @@
     if (handle.startsWith("@")) handle = handle.substring(1);
 
     if (!handle) {
-      setText(connectStatusEl, "Enter a handle.");
+      setStatus("Enter a handle.", "error");
       return;
     }
 
@@ -164,7 +183,7 @@
       connectBtn.textContent = "Sending...";
     }
 
-    setText(connectStatusEl, "");
+    setStatus("Looking up handle\u2026", "loading");
 
     try {
       const res = await window.authFetch("/api/social/connect", {
@@ -180,13 +199,14 @@
       if (!res.ok) throw new Error((data && data.message) ? data.message : ((connRaw && connRaw.message) ? connRaw.message : "Connect failed"));
 
       const st = String(data.status || "");
-      if (st) setText(connectStatusEl, "Status: " + st);
-      else setText(connectStatusEl, "Request sent.");
+      if (st) setStatus("Connection request sent!", "success");
+      else setStatus("Connection request sent!", "success");
 
+      if (handleEl) handleEl.value = "";
       await loadRequests();
       await loadConnections();
     } catch (e) {
-      setText(connectStatusEl, (e && e.message) ? e.message : "Connect failed");
+      setStatus((e && e.message) ? e.message : "Could not connect. Please try again.", "error");
     } finally {
       if (connectBtn) {
         connectBtn.disabled = false;
@@ -354,6 +374,7 @@
     if (!(await requireAuth())) return;
 
     if (connectBtn) connectBtn.addEventListener("click", connect);
+    if (handleEl) handleEl.addEventListener("input", function () { setStatus("", ""); });
     if (reqRefresh) reqRefresh.addEventListener("click", loadRequests);
     if (connRefresh) connRefresh.addEventListener("click", loadConnections);
     if (reqList) reqList.addEventListener("click", onRequestsClick);
