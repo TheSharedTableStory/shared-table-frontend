@@ -41,16 +41,16 @@
         <section id="shortfall-dashboard-section" class="mb-10 rounded-3xl border border-slate-200 bg-white p-5 shadow-soft-card">
           <div class="flex items-center justify-between mb-3">
             <div>
-              <h2 class="text-lg font-bold heading-serif text-tsts-ink">Deficit Shortfall Funding</h2>
-              <p class="text-xs text-slate-600 mt-1">Visible only for slots where platform fee exceeds booking value. Stage A and Stage B funding, threshold freezes, and +72h settlement are shown here.</p>
+              <h2 class="text-lg font-bold heading-serif text-tsts-ink">Experience Funding</h2>
+              <p class="text-xs text-slate-600 mt-1">Some experiences have platform costs that exceed the guest booking price. When this happens, you cover the difference in two payments as seats fill. After the event, you're refunded.</p>
             </div>
             <button type="button" id="shortfall-refresh-btn" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition">
               <i class="fa-solid fa-rotate"></i> Refresh
             </button>
           </div>
-          <div id="shortfall-loading" class="text-sm text-slate-500 py-3">Loading shortfall slots…</div>
-          <div id="shortfall-empty" class="hidden rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">No deficit-only shortfall slots are active for your listings.</div>
-          <div id="shortfall-error" class="hidden rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">Could not load shortfall status.</div>
+          <div id="shortfall-loading" class="text-sm text-slate-500 py-3">Loading your funding details…</div>
+          <div id="shortfall-empty" class="hidden rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">None of your experiences currently require additional funding.</div>
+          <div id="shortfall-error" class="hidden rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">We couldn't load your funding details. Please try refreshing.</div>
           <div id="shortfall-slot-list" class="hidden space-y-4"></div>
         </section>
 

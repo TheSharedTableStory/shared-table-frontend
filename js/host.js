@@ -573,7 +573,7 @@
     }
     var shortfallCents = Math.max(0, Number(b.platformFeeCents) - Number(b.guestPriceCents));
     warningEl.classList.remove("hidden");
-    warningEl.textContent = "Deficit warning: platform fee (" + formatMoneyFromCents(b.platformFeeCents) + ") is higher than booking value (" + formatMoneyFromCents(b.guestPriceCents) + "). For non-admin deficit cases, host confirmation is required and shortfall funding is staged (50% seats upfront, remaining at threshold). Shortfall per seat: " + formatMoneyFromCents(shortfallCents) + ".";
+    warningEl.textContent = "Heads up: the platform cost per guest (" + formatMoneyFromCents(b.platformFeeCents) + ") exceeds the guest price (" + formatMoneyFromCents(b.guestPriceCents) + "). You'll cover the difference (" + formatMoneyFromCents(shortfallCents) + " per guest) in two payments as seats fill. This amount is refunded after the event.";
   }
 
   function syncPricingTransparency() {
@@ -695,15 +695,26 @@
   }
 
   function shortfallStateLabel(state) {
-    return String(state || "none").toLowerCase().replace(/_/g, " ");
+    var s = String(state || "none").toUpperCase();
+    var labels = {
+      "STAGE_A_DUE": "First payment due",
+      "STAGE_B_DUE": "Second payment due",
+      "APPROVED": "Approved",
+      "FULLY_FUNDED": "Fully funded",
+      "UNDER_REVIEW": "Under review",
+      "BOOKING_FROZEN_STAGE_B": "Bookings paused — second payment needed",
+      "REJECTED": "Not approved",
+      "NONE": "Pending"
+    };
+    return labels[s] || s.toLowerCase().replace(/_/g, " ");
   }
 
   function shortfallPaymentUiLabel(state) {
     var s = String(state || "").toUpperCase();
-    if (s === "PAYMENT_IN_PROGRESS") return "Payment in progress";
-    if (s === "PAYMENT_CONFIRMED_PENDING_WEBHOOK") return "Payment confirmed, awaiting webhook";
+    if (s === "PAYMENT_IN_PROGRESS") return "Payment processing";
+    if (s === "PAYMENT_CONFIRMED_PENDING_WEBHOOK") return "Payment received — confirming";
     if (s === "PAID") return "Paid";
-    return "Payment required";
+    return "Action needed";
   }
 
   function shortfallEffectiveUiState(slot) {
@@ -760,7 +771,7 @@
 
   async function requestFeeWaiver(slotId) {
     if (!slotId) return;
-    var note = await window.tstsPrompt("Reason for waiver request", "", { minLength: 10, placeholder: "Explain why you're requesting a fee waiver for this event." });
+    var note = await window.tstsPrompt("Reason for fee reduction request", "", { minLength: 10, placeholder: "Explain why you're requesting a fee reduction for this experience." });
     note = String(note || "").trim();
     if (!note) return;
     try {
@@ -770,11 +781,11 @@
         body: JSON.stringify({ note: note })
       });
       var payload = await res.json().catch(function () { return {}; });
-      if (!res.ok || !payload || payload.ok !== true) throw new Error(String((payload && payload.message) || "Could not submit waiver request."));
-      window.tstsNotify("Waiver request submitted successfully.", "success");
+      if (!res.ok || !payload || payload.ok !== true) throw new Error(String((payload && payload.message) || "We couldn't submit your request. Please try again."));
+      window.tstsNotify("Fee reduction request submitted.", "success");
       await loadShortfallDashboard({ silent: true });
     } catch (err) {
-      window.tstsNotify(String((err && err.message) || "Could not submit waiver request."), "error");
+      window.tstsNotify(String((err && err.message) || "We couldn't submit your request. Please try again."), "error");
     }
   }
 
@@ -801,13 +812,13 @@
     var card = El("div", { className: "w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl space-y-4" });
     var header = El("div", { className: "flex items-start justify-between gap-3" }, [
       El("div", { className: "space-y-1" }, [
-        El("h3", { id: "shortfall-payment-title", className: "text-lg font-bold text-slate-900", textContent: "Pay shortfall" }),
+        El("h3", { id: "shortfall-payment-title", className: "text-lg font-bold text-slate-900", textContent: "Make your payment" }),
         El("p", { id: "shortfall-payment-meta", className: "text-xs text-slate-600", textContent: "" })
       ]),
       El("button", { id: "shortfall-payment-close", type: "button", className: "rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50", textContent: "Close" })
     ]);
     var mount = El("div", { id: "shortfall-payment-element", className: "rounded-xl border border-slate-200 p-3 bg-white" });
-    var status = El("p", { id: "shortfall-payment-status", className: "text-xs text-slate-600", textContent: "Complete payment to unlock this stage." });
+    var status = El("p", { id: "shortfall-payment-status", className: "text-xs text-slate-600", textContent: "Complete this payment to continue." });
     var actions = El("div", { className: "flex items-center justify-end gap-2" }, [
       El("button", { id: "shortfall-payment-submit", type: "button", className: "inline-flex items-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90", textContent: "Pay now" })
     ]);
@@ -862,11 +873,11 @@
     var clientSecret = String((paymentData && paymentData.clientSecret) || "").trim();
     if (!clientSecret) throw new Error("Payment intent secret missing.");
 
-    modal.titleEl.textContent = "Pay shortfall Stage " + String(stage || "");
+    modal.titleEl.textContent = "Make " + (String(stage || "").toUpperCase() === "A" ? "first" : "second") + " payment";
     modal.metaEl.textContent = String((slot && slot.experienceTitle) || "Experience") + " • " +
       String((slot && slot.bookingDate) || "") + " " + String((slot && slot.timeSlot) || "") + " • " +
       formatMoneyFromCents(Number((paymentData && paymentData.amountCents) || 0));
-    modal.statusEl.textContent = "Complete payment to unlock this stage.";
+    modal.statusEl.textContent = "Complete this payment to continue.";
     modal.overlay.classList.remove("hidden");
     modal.overlay.classList.add("flex");
 
@@ -895,17 +906,17 @@
       modal.submitBtn.disabled = false;
       modal.submitBtn.onclick = async function () {
         modal.submitBtn.disabled = true;
-        modal.statusEl.textContent = "Processing payment…";
+        modal.statusEl.textContent = "Processing your payment…";
         var result = await stripe.confirmPayment({
           elements: elements,
           redirect: "if_required"
         });
         if (result && result.error) {
-          modal.statusEl.textContent = String(result.error.message || "Payment failed.");
+          modal.statusEl.textContent = String(result.error.message || "Payment didn't go through. Please try again.");
           modal.submitBtn.disabled = false;
           return;
         }
-        modal.statusEl.textContent = "Payment submitted. Waiting for webhook confirmation…";
+        modal.statusEl.textContent = "Payment submitted — confirming. This may take a moment.";
         resolve(true);
         closeModal();
       };
@@ -930,7 +941,7 @@
           El("p", { className: "text-xs text-slate-600", textContent: String(slot.bookingDate || "") + " • " + String(slot.timeSlot || "") })
         ]),
         El("div", { className: "flex flex-wrap items-center gap-2 text-[11px]" }, [
-          El("span", { className: "rounded-full px-2 py-1 font-bold " + shortfallBadgeClass(approvalState), textContent: "Approval: " + shortfallStateLabel(approvalState) }),
+          El("span", { className: "rounded-full px-2 py-1 font-bold " + shortfallBadgeClass(approvalState), textContent: "Status: " + shortfallStateLabel(approvalState) }),
           El("span", { className: "rounded-full px-2 py-1 font-bold " + shortfallBadgeClass(fundingState), textContent: "Funding: " + shortfallStateLabel(fundingState) }),
           El("span", { className: "rounded-full px-2 py-1 font-bold " + shortfallBadgeClass(uiState), textContent: shortfallPaymentUiLabel(uiState) })
         ])
@@ -938,27 +949,27 @@
 
       var seatsPanel = El("div", { className: "rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1 text-xs text-slate-700" }, [
         El("p", { className: "font-bold uppercase tracking-wide text-slate-500", textContent: "Seats" }),
-        El("p", { textContent: "Booked seats: " + String(Number(slot.bookedSeats || 0)) }),
-        El("p", { textContent: "Capacity snapshot: " + String(Number(slot.capacityTotalSnapshot || 0)) }),
-        El("p", { textContent: "Threshold (50%): " + String(Number(slot.thresholdSeatsSnapshot || 0)) })
+        El("p", { textContent: "Seats booked: " + String(Number(slot.bookedSeats || 0)) }),
+        El("p", { textContent: "Total capacity: " + String(Number(slot.capacityTotalSnapshot || 0)) }),
+        El("p", { textContent: "First payment triggers at: " + String(Number(slot.thresholdSeatsSnapshot || 0)) + " seats" })
       ]);
       var fundingPanel = El("div", { className: "rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1 text-xs text-slate-700" }, [
-        El("p", { className: "font-bold uppercase tracking-wide text-slate-500", textContent: "Funding" }),
-        El("p", { textContent: "Shortfall per seat: " + formatMoneyFromCents(Number(slot.shortfallPerSeatSnapshotCents || 0)) }),
-        El("p", { textContent: "Stage A paid: " + formatMoneyFromCents(Number(slot.stageA && slot.stageA.paidCents || 0)) + " / " + formatMoneyFromCents(Number(slot.stageA && slot.stageA.dueCents || 0)) }),
-        El("p", { textContent: "Stage B paid: " + formatMoneyFromCents(Number(slot.stageB && slot.stageB.paidCents || 0)) + " / " + formatMoneyFromCents(Number(slot.stageB && slot.stageB.dueCents || 0)) })
+        El("p", { className: "font-bold uppercase tracking-wide text-slate-500", textContent: "Your payments" }),
+        El("p", { textContent: "Extra cost per guest: " + formatMoneyFromCents(Number(slot.shortfallPerSeatSnapshotCents || 0)) }),
+        El("p", { textContent: "First payment: " + formatMoneyFromCents(Number(slot.stageA && slot.stageA.paidCents || 0)) + " of " + formatMoneyFromCents(Number(slot.stageA && slot.stageA.dueCents || 0)) }),
+        El("p", { textContent: "Second payment: " + formatMoneyFromCents(Number(slot.stageB && slot.stageB.paidCents || 0)) + " of " + formatMoneyFromCents(Number(slot.stageB && slot.stageB.dueCents || 0)) })
       ]);
       var settlementPanel = El("div", { className: "rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1 text-xs text-slate-700" }, [
-        El("p", { className: "font-bold uppercase tracking-wide text-slate-500", textContent: "Settlement (+72h)" }),
-        El("p", { textContent: "Refundable principal: " + formatMoneyFromCents(Number(slot.settlement && slot.settlement.refundablePrincipalCents || 0)) }),
+        El("p", { className: "font-bold uppercase tracking-wide text-slate-500", textContent: "After the event" }),
+        El("p", { textContent: "Refund amount: " + formatMoneyFromCents(Number(slot.settlement && slot.settlement.refundablePrincipalCents || 0)) }),
         El("p", { textContent: "Processing fee (5%): " + formatMoneyFromCents(Number(slot.settlement && slot.settlement.processingFeeCents || 0)) }),
-        El("p", { textContent: "Net refund: " + formatMoneyFromCents(Number(slot.settlement && slot.settlement.netRefundCents || 0)) }),
-        El("p", { textContent: "Case status: " + shortfallStateLabel(slot.settlement && slot.settlement.status || "none") })
+        El("p", { textContent: "You'll receive: " + formatMoneyFromCents(Number(slot.settlement && slot.settlement.netRefundCents || 0)) }),
+        El("p", { textContent: "Refund status: " + shortfallStateLabel(slot.settlement && slot.settlement.status || "none") })
       ]);
 
       var actions = El("div", { className: "flex flex-wrap items-center gap-2 pt-1" });
       if (approvalState === "APPROVED" && slot.hostConfirmed !== true) {
-        var confirmBtn = El("button", { type: "button", className: "inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50", textContent: "Confirm shortfall terms" });
+        var confirmBtn = El("button", { type: "button", className: "inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50", textContent: "Agree to payment terms" });
         confirmBtn.addEventListener("click", (function (slotIdCopy) {
           return async function () {
             try {
@@ -968,23 +979,23 @@
                 body: JSON.stringify({ slotId: slotIdCopy })
               });
               var p = await r.json().catch(function () { return {}; });
-              if (!r.ok || !p || p.ok !== true) throw new Error(String((p && p.message) || "Confirmation failed."));
-              window.tstsNotify("Shortfall terms confirmed.", "success");
+              if (!r.ok || !p || p.ok !== true) throw new Error(String((p && p.message) || "Something went wrong. Please try again."));
+              window.tstsNotify("Payment terms accepted.", "success");
               await loadShortfallDashboard({ silent: true });
             } catch (err) {
-              window.tstsNotify(String((err && err.message) || "Confirmation failed."), "error");
+              window.tstsNotify(String((err && err.message) || "Something went wrong. Please try again."), "error");
             }
           };
         })(String(slot.slotId || "")));
         actions.appendChild(confirmBtn);
       }
       if (approvalState === "APPROVED" && slot.hostConfirmed === true && nextStage) {
-        var payBtn = El("button", { type: "button", className: "inline-flex items-center rounded-xl bg-tsts-ink px-3 py-2 text-xs font-bold text-white hover:opacity-90", textContent: "Pay shortfall (Stage " + nextStage + ")" });
+        var payBtn = El("button", { type: "button", className: "inline-flex items-center rounded-xl bg-tsts-ink px-3 py-2 text-xs font-bold text-white hover:opacity-90", textContent: "Make " + (nextStage === "A" ? "first" : "second") + " payment" });
         var slotId = String(slot.slotId || "");
         if (shortfallPaymentInFlight.has(slotId)) {
           payBtn.disabled = true;
           payBtn.classList.add("opacity-60");
-          payBtn.textContent = "Payment in progress";
+          payBtn.textContent = "Payment processing";
         }
         payBtn.addEventListener("click", (function (slotCopy, stageCopy) {
           return async function () {
@@ -1006,14 +1017,14 @@
               renderShortfallSlots(shortfallSlotsCache);
               var webhookApplied = await pollShortfallSlotUntilWebhook(slotIdLocal, stageCopy);
               if (!webhookApplied) {
-                window.tstsNotify("Payment submitted. Webhook confirmation is still pending; refresh in a moment.", "warning");
+                window.tstsNotify("Payment submitted. Confirmation may take a moment — try refreshing shortly.", "warning");
               } else {
                 shortfallPaymentPendingWebhook.delete(slotIdLocal);
-                window.tstsNotify("Shortfall payment confirmed.", "success");
+                window.tstsNotify("Payment confirmed.", "success");
               }
               await loadShortfallDashboard({ silent: true });
             } catch (err) {
-              window.tstsNotify(String((err && err.message) || "Payment failed."), "error");
+              window.tstsNotify(String((err && err.message) || "Payment didn't go through. Please try again."), "error");
             } finally {
               shortfallPaymentInFlight.delete(slotIdLocal);
               renderShortfallSlots(shortfallSlotsCache);
@@ -1029,24 +1040,24 @@
       var stageAPaid = Number((slot.stageA && slot.stageA.paidCents) || 0);
       var canRequestWaiver = approvalState === "APPROVED" && (waiverStatus === "none" || waiverStatus === "rejected") && stageAPaid < stageADue;
       if (canRequestWaiver) {
-        var waiverRequestBtn = El("button", { type: "button", className: "inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50", textContent: "Request fee waiver" });
+        var waiverRequestBtn = El("button", { type: "button", className: "inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50", textContent: "Request fee reduction" });
         waiverRequestBtn.addEventListener("click", (function (slotIdCopy) {
           return async function () { await requestFeeWaiver(slotIdCopy); };
         })(String(slot.slotId || "")));
         actions.appendChild(waiverRequestBtn);
       }
       if (waiverStatus === "pending") {
-        actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-amber-100 text-amber-800", textContent: "Waiver request under review" }));
+        actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-amber-100 text-amber-800", textContent: "Fee reduction request under review" }));
       } else if (waiverStatus === "approved_full") {
-        actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-emerald-100 text-emerald-800", textContent: "Full waiver approved — no payment required" }));
+        actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-emerald-100 text-emerald-800", textContent: "Fee reduction approved — no additional payment needed" }));
       } else if (waiverStatus === "approved_partial") {
-        actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-emerald-100 text-emerald-800", textContent: "Partial waiver approved — reduced fee applies" }));
+        actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-emerald-100 text-emerald-800", textContent: "Partial reduction approved — reduced amount applies" }));
       } else if (waiverStatus === "rejected") {
-        actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-slate-100 text-slate-600", textContent: "Waiver request was not approved" }));
+        actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-slate-100 text-slate-600", textContent: "Fee reduction request was not approved" }));
       }
 
       if (actions.childNodes.length === 0) {
-        actions.appendChild(El("p", { className: "text-xs text-slate-500", textContent: "No host action required at this stage." }));
+        actions.appendChild(El("p", { className: "text-xs text-slate-500", textContent: "Nothing for you to do right now." }));
       }
 
       var card = El("article", { className: "rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-sm" }, [
@@ -1076,7 +1087,7 @@
       return loaded;
     } catch (err) {
       if (reqId !== shortfallRequestCounter) return { slots: [] };
-      setShortfallUiState("error", String((err && err.message) || "Could not load shortfall status."));
+      setShortfallUiState("error", String((err && err.message) || "We couldn't load your funding details. Please try refreshing."));
       return { slots: [] };
     }
   }
@@ -1595,16 +1606,18 @@
           const stageADueCents = shortfallPerSeatCents * thresholdSeats;
           const stageBDueCents = shortfallPerSeatCents * Math.max(0, Number(capacity) - thresholdSeats);
           const proceed = await window.tstsConfirm(
-            "Deficit shortfall warning:\n\nBooking value per seat: " + formatMoneyFromCents(deficitBreakdown.guestPriceCents) +
-            "\nPlatform fee per seat: " + formatMoneyFromCents(deficitBreakdown.platformFeeCents) +
-            "\nShortfall per seat: " + formatMoneyFromCents(shortfallPerSeatCents) +
-            "\n\nIf this slot is approved as non-admin deficit, Stage A due will be " + formatMoneyFromCents(stageADueCents) +
-            " (first 50% seats), and Stage B due will be " + formatMoneyFromCents(stageBDueCents) +
-            " (remaining seats at threshold).\n\nProceed with this listing?",
-            { confirmText: "Proceed", destructive: true }
+            "Heads up — this experience has higher platform costs.\n\n" +
+            "Each guest pays: " + formatMoneyFromCents(deficitBreakdown.guestPriceCents) + "\n" +
+            "Platform cost per guest: " + formatMoneyFromCents(deficitBreakdown.platformFeeCents) + "\n" +
+            "Extra cost you'll cover: " + formatMoneyFromCents(shortfallPerSeatCents) + " per guest\n\n" +
+            "You'll make two payments as seats fill:\n" +
+            "First payment (" + formatMoneyFromCents(stageADueCents) + ") when " + thresholdSeats + " seats are booked.\n" +
+            "Second payment (" + formatMoneyFromCents(stageBDueCents) + ") when remaining seats fill.\n\n" +
+            "After the event, the amount (minus 5% processing fee) is refunded to you.\n\nPublish this experience?",
+            { confirmText: "Publish", destructive: true }
           );
           if (!proceed) {
-            showNotice("error", "Listing save cancelled. Update the price if you do not want deficit shortfall funding.");
+            showNotice("error", "Listing not saved. You can increase the guest price to avoid additional platform costs.");
             return;
           }
         }
