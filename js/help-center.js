@@ -114,9 +114,21 @@
     });
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bind);
-  } else {
+  function autoOpenFromUrl() {
+    try {
+      var hub = new URLSearchParams(location.search).get("hub");
+      if (hub && HUBS.indexOf(hub) >= 0) toggleHub(hub);
+    } catch (_) {}
+  }
+
+  function init() {
     bind();
+    autoOpenFromUrl();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
   }
 })();

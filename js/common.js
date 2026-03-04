@@ -1255,6 +1255,7 @@ window.tstsOtpVerify = function(purpose, opts) {
 document.addEventListener("DOMContentLoaded", () => {
   injectNavbar();
   injectFooter();
+  injectInlineHelp();
   injectCookieBanner();
   if (window.tstsHydrateNavAuth) {
     window.tstsHydrateNavAuth({ force: false }).catch(() => {});
@@ -1405,6 +1406,177 @@ function injectCookieBanner() {
   }
 
   document.body.appendChild(banner);
+}
+
+// Inline help section — collapsible FAQ bar between main and footer on every page
+function injectInlineHelp() {
+  var footer = document.getElementById("footer-placeholder");
+  if (!footer) return;
+
+  // Skip on admin, auth, and utility pages
+  var page = (location.pathname || "").split("/").pop() || "";
+  var skipPages = {
+    "admin.html": 1, "login.html": 1, "404.html": 1,
+    "verify-email.html": 1, "verify-email-change.html": 1,
+    "reset-password.html": 1, "unsubscribe.html": 1,
+    "help-center.html": 1
+  };
+  if (skipPages[page]) return;
+
+  // Map page to relevant FAQ IDs for context-aware pre-loading
+  var pageContextMap = {
+    "experience.html": ["T01","T02","T03","T04","T05"],
+    "my-bookings.html": ["G01","G03","G08","G09","G11","G13"],
+    "host.html": ["H01","H03","H05","H07","H08"],
+    "about.html": ["P01","P02","P04"],
+    "explore.html": ["G01","G02","G04","G05","G06"],
+    "success.html": ["T01","T02","T03","T06"],
+    "connections.html": ["G13","G14"],
+    "profile.html": ["G13","P01"],
+    "report.html": ["T04","G11","H14"],
+    "policy.html": ["T02","T06","G08","G09"],
+    "terms.html": ["P01","P04"],
+    "privacy.html": ["P08","T05"],
+    "host-terms.html": ["H01","H12"],
+    "public-profile.html": ["G01","H03"],
+    "index.html": ["P01","G01","H01"]
+  };
+  var contextIds = pageContextMap[page] || ["P01","G01","G13"];
+
+  // Build shell
+  var shell = tstsEl("div", { id: "tsts-inline-help", className: "border-t border-slate-200 bg-tsts-cream" });
+
+  // Collapsed bar
+  var barLabel = tstsEl("span", { className: "text-sm font-semibold text-tsts-ink" }, "Have a question? We\u2019re here to help.");
+  var barIcon = tstsEl("span", { className: "text-slate-500 text-sm", "aria-hidden": "true" }, "\u25BE");
+  var toggleBar = tstsEl("button", {
+    type: "button",
+    className: "w-full px-4 py-3 sm:px-6 flex items-center justify-between gap-3 text-left hover:bg-white/40 transition"
+  }, [barLabel, barIcon]);
+  toggleBar.setAttribute("aria-expanded", "false");
+  toggleBar.setAttribute("aria-controls", "tsts-inline-help-panel");
+
+  // Expanded panel (hidden)
+  var panel = tstsEl("div", { id: "tsts-inline-help-panel", className: "hidden px-4 sm:px-6 pb-4 space-y-3" });
+
+  // Search input
+  var searchInput = tstsEl("input", {
+    type: "search",
+    placeholder: "Search our FAQs\u2026",
+    className: "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition",
+    "aria-label": "Search frequently asked questions"
+  });
+
+  var resultsList = tstsEl("div", { className: "space-y-2 max-h-80 overflow-y-auto" });
+
+  // Escalation links
+  var escalation = tstsEl("div", { className: "flex flex-wrap gap-2 pt-2 border-t border-slate-200 mt-2" }, [
+    tstsEl("a", { href: "help-center.html", className: "text-xs font-semibold text-orange-600 hover:text-orange-700" }, "Browse all FAQs"),
+    tstsEl("span", { className: "text-xs text-slate-300" }, "\u00B7"),
+    tstsEl("a", { href: "report.html", className: "text-xs font-semibold text-slate-600 hover:text-slate-800" }, "Report an issue"),
+    tstsEl("span", { className: "text-xs text-slate-300" }, "\u00B7"),
+    tstsEl("a", { href: "mailto:contact@thesharedtablestory.com", className: "text-xs font-semibold text-slate-600 hover:text-slate-800" }, "Contact us")
+  ]);
+
+  panel.appendChild(searchInput);
+  panel.appendChild(resultsList);
+  panel.appendChild(escalation);
+  shell.appendChild(toggleBar);
+  shell.appendChild(panel);
+
+  // Insert before footer
+  footer.parentNode.insertBefore(shell, footer);
+
+  var faqLoaded = false;
+
+  function loadFaqScripts(cb) {
+    if (typeof FAQ_CATALOG !== "undefined") { faqLoaded = true; cb(); return; }
+    var scripts = ["data/faq-catalog.js?v=20260304f", "data/faq-trust.js?v=20260304f"];
+    var loaded = 0;
+    scripts.forEach(function (src) {
+      var s = document.createElement("script");
+      s.src = src;
+      s.onload = s.onerror = function () { loaded++; if (loaded === scripts.length) { faqLoaded = true; cb(); } };
+      document.head.appendChild(s);
+    });
+  }
+
+  function makeAccordion(item) {
+    var qIcon = tstsEl("span", { className: "text-slate-500 text-base leading-none", "aria-hidden": "true" }, "+");
+    var q = tstsEl("button", {
+      type: "button",
+      className: "w-full text-left flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-tsts-ink hover:bg-slate-50 transition"
+    }, [
+      tstsEl("span", { className: "pr-3" }, String(item.question || "")),
+      qIcon
+    ]);
+    q.setAttribute("aria-expanded", "false");
+
+    var a = tstsEl("div", {
+      className: "hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-slate-700"
+    }, String(item.answer || ""));
+
+    q.addEventListener("click", function () {
+      var hidden = a.classList.contains("hidden");
+      if (hidden) { a.classList.remove("hidden"); qIcon.textContent = "\u2212"; q.setAttribute("aria-expanded", "true"); }
+      else { a.classList.add("hidden"); qIcon.textContent = "+"; q.setAttribute("aria-expanded", "false"); }
+    });
+
+    return tstsEl("article", { className: "space-y-1" }, [q, a]);
+  }
+
+  function renderFaqs(query) {
+    if (typeof FAQ_CATALOG === "undefined") return;
+    resultsList.textContent = "";
+    var q = String(query || "").trim().toLowerCase();
+
+    var items;
+    if (q) {
+      items = FAQ_CATALOG.filter(function (item) {
+        if (!item || item.status !== "active") return false;
+        var hay = (String(item.question || "") + " " + String(item.answer || "")).toLowerCase();
+        return hay.indexOf(q) >= 0;
+      });
+    } else {
+      items = FAQ_CATALOG.filter(function (item) {
+        if (!item || item.status !== "active") return false;
+        return contextIds.indexOf(String(item.id || "")) >= 0;
+      });
+    }
+
+    if (items.length === 0) {
+      if (q) resultsList.appendChild(tstsEl("p", { className: "text-sm text-slate-500 py-2" }, "No matching questions found."));
+      return;
+    }
+
+    items.slice(0, 8).forEach(function (item) { resultsList.appendChild(makeAccordion(item)); });
+    if (items.length > 8) {
+      resultsList.appendChild(tstsEl("p", { className: "text-xs text-slate-500 pt-1" }, (items.length - 8) + " more results \u2014 refine your search or browse all FAQs."));
+    }
+  }
+
+  // Toggle handler
+  toggleBar.addEventListener("click", function () {
+    var hidden = panel.classList.contains("hidden");
+    if (hidden) {
+      panel.classList.remove("hidden");
+      barIcon.textContent = "\u25B4";
+      toggleBar.setAttribute("aria-expanded", "true");
+      if (!faqLoaded) { loadFaqScripts(function () { renderFaqs(""); }); }
+      else { renderFaqs(""); }
+    } else {
+      panel.classList.add("hidden");
+      barIcon.textContent = "\u25BE";
+      toggleBar.setAttribute("aria-expanded", "false");
+    }
+  });
+
+  // Search debounce
+  var debounceTimer;
+  searchInput.addEventListener("input", function () {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(function () { renderFaqs(searchInput.value); }, 200);
+  });
 }
 
 function formatPolicyDate(v) {

@@ -7,41 +7,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="/assets/icon-192.png">
     <meta name="theme-color" content="#ea580c">
-    <title>My Profile - The Shared Table Story</title>
+    <title>My Account - The Shared Table Story</title>
     <link rel="stylesheet" href="css/tailwind.css?v=20260304d">
     <link rel="stylesheet" href="css/fonts.css?v=20260224a">
-
-<link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest.json">
 </head>
 <body class="bg-tsts-cream text-slate-900 flex flex-col min-h-screen">
 
     <nav id="navbar-placeholder" role="navigation"></nav>
 
     <main class="flex-grow" role="main">
-    <div class="flex-grow container mx-auto px-4 py-8 max-w-2xl">
-        <h1 class="text-3xl font-bold mb-2 heading-serif text-tsts-ink">My Profile</h1>
-        <p class="text-gray-600 mb-8">Manage your personal details and settings.</p>
+    <div class="container mx-auto px-4 py-8 max-w-2xl">
+        <h1 class="text-3xl font-bold mb-2 heading-serif text-tsts-ink">My Account</h1>
+        <p class="text-gray-600 mb-8">Manage your personal details, privacy, notifications, and account data.</p>
 
-        <div class="bg-white rounded-3xl shadow-soft-card border border-gray-100 overflow-hidden">
-            
+        <!-- Section 1: Personal Details -->
+        <div class="bg-white rounded-3xl shadow-soft-card border border-gray-100 overflow-hidden mb-6">
             <div class="p-8 border-b border-gray-100 flex flex-col items-center">
                 <div class="relative group">
-                    <img id="profile-pic-preview" 
-                         src="/assets/avatar-default.svg" 
-                         alt="Your profile picture" 
+                    <img id="profile-pic-preview"
+                         src="/assets/avatar-default.svg"
+                         alt="Your profile picture"
                          class="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg">
-                    
                     <div id="upload-spinner" class="hidden absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
                         <i class="fas fa-spinner fa-spin text-white text-2xl"></i>
                     </div>
                 </div>
-
                 <div class="mt-4 flex flex-col items-center gap-2">
                     <label for="file-upload" class="cursor-pointer bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-50 transition">
                         <i class="fas fa-camera mr-2"></i> Change Photo
                     </label>
                     <input id="file-upload" type="file" class="hidden" accept="image/*">
-
                     <button id="upload-btn" type="button" class="hidden tsts-btn-primary px-4 py-2 rounded-xl text-sm font-medium transition">
                         Upload & Save
                     </button>
@@ -88,13 +84,13 @@
                         <label for="mobile" class="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
                         <div class="flex gap-2">
                             <select id="mobileCountryCode" aria-label="Country code" class="px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 outline-none text-sm w-28 shrink-0">
-                                <option value="+61" selected>🇦🇺 +61</option>
-                                <option value="+1">🇺🇸 +1</option>
-                                <option value="+44">🇬🇧 +44</option>
-                                <option value="+64">🇳🇿 +64</option>
-                                <option value="+65">🇸🇬 +65</option>
-                                <option value="+60">🇲🇾 +60</option>
-                                <option value="+91">🇮🇳 +91</option>
+                                <option value="+61" selected>+61</option>
+                                <option value="+1">+1</option>
+                                <option value="+44">+44</option>
+                                <option value="+64">+64</option>
+                                <option value="+65">+65</option>
+                                <option value="+60">+60</option>
+                                <option value="+91">+91</option>
                             </select>
                             <input type="tel" id="mobile" maxlength="15" autocomplete="tel-national" class="flex-1 px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="412 345 678">
                         </div>
@@ -105,98 +101,10 @@
                         <textarea id="bio" rows="4" maxlength="500" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="Share a bit about yourself..."></textarea>
                     </div>
 
-                    
-                    <div class="pt-6 border-t border-gray-100">
-                        <h2 class="text-lg font-bold mb-2 flex items-center gap-2 heading-serif text-tsts-ink">
-                            <i class="fas fa-user-shield text-orange-600"></i> Social Privacy
-                        </h2>
-                        <p class="text-sm text-gray-600 mb-4">
-                            We believe your connections are personal. Nothing is shared unless you say so.
-                        </p>
-
-                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
-                            <div class="flex items-start justify-between gap-4">
-                                <div>
-                                    <p class="font-semibold text-tsts-ink text-sm">Direct Invites Only</p>
-                                    <p class="text-xs text-gray-600">Connections happen only through invites you send or approve.</p>
-                                </div>
-                            </div>
-
-                            
-                            <div class="flex items-start justify-between gap-4">
-                                <div>
-                                    <p class="font-semibold text-tsts-ink text-sm">Share My Profile with World</p>
-                                    <p class="text-xs text-gray-600">If enabled, your photo and bio can appear in attendee lists and comments. Off keeps you private by default.</p>
-                                </div>
-                                <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
-                                    <input type="checkbox" id="public-profile-toggle" role="switch" aria-label="Toggle public profile" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
-                                    <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
-                                </label>
-                            </div>
-
-                            <div class="pt-3 border-t border-gray-200">
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1" for="handle">Handle</label>
-                                <input id="handle" type="text" maxlength="32" placeholder="Choose a handle (e.g. aarav)" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" />
-                                <p class="text-[11px] text-gray-500 mt-1">Handles allow direct invites. Search is opt-in below.</p>
-                                <div id="host-ownership-warning" class="hidden mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                                    Please set a unique handle to ensure your listings are correctly linked to your account.
-                                </div>
-                            </div>
-
-                            <div class="flex items-start justify-between gap-4">
-                                <div>
-                                    <p class="font-semibold text-tsts-ink text-sm">Allow Handle Search</p>
-                                    <p class="text-xs text-gray-600">If enabled, others can connect to you by searching your handle.</p>
-                                </div>
-                                <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
-                                    <input type="checkbox" id="allow-handle-search" role="switch" aria-label="Toggle handle search" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
-                                    <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
-                                </label>
-                            </div>
-
-                            <div class="flex items-start justify-between gap-4">
-                                <div>
-                                    <p class="font-semibold text-tsts-ink text-sm">Share My Bookings To Friends</p>
-                                    <p class="text-xs text-gray-600">If enabled, your connections may see bookings you explicitly mark as shareable.</p>
-                                </div>
-                                <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
-                                    <input type="checkbox" id="share-to-friends" role="switch" aria-label="Toggle share bookings to friends" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
-                                    <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
-                                </label>
-                            </div>
-
-
-
-
-                                                    </div>
-                    </div>
-
-                    <div class="pt-6 border-t border-gray-100">
-                        <h2 class="text-lg font-bold mb-2 flex items-center gap-2 heading-serif text-tsts-ink">
-                            <i class="fas fa-envelope text-orange-600"></i> Email Notifications
-                        </h2>
-                        <p class="text-sm text-gray-600 mb-4">
-                            Choose which emails you'd like to receive. Booking confirmations and security alerts are always sent to keep you safe.
-                        </p>
-                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
-                            <div class="flex items-start justify-between gap-4">
-                                <div>
-                                    <p class="font-semibold text-tsts-ink text-sm">Experience Recommendations</p>
-                                    <p class="text-xs text-gray-600">Receive emails about experiences you might enjoy, based on top-rated listings.</p>
-                                </div>
-                                <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
-                                    <input type="checkbox" id="recommendation-email-toggle" role="switch" aria-label="Toggle experience recommendations email" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
-                                    <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-<div id="host-payment-section" class="pt-6 border-t border-gray-100 hidden">
+                    <div id="host-payment-section" class="pt-6 border-t border-gray-100 hidden">
                         <h2 class="text-lg font-bold mb-4 flex items-center gap-2 heading-serif text-tsts-ink">
                             <i class="fas fa-concierge-bell text-orange-600"></i> Host Settings
                         </h2>
-
                         <div class="mb-6 bg-orange-50 border border-orange-100 rounded-lg p-4 flex items-center justify-between">
                             <div>
                                 <p class="font-bold text-tsts-ink text-sm">Vacation Mode</p>
@@ -207,7 +115,6 @@
                                 <label for="vacation-mode" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
                             </div>
                         </div>
-
                         <p class="text-xs text-gray-500 mb-3">
                             <i class="fas fa-lock mr-1"></i> Payout Details (Securely Stored)
                         </p>
@@ -231,15 +138,190 @@
                 </form>
             </div>
         </div>
+
+        <!-- Section 2: Social & Privacy -->
+        <div class="bg-white rounded-3xl shadow-soft-card border border-gray-100 p-6 mb-6">
+            <h2 class="text-lg font-bold mb-2 flex items-center gap-2 heading-serif text-tsts-ink">
+                <i class="fas fa-user-shield text-orange-600"></i> Social & Privacy
+            </h2>
+            <p class="text-sm text-gray-600 mb-4">
+                We believe your connections are personal. Nothing is shared unless you say so.
+            </p>
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="font-semibold text-tsts-ink text-sm">Direct Invites Only</p>
+                        <p class="text-xs text-gray-600">Connections happen only through invites you send or approve.</p>
+                    </div>
+                </div>
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="font-semibold text-tsts-ink text-sm">Share My Profile with World</p>
+                        <p class="text-xs text-gray-600">If enabled, your photo and bio can appear in attendee lists and comments.</p>
+                    </div>
+                    <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
+                        <input type="checkbox" id="public-profile-toggle" role="switch" aria-label="Toggle public profile" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
+                    </label>
+                </div>
+                <div class="pt-3 border-t border-gray-200">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1" for="handle">Handle</label>
+                    <input id="handle" type="text" maxlength="32" placeholder="Choose a handle (e.g. aarav)" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" />
+                    <p class="text-[11px] text-gray-500 mt-1">Handles allow direct invites. Search is opt-in below.</p>
+                    <div id="host-ownership-warning" class="hidden mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                        Please set a unique handle to ensure your listings are correctly linked to your account.
+                    </div>
+                </div>
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="font-semibold text-tsts-ink text-sm">Allow Handle Search</p>
+                        <p class="text-xs text-gray-600">If enabled, others can connect to you by searching your handle.</p>
+                    </div>
+                    <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
+                        <input type="checkbox" id="allow-handle-search" role="switch" aria-label="Toggle handle search" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
+                    </label>
+                </div>
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="font-semibold text-tsts-ink text-sm">Share My Bookings To Friends</p>
+                        <p class="text-xs text-gray-600">If enabled, your connections may see bookings you explicitly mark as shareable.</p>
+                    </div>
+                    <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
+                        <input type="checkbox" id="share-to-friends" role="switch" aria-label="Toggle share bookings to friends" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Notifications -->
+        <div class="bg-white rounded-3xl shadow-soft-card border border-gray-100 p-6 mb-6">
+            <h2 class="text-lg font-bold mb-2 flex items-center gap-2 heading-serif text-tsts-ink">
+                <i class="fas fa-envelope text-orange-600"></i> Notifications
+            </h2>
+            <p class="text-sm text-gray-600 mb-4">
+                Choose which emails you'd like to receive. Booking confirmations and security alerts are always sent.
+            </p>
+            <div id="notif-prefs-loading" class="py-4 text-center">
+                <i class="fas fa-spinner fa-spin text-lg text-orange-600" aria-hidden="true"></i>
+            </div>
+            <div id="notif-prefs-error" class="hidden text-sm text-red-600 py-2"></div>
+            <div id="notif-prefs-list" class="hidden bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="font-semibold text-tsts-ink text-sm">Experience Recommendations</p>
+                        <p class="text-xs text-gray-600">Receive emails about experiences you might enjoy.</p>
+                    </div>
+                    <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
+                        <input type="checkbox" id="recommendation-email-toggle" role="switch" aria-label="Toggle experience recommendations email" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
+                    </label>
+                </div>
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="font-semibold text-tsts-ink text-sm">Booking Confirmations</p>
+                        <p class="text-xs text-gray-600">Receive email when your booking is confirmed or cancelled.</p>
+                    </div>
+                    <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
+                        <input type="checkbox" id="notif-bookingConfirmations" role="switch" aria-label="Toggle booking confirmation emails" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
+                    </label>
+                </div>
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="font-semibold text-tsts-ink text-sm">Booking Reminders</p>
+                        <p class="text-xs text-gray-600">Get a reminder before your upcoming experience.</p>
+                    </div>
+                    <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
+                        <input type="checkbox" id="notif-bookingReminders" role="switch" aria-label="Toggle booking reminder emails" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
+                    </label>
+                </div>
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="font-semibold text-tsts-ink text-sm">New Reviews</p>
+                        <p class="text-xs text-gray-600">Get notified when someone leaves a review on your experience.</p>
+                    </div>
+                    <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
+                        <input type="checkbox" id="notif-newReviews" role="switch" aria-label="Toggle new review emails" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
+                    </label>
+                </div>
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="font-semibold text-tsts-ink text-sm">Community Activity</p>
+                        <p class="text-xs text-gray-600">Updates about connection requests, comments, and social activity.</p>
+                    </div>
+                    <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
+                        <input type="checkbox" id="notif-communityActivity" role="switch" aria-label="Toggle community activity emails" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
+                    </label>
+                </div>
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="font-semibold text-tsts-ink text-sm">Host Digest</p>
+                        <p class="text-xs text-gray-600">Daily summary of new bookings, reviews, and hosting activity.</p>
+                    </div>
+                    <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
+                        <input type="checkbox" id="notif-hostDigest" role="switch" aria-label="Toggle host digest emails" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
+                    </label>
+                </div>
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="font-semibold text-tsts-ink text-sm">Promotional</p>
+                        <p class="text-xs text-gray-600">Occasional updates about new features, events, and recommendations.</p>
+                    </div>
+                    <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
+                        <input type="checkbox" id="notif-promotional" role="switch" aria-label="Toggle promotional emails" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
+                    </label>
+                </div>
+            </div>
+            <p id="notif-prefs-status" class="text-xs text-gray-500 mt-3"></p>
+        </div>
+
+        <!-- Section 4: Data & Account -->
+        <div class="bg-white rounded-3xl shadow-soft-card border border-gray-100 p-6">
+            <h2 class="text-lg font-bold mb-2 flex items-center gap-2 heading-serif text-tsts-ink">
+                <i class="fas fa-database text-orange-600"></i> Data & Account
+            </h2>
+            <p class="text-sm text-gray-700 mb-3">Here's what we have on file for your account.</p>
+            <ul id="data-categories" class="space-y-2 text-sm text-gray-700 mb-4"></ul>
+            <p id="exported-at" class="text-xs text-gray-500 mb-4"></p>
+
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                <p class="text-sm text-gray-700 leading-relaxed">
+                    Account profile data is kept while your account is active. When you request deletion, personal profile fields are scrubbed and account access is disabled.
+                </p>
+                <p class="text-sm text-gray-700 leading-relaxed mt-2">
+                    Transaction, moderation, and policy snapshot records may be retained for financial reconciliation, dispute handling, and governance audits.
+                </p>
+                <p id="retention-meta" class="text-xs text-gray-500 mt-3"></p>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button id="export-btn" type="button" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl tsts-btn-primary font-bold transition">
+                    <i class="fas fa-download"></i> Download My Data
+                </button>
+            </div>
+            <div class="mt-6 pt-6 border-t border-gray-200">
+                <h3 class="text-lg font-bold text-red-700 mb-2">Delete Account</h3>
+                <p class="text-sm text-gray-700 mb-4">Deleting your account is permanent. All your data, bookings, reviews, and connections will be removed. This cannot be undone.</p>
+                <button id="delete-btn" type="button" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-red-50 text-red-700 border border-red-200 font-bold hover:bg-red-100 transition">
+                    <i class="fas fa-trash-alt"></i> Delete My Account
+                </button>
+            </div>
+            <p id="action-status" class="text-xs text-gray-500 mt-3"></p>
+            <p class="text-xs text-gray-500 mt-4">For details on data access, correction, deletion, and retention, see our <a href="privacy.html" class="underline hover:text-orange-600">Privacy Policy</a>.</p>
+        </div>
     </div>
     </main>
 
     <footer id="footer-placeholder" role="contentinfo"></footer>
     <script src="js/runtime-config.js?v=20260224a"></script>
   <script src="js/common.js?v=20260304f"></script>
-    <script src="js/profile.js?v=20260303b"></script>
-
-    
-
+    <script src="js/profile.js?v=20260304f"></script>
 </body>
 </html>
