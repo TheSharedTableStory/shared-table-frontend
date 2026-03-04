@@ -1475,10 +1475,8 @@ async function applyAuthStateToNav(opts) {
 
     const menuLinks = [
       { href: "my-bookings.html", text: "My Experiences" },
-      { href: "profile.html", text: "My Profile" },
-      { href: "bookmarks.html", text: "Bookmarks" },
-      { href: "connections.html", text: "Connections" },
-      { href: "settings-data.html", text: "Data & Privacy" }
+      { href: "profile.html", text: "My Account" },
+      { href: "connections.html", text: "Fellow Travellers" }
     ];
     if (isAdminUser) menuLinks.push({ href: "admin.html", text: "Admin Dashboard" });
     const dropdownItems = menuLinks.map(function(lnk) {
@@ -1502,8 +1500,8 @@ async function applyAuthStateToNav(opts) {
     mobileAuth.textContent = "";
     const mobileLinks = [
       { href: "my-bookings.html", text: "My Experiences" },
-      { href: "profile.html", text: "My Profile" },
-      { href: "settings-data.html", text: "Data & Privacy" }
+      { href: "profile.html", text: "My Account" },
+      { href: "connections.html", text: "Fellow Travellers" }
     ];
     if (isAdminUser) mobileLinks.push({ href: "admin.html", text: "Admin Dashboard" });
     mobileLinks.forEach(function(lnk) {

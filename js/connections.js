@@ -370,6 +370,85 @@
     }
   }
 
+  // ── Friends Feed (merged from feed.js) ──
+  const feedLoadingEl = document.getElementById("feed-loading");
+  const feedEmptyEl = document.getElementById("feed-empty");
+  const feedErrorEl = document.getElementById("feed-error");
+  const feedListEl = document.getElementById("feed-list");
+  const feedRetryBtn = document.getElementById("feed-retry-btn");
+  const feedRefresh = document.getElementById("refresh-feed");
+
+  function showFeed(which) {
+    [feedLoadingEl, feedEmptyEl, feedErrorEl, feedListEl].forEach(function(el) { if (el) el.classList.add("hidden"); });
+    if (which) which.classList.remove("hidden");
+  }
+
+  function renderFeedItem(item) {
+    var El = window.tstsEl;
+    var safeUrl = window.tstsSafeUrl;
+    var fallbackImg = "/assets/experience-default.jpg";
+    var fallbackPic = "/assets/avatar-default.svg";
+    var it = item || {};
+    var guest = it.guest || {};
+    var exp = it.experience || {};
+    var when = window.tstsFormatDateShort ? window.tstsFormatDateShort(it.when) : String(it.when || "");
+    var title = exp.title || "Experience";
+    var expId = exp._id || exp.id || it.experienceId || "";
+    var imgUrl = safeUrl(exp.imageUrl, fallbackImg);
+    var guestName = guest.name || "Friend";
+    var guestId = guest._id || guest.id || "";
+    var guestPicUrl = safeUrl(guest.profilePic, fallbackPic);
+    var handle = guest.handle ? ("@" + guest.handle) : "";
+
+    var expImg = El("img", { className: "w-full h-full object-cover" });
+    window.tstsSafeImg(expImg, imgUrl, fallbackImg);
+    var guestImg = El("img", { className: "h-10 w-10 rounded-full border border-gray-100 object-cover" });
+    window.tstsSafeImg(guestImg, guestPicUrl, fallbackPic);
+
+    var titleLink = El("a", { href: "experience.html?id=" + encodeURIComponent(expId), className: "font-bold text-gray-900 hover:text-orange-600 transition", textContent: title });
+    var whenEl = El("div", { className: "text-xs text-gray-500 mt-1", textContent: when ? ("Booked: " + when) : "" });
+    var cityEl = El("div", { className: "text-xs text-gray-500", textContent: exp.city || "" });
+    var visibilityChip = El("span", { className: "inline-flex items-center rounded-full bg-violet-100 text-violet-700 px-2 py-0.5 text-[11px] font-bold", textContent: "Visible to: Connections" });
+    var guestNameEl = El("div", { className: "text-sm font-bold text-gray-900 truncate", textContent: guestName });
+    var handleElF = El("div", { className: "text-xs text-gray-500 truncate", textContent: handle });
+
+    return El("div", { className: "bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden" }, [
+      El("div", { className: "flex flex-col sm:flex-row" }, [
+        El("a", { href: "experience.html?id=" + encodeURIComponent(expId), className: "sm:w-56 h-40 sm:h-auto bg-gray-100 overflow-hidden" }, [expImg]),
+        El("div", { className: "flex-1 p-5" }, [
+          El("div", { className: "flex items-start justify-between gap-4" }, [
+            El("div", {}, [titleLink, whenEl]),
+            El("div", { className: "text-right flex flex-col items-end gap-2" }, [cityEl, visibilityChip])
+          ]),
+          El("div", { className: "mt-4 flex items-center justify-between gap-4" }, [
+            El("a", { href: "public-profile.html?id=" + encodeURIComponent(guestId), className: "flex items-center gap-3 min-w-0" }, [
+              guestImg,
+              El("div", { className: "min-w-0" }, [guestNameEl, handleElF])
+            ]),
+            El("a", { href: "public-profile.html?id=" + encodeURIComponent(guestId), className: "text-sm font-bold text-orange-600 hover:underline", textContent: "View profile" })
+          ])
+        ])
+      ])
+    ]);
+  }
+
+  async function loadFeed() {
+    showFeed(feedLoadingEl);
+    try {
+      var res = await window.authFetch("/api/social/feed", { method: "GET" });
+      var data = await res.json().catch(function() { return null; });
+      if (!res.ok) throw new Error("feed");
+      var list = window.unwrapApiList(data, "items");
+      if (!feedListEl) return;
+      feedListEl.textContent = "";
+      if (list.length === 0) { showFeed(feedEmptyEl); return; }
+      list.forEach(function(it) { feedListEl.appendChild(renderFeedItem(it)); });
+      showFeed(feedListEl);
+    } catch (_) {
+      showFeed(feedErrorEl);
+    }
+  }
+
   document.addEventListener("DOMContentLoaded", async () => {
     if (!(await requireAuth())) return;
 
@@ -383,10 +462,13 @@
     if (outList) outList.addEventListener("click", onOutgoingClick);
     if (blkRefresh) blkRefresh.addEventListener("click", loadBlocked);
     if (blkList) blkList.addEventListener("click", onBlockedClick);
+    if (feedRetryBtn) feedRetryBtn.addEventListener("click", loadFeed);
+    if (feedRefresh) feedRefresh.addEventListener("click", loadFeed);
 
     loadRequests();
     loadConnections();
     loadOutgoing();
     loadBlocked();
+    loadFeed();
   });
 })();
