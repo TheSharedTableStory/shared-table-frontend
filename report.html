@@ -7,9 +7,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/assets/icon-192.png">
   <meta name="theme-color" content="#ea580c">
-  <title>Report – The Shared Table Story</title>
+  <title>Report an Issue – The Shared Table Story</title>
   <link rel="stylesheet" href="css/tailwind.css?v=20260304d">
   <link rel="stylesheet" href="css/fonts.css?v=20260224a">
+  <link rel="stylesheet" href="css/help-center.css?v=20260224a">
 
   <link rel="manifest" href="manifest.json">
 </head>
@@ -17,58 +18,118 @@
   <nav id="navbar-placeholder" role="navigation"></nav>
 
   <main class="flex-grow container mx-auto px-4 py-10 max-w-2xl" role="main">
-    <h1 class="text-3xl font-bold mb-2 heading-serif text-tsts-ink">Report</h1>
-    <p class="text-gray-600 mb-6">Help us keep the community safe. Reports are reviewed by admins.</p>
+    <h1 class="heading-serif text-3xl md:text-4xl font-bold text-tsts-ink mb-2">Report an Issue</h1>
+    <p class="text-slate-500 mb-6">Help us keep the community safe. All reports are reviewed by our team.</p>
 
-    <div id="alert" class="hidden mb-4 rounded-xl border px-4 py-3 text-sm"></div>
+    <!-- Progress bar -->
+    <div id="report-progress" class="mb-8">
+      <div class="flex items-center justify-between text-xs mb-3 gap-1">
+        <span data-report-step-label="1" class="font-bold text-tsts-ink">1. What's happening?</span>
+        <span data-report-step-label="2" class="text-slate-400">2. Tell us more</span>
+        <span data-report-step-label="3" class="text-slate-400">3. Confirmation</span>
+      </div>
+      <div class="h-2 bg-slate-200 rounded-full overflow-hidden">
+        <div id="report-progress-bar" class="h-full bg-tsts-ink rounded-full transition-all duration-300" style="width:33%"></div>
+      </div>
+    </div>
 
-    <form id="report-form" class="bg-white rounded-3xl border border-gray-100 shadow-soft-card p-6 space-y-4">
-      <!-- Target type and ID are auto-filled from URL — hidden from users -->
-      <div class="hidden">
-        <label class="block text-sm font-bold text-gray-700 mb-1" for="targetType">Target type</label>
-        <select id="targetType" class="w-full p-3 bg-gray-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition">
-          <option value="user">User</option>
-          <option value="experience">Experience</option>
-          <option value="booking">Booking</option>
-          <option value="review">Review</option>
-          <option value="comment">Comment</option>
-        </select>
+    <div id="report-alert" class="hidden mb-4 rounded-xl border px-4 py-3 text-sm" role="alert"></div>
+
+    <!-- Hidden context fields (auto-filled from URL) -->
+    <input type="hidden" id="reportTargetType" value="">
+    <input type="hidden" id="reportTargetId" value="">
+    <input type="hidden" id="reportPageUrl" value="">
+
+    <!-- STEP 1: Category selection -->
+    <div id="report-step-1" class="bg-white rounded-3xl border border-gray-100 shadow-soft-card p-6 space-y-4">
+      <h2 class="heading-serif text-xl font-bold text-tsts-ink">What's happening?</h2>
+      <p class="text-sm text-slate-500">Choose the option that best describes your concern.</p>
+
+      <div id="report-categories" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button type="button" data-report-category="safety" class="report-cat-card text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
+          <span class="block text-sm font-bold text-tsts-ink">Someone is being unsafe</span>
+          <span class="block text-xs text-slate-500 mt-1">Safety concern about a person or experience</span>
+        </button>
+        <button type="button" data-report-category="spam" class="report-cat-card text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
+          <span class="block text-sm font-bold text-tsts-ink">Spam or fake content</span>
+          <span class="block text-xs text-slate-500 mt-1">Listing, review, or comment that isn't genuine</span>
+        </button>
+        <button type="button" data-report-category="harassment" class="report-cat-card text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
+          <span class="block text-sm font-bold text-tsts-ink">Harassment or threatening behaviour</span>
+          <span class="block text-xs text-slate-500 mt-1">Inappropriate conduct toward you or others</span>
+        </button>
+        <button type="button" data-report-category="fraud" class="report-cat-card text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
+          <span class="block text-sm font-bold text-tsts-ink">Fraud or scam</span>
+          <span class="block text-xs text-slate-500 mt-1">Financial deception or misrepresentation</span>
+        </button>
+        <button type="button" data-report-category="inaccurate" class="report-cat-card text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
+          <span class="block text-sm font-bold text-tsts-ink">Inaccurate or misleading information</span>
+          <span class="block text-xs text-slate-500 mt-1">Content that doesn't match reality</span>
+        </button>
+        <button type="button" data-report-category="other" class="report-cat-card text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
+          <span class="block text-sm font-bold text-tsts-ink">Something else</span>
+          <span class="block text-xs text-slate-500 mt-1">Other concerns not listed above</span>
+        </button>
       </div>
 
-      <div class="hidden">
-        <input id="targetId" type="text" placeholder="Auto-filled from URL" class="w-full p-3 bg-gray-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" required />
-        <p id="targetId-helper" class="text-xs text-gray-500 mt-1 hidden"></p>
+      <div class="flex justify-end pt-2">
+        <button type="button" id="report-next-1" disabled class="tsts-btn-primary px-6 py-2.5 font-bold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed" data-report-nav="next">Next</button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Details -->
+    <div id="report-step-2" class="hidden bg-white rounded-3xl border border-gray-100 shadow-soft-card p-6 space-y-4">
+      <h2 class="heading-serif text-xl font-bold text-tsts-ink">Tell us more</h2>
+      <p class="text-sm text-slate-500">The more detail you share, the faster we can look into this.</p>
+
+      <div>
+        <label class="block text-sm font-bold text-slate-700 mb-1" for="reportMessage">What happened?</label>
+        <textarea id="reportMessage" rows="5" placeholder="Describe the issue in as much detail as you can. Include what happened, when, and any other context." class="w-full p-3 bg-gray-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" minlength="10" maxlength="2000"></textarea>
+        <p class="text-xs text-slate-400 mt-1"><span id="report-msg-counter">0</span> / 2000 characters</p>
       </div>
 
       <div>
-        <label class="block text-sm font-bold text-gray-700 mb-1" for="category">Category</label>
-        <select id="category" class="w-full p-3 bg-gray-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition">
-          <option value="spam">Spam</option>
-          <option value="harassment">Harassment</option>
-          <option value="fraud">Fraud</option>
-          <option value="safety">Safety</option>
-          <option value="other">Other</option>
-        </select>
+        <label class="block text-sm font-bold text-slate-700 mb-1">How should we follow up?</label>
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+            <input type="radio" name="reportContact" value="email" checked class="accent-tsts-clay"> Email on file
+          </label>
+          <label class="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+            <input type="radio" name="reportContact" value="phone" class="accent-tsts-clay"> Provide a phone number
+          </label>
+          <input type="tel" id="reportPhone" placeholder="Your phone number" class="hidden w-full p-3 bg-gray-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition mt-1">
+        </div>
       </div>
 
-      <div>
-        <label class="block text-sm font-bold text-gray-700 mb-1" for="message">Details</label>
-        <textarea id="message" rows="5" placeholder="What happened? Include any context that helps." class="w-full p-3 bg-gray-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition"></textarea>
+      <p class="text-xs text-slate-400">Your report is stored securely for moderation purposes. Your identity is protected from the person you're reporting. See our <a href="privacy.html" class="underline hover:text-orange-600">Privacy Policy</a> for details on data handling.</p>
+
+      <div class="flex justify-between pt-2">
+        <button type="button" class="px-6 py-2.5 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition" data-report-nav="prev">Back</button>
+        <button type="button" id="report-submit-btn" class="tsts-btn-primary px-6 py-2.5 font-bold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed" data-report-nav="submit">Submit report</button>
       </div>
+    </div>
 
-      <button id="submit-btn" type="submit" class="w-full py-3 tsts-btn-primary font-bold rounded-xl transition transform active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
-        Submit report
-      </button>
-
-      <p class="text-xs text-gray-500">Do not include sensitive personal data. Reports are stored and reviewed for moderation.</p>
-      <p class="text-xs text-gray-500 mt-2">See our <a href="terms.html" class="underline hover:text-orange-600">Terms of Service</a> for community conduct standards.</p>
-    </form>
+    <!-- STEP 3: Confirmation -->
+    <div id="report-step-3" class="hidden bg-white rounded-3xl border border-gray-100 shadow-soft-card p-6 space-y-4 text-center">
+      <div class="text-5xl mb-2">&#x2705;</div>
+      <h2 class="heading-serif text-xl font-bold text-tsts-ink">We've received your report</h2>
+      <p class="text-sm text-slate-600 max-w-md mx-auto">Our team reviews all reports. We'll update you when there's progress. Thank you for helping keep The Shared Table Story a safe and welcoming community.</p>
+      <div class="pt-4 flex flex-col sm:flex-row gap-3 justify-center">
+        <a id="report-return-link" href="explore.html" class="inline-flex items-center justify-center px-6 py-2.5 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition">Return to previous page</a>
+        <a href="my-bookings.html?tab=experiences" class="inline-flex items-center justify-center px-6 py-2.5 tsts-btn-primary font-bold rounded-xl transition">My Experiences</a>
+      </div>
+    </div>
   </main>
 
   <footer id="footer-placeholder" role="contentinfo"></footer>
 
   <script src="js/runtime-config.js?v=20260224a"></script>
   <script src="js/common.js?v=20260304f"></script>
-  <script src="js/report.js?v=20260303a"></script>
+  <script src="data/faq-catalog.js?v=20260224a"></script>
+  <script src="data/faq-trust.js?v=20260303a"></script>
+  <script src="js/faq-renderer.js?v=20260303a"></script>
+  <script src="js/faq-contextual.js?v=20260303a"></script>
+  <script src="js/faq-init.js?v=20260224a"></script>
+  <script src="js/report.js?v=20260304g"></script>
 </body>
 </html>

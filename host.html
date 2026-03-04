@@ -24,38 +24,25 @@
 	        <h1 class="text-3xl font-bold mb-2 heading-serif text-tsts-ink">Host an Experience</h1>
 	        <p class="text-gray-600 mb-8">Share what you love with travellers.</p>
 
-        <!-- My Listings section -->
-        <section id="my-listings-section" class="mb-10">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-bold heading-serif text-tsts-ink">My Listings</h2>
-            <button type="button" id="create-new-listing-btn" class="inline-flex items-center gap-2 rounded-xl tsts-btn-primary px-4 py-2 text-sm font-bold transition">
-              <i class="fa-solid fa-plus"></i> New Listing
-            </button>
+        <!-- Wizard Progress Bar -->
+        <div id="wizard-progress" class="mb-8">
+          <div class="flex items-center justify-between text-xs mb-3 gap-1">
+            <span data-step-label="1" class="font-bold text-tsts-ink">1. Your experience</span>
+            <span data-step-label="2" class="text-slate-400">2. Where &amp; when</span>
+            <span data-step-label="3" class="text-slate-400">3. Pricing &amp; capacity</span>
+            <span data-step-label="4" class="text-slate-400">4. Photo &amp; settings</span>
+            <span data-step-label="5" class="text-slate-400">5. Review &amp; publish</span>
           </div>
-          <div id="my-listings-loading" class="text-sm text-gray-500 py-4">Loading your listings…</div>
-          <div id="my-listings-empty" class="hidden rounded-xl border border-dashed border-gray-200 bg-white px-6 py-8 text-center text-sm text-gray-500">You have no listings yet. Use the form below to create your first one.</div>
-          <div id="my-listings-error" class="hidden text-sm text-red-600 py-4">Failed to load listings. Please refresh.</div>
-          <div id="my-listings-list" class="hidden space-y-3"></div>
-        </section>
-
-        <section id="shortfall-dashboard-section" class="mb-10 rounded-3xl border border-slate-200 bg-white p-5 shadow-soft-card">
-          <div class="flex items-center justify-between mb-3">
-            <div>
-              <h2 class="text-lg font-bold heading-serif text-tsts-ink">Experience Funding</h2>
-              <p class="text-xs text-slate-600 mt-1">Some experiences have platform costs that exceed the guest booking price. When this happens, you cover the difference in two payments as seats fill. After the event, you're refunded.</p>
-            </div>
-            <button type="button" id="shortfall-refresh-btn" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition">
-              <i class="fa-solid fa-rotate"></i> Refresh
-            </button>
+          <div class="h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div id="wizard-progress-bar" class="h-full bg-tsts-ink rounded-full transition-all duration-300" style="width:20%"></div>
           </div>
-          <div id="shortfall-loading" class="text-sm text-slate-500 py-3">Loading your funding details…</div>
-          <div id="shortfall-empty" class="hidden rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">None of your experiences currently require additional funding.</div>
-          <div id="shortfall-error" class="hidden rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">We couldn't load your funding details. Please try refreshing.</div>
-          <div id="shortfall-slot-list" class="hidden space-y-4"></div>
-        </section>
+        </div>
 
-        <form id="create-experience-form" class="bg-white p-8 rounded-3xl shadow-soft-card border border-gray-100 space-y-6">
+        <form id="create-experience-form" class="bg-white p-8 rounded-3xl shadow-soft-card border border-gray-100">
             <input type="hidden" id="editing-experience-id" value="">
+
+            <!-- ═══ STEP 1: Your experience ═══ -->
+            <div id="wizard-step-1" class="space-y-6">
 
             <!-- Section 1: Basic Details -->
             <fieldset class="space-y-4 border-0 p-0 m-0">
@@ -113,7 +100,34 @@
 
             <div class="border-t border-slate-200 my-6"></div>
 
-            <!-- Section 3: Location -->
+            <!-- Section: Description & Requirements -->
+            <fieldset class="space-y-4 border-0 p-0 m-0">
+                <legend class="text-lg font-bold heading-serif text-tsts-ink mb-3 flex items-center gap-2"><i class="fas fa-align-left text-orange-600"></i> Description</legend>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1" for="description">The Story (Description)</label>
+                    <textarea id="description" rows="5" maxlength="1500" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="What will guests do? What makes this special?" required></textarea>
+                    <p class="text-xs text-slate-500 mt-1">Paint a picture for your guests. Share what they'll do, the vibe you're creating, what to expect, and any details that help them arrive prepared. The more they know, the more confident they'll be to book.</p>
+                    <p id="desc-counter" class="text-xs text-slate-400 mt-1 text-right">0 / 1500</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1" for="requirements">About This Experience — What to Know Before You Come</label>
+                    <textarea id="requirements" rows="3" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="What guests should bring, allergy cautions, and any event-specific requirements." required></textarea>
+                </div>
+            </fieldset>
+
+            <!-- Step 1 navigation -->
+            <div class="flex justify-end pt-6">
+              <button type="button" data-wizard-nav="next" class="inline-flex items-center gap-2 rounded-xl tsts-btn-primary px-6 py-3 text-sm font-bold transition">
+                Next: Where &amp; when <i class="fas fa-arrow-right"></i>
+              </button>
+            </div>
+
+            </div><!-- /wizard-step-1 -->
+
+            <!-- ═══ STEP 2: Where & when ═══ -->
+            <div id="wizard-step-2" class="hidden space-y-6">
+
+            <!-- Section: Location -->
             <fieldset class="space-y-4 border-0 p-0 m-0">
                 <legend class="text-lg font-bold heading-serif text-tsts-ink mb-3 flex items-center gap-2"><i class="fas fa-map-marker-alt text-orange-600"></i> Location</legend>
                 <div>
@@ -146,24 +160,74 @@
 
             <div class="border-t border-slate-200 my-6"></div>
 
-            <!-- Section 4: Description -->
+            <!-- Section: Schedule -->
             <fieldset class="space-y-4 border-0 p-0 m-0">
-                <legend class="text-lg font-bold heading-serif text-tsts-ink mb-3 flex items-center gap-2"><i class="fas fa-align-left text-orange-600"></i> Description</legend>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="description">The Story (Description)</label>
-                    <textarea id="description" rows="5" maxlength="1500" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="What will guests do? What makes this special?" required></textarea>
-                    <p class="text-xs text-slate-500 mt-1">Paint a picture for your guests. Share what they'll do, the vibe you're creating, what to expect, and any details that help them arrive prepared. The more they know, the more confident they'll be to book.</p>
-                    <p id="desc-counter" class="text-xs text-slate-400 mt-1 text-right">0 / 1500</p>
+                <legend class="text-lg font-bold heading-serif text-tsts-ink mb-3 flex items-center gap-2"><i class="fas fa-calendar text-orange-600"></i> Schedule</legend>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" for="startDate">Start Date</label>
+                        <input type="date" id="startDate" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" for="endDate">End Date</label>
+                        <input type="date" id="endDate" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" required>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" for="startTime">Start Time</label>
+                        <input type="time" id="startTime" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" for="endTime">End Time</label>
+                        <input type="time" id="endTime" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" required>
+                    </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="requirements">About This Experience — What to Know Before You Come</label>
-                    <textarea id="requirements" rows="3" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="What guests should bring, allergy cautions, and any event-specific requirements." required></textarea>
+                    <label class="block text-sm font-bold text-gray-700 mb-1" for="eventDurationMinutes">Duration of Each Experience</label>
+                    <input type="number" id="eventDurationMinutes" min="15" step="15" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" placeholder="e.g. 60" required>
+                    <p class="text-xs text-gray-500 mt-1">Use this for each event instance. Start/end date and time above define the recurring schedule window.</p>
                 </div>
             </fieldset>
 
-            <div class="border-t border-slate-200 my-6"></div>
+            <!-- Timezone (from Booking Controls) -->
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1" for="experienceTimezone">Event timezone</label>
+                <select id="experienceTimezone" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none bg-white text-sm">
+                    <option value="Australia/Melbourne">Australia/Melbourne</option>
+                    <option value="Australia/Sydney">Australia/Sydney</option>
+                    <option value="Australia/Brisbane">Australia/Brisbane</option>
+                    <option value="Australia/Perth">Australia/Perth</option>
+                    <option value="Australia/Adelaide">Australia/Adelaide</option>
+                    <option value="Australia/Hobart">Australia/Hobart</option>
+                    <option value="Pacific/Auckland">Pacific/Auckland</option>
+                    <option value="Asia/Singapore">Asia/Singapore</option>
+                    <option value="America/New_York">America/New_York</option>
+                    <option value="America/Los_Angeles">America/Los_Angeles</option>
+                    <option value="Europe/London">Europe/London</option>
+                    <option value="Europe/Paris">Europe/Paris</option>
+                </select>
+            </div>
 
-            <!-- Section 5: Pricing & Capacity -->
+            <!-- Duplicate listing notice -->
+            <div id="wizard-dupe-notice" class="hidden rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"></div>
+
+            <!-- Step 2 navigation -->
+            <div class="flex justify-between pt-6">
+              <button type="button" data-wizard-nav="prev" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition">
+                <i class="fas fa-arrow-left"></i> Back
+              </button>
+              <button type="button" data-wizard-nav="next" class="inline-flex items-center gap-2 rounded-xl tsts-btn-primary px-6 py-3 text-sm font-bold transition">
+                Next: Pricing &amp; capacity <i class="fas fa-arrow-right"></i>
+              </button>
+            </div>
+
+            </div><!-- /wizard-step-2 -->
+
+            <!-- ═══ STEP 3: Pricing & capacity ═══ -->
+            <div id="wizard-step-3" class="hidden space-y-6">
+
+            <!-- Section: Pricing & Capacity -->
             <fieldset class="space-y-4 border-0 p-0 m-0">
                 <legend class="text-lg font-bold heading-serif text-tsts-ink mb-3 flex items-center gap-2"><i class="fas fa-dollar-sign text-orange-600"></i> Pricing & Capacity</legend>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -220,25 +284,9 @@
                 </div>
             </fieldset>
 
+            <!-- Booking Controls (cutoff only — timezone moved to Step 2) -->
             <fieldset class="space-y-4 border border-slate-200 rounded-3xl p-4 bg-slate-50/70">
                 <legend class="text-sm font-bold text-gray-700 px-1">Booking Controls</legend>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="experienceTimezone">Event timezone</label>
-                    <select id="experienceTimezone" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none bg-white text-sm">
-                        <option value="Australia/Melbourne">Australia/Melbourne</option>
-                        <option value="Australia/Sydney">Australia/Sydney</option>
-                        <option value="Australia/Brisbane">Australia/Brisbane</option>
-                        <option value="Australia/Perth">Australia/Perth</option>
-                        <option value="Australia/Adelaide">Australia/Adelaide</option>
-                        <option value="Australia/Hobart">Australia/Hobart</option>
-                        <option value="Pacific/Auckland">Pacific/Auckland</option>
-                        <option value="Asia/Singapore">Asia/Singapore</option>
-                        <option value="America/New_York">America/New_York</option>
-                        <option value="America/Los_Angeles">America/Los_Angeles</option>
-                        <option value="Europe/London">Europe/London</option>
-                        <option value="Europe/Paris">Europe/Paris</option>
-                    </select>
-                </div>
                 <div class="flex items-center gap-3">
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="bookingCutoffEnabled" class="sr-only peer" checked>
@@ -254,6 +302,38 @@
                 <div id="cutoff-locked-banner" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700 font-medium">
                     Cannot change cutoff settings — a confirmed booking starts within 30 minutes.
                 </div>
+            </fieldset>
+
+            <!-- Step 3 navigation -->
+            <div class="flex justify-between pt-6">
+              <button type="button" data-wizard-nav="prev" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition">
+                <i class="fas fa-arrow-left"></i> Back
+              </button>
+              <button type="button" data-wizard-nav="next" class="inline-flex items-center gap-2 rounded-xl tsts-btn-primary px-6 py-3 text-sm font-bold transition">
+                Next: Photo &amp; settings <i class="fas fa-arrow-right"></i>
+              </button>
+            </div>
+
+            </div><!-- /wizard-step-3 -->
+
+            <!-- ═══ STEP 4: Photo & optional settings ═══ -->
+            <div id="wizard-step-4" class="hidden space-y-6">
+
+            <!-- Section: Cover Photo -->
+            <fieldset class="space-y-4 border-0 p-0 m-0">
+                <legend class="text-lg font-bold heading-serif text-tsts-ink mb-3 flex items-center gap-2"><i class="fas fa-image text-orange-600"></i> Cover Photo</legend>
+                <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 transition cursor-pointer relative">
+                    <input type="file" id="imageInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*">
+                    <div id="upload-placeholder">
+                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                        <p class="text-sm text-gray-500">Click to upload image</p>
+                    </div>
+                    <div id="upload-preview" class="hidden">
+                        <img id="upload-preview-img" class="mx-auto max-h-32 rounded-lg object-cover" alt="Upload preview">
+                        <p class="text-sm text-green-600 font-bold mt-2"><i class="fas fa-check"></i> Image Selected</p>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Max 5 MB. JPG, PNG, or WebP recommended.</p>
             </fieldset>
 
             <section class="rounded-3xl border border-gray-200 bg-gray-50 p-4 space-y-4">
@@ -302,6 +382,28 @@
                 <p id="verified-request-meta" class="text-xs text-slate-500"></p>
             </section>
 
+            <!-- Step 4 navigation -->
+            <div class="flex justify-between pt-6">
+              <button type="button" data-wizard-nav="prev" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition">
+                <i class="fas fa-arrow-left"></i> Back
+              </button>
+              <button type="button" data-wizard-nav="next" class="inline-flex items-center gap-2 rounded-xl tsts-btn-primary px-6 py-3 text-sm font-bold transition">
+                Next: Review &amp; publish <i class="fas fa-arrow-right"></i>
+              </button>
+            </div>
+
+            </div><!-- /wizard-step-4 -->
+
+            <!-- ═══ STEP 5: Review & publish ═══ -->
+            <div id="wizard-step-5" class="hidden space-y-6">
+
+            <!-- Review summary (populated by JS) -->
+            <section class="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+              <h3 class="text-lg font-bold heading-serif text-tsts-ink mb-4">Review your experience</h3>
+              <div id="wizard-review-summary" class="space-y-0"></div>
+            </section>
+
+            <!-- Pricing Transparency (read-only in review) -->
             <section class="rounded-xl border border-slate-200 bg-white p-4 space-y-4" id="pricing-transparency-panel">
                 <div>
                     <h3 class="text-sm font-bold text-gray-800">Pricing Transparency</h3>
@@ -333,62 +435,21 @@
                 <p id="pricing-policy-reference" class="text-xs text-slate-600">Policy reference: loading…</p>
             </section>
 
-            <div class="border-t border-slate-200 my-6"></div>
-
-            <!-- Section 6: Schedule -->
-            <fieldset class="space-y-4 border-0 p-0 m-0">
-                <legend class="text-lg font-bold heading-serif text-tsts-ink mb-3 flex items-center gap-2"><i class="fas fa-calendar text-orange-600"></i> Schedule</legend>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1" for="startDate">Start Date</label>
-                        <input type="date" id="startDate" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" required>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1" for="endDate">End Date</label>
-                        <input type="date" id="endDate" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" required>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1" for="startTime">Start Time</label>
-                        <input type="time" id="startTime" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" required>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1" for="endTime">End Time</label>
-                        <input type="time" id="endTime" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" required>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="eventDurationMinutes">Duration of Each Experience</label>
-                    <input type="number" id="eventDurationMinutes" min="15" step="15" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" placeholder="e.g. 60" required>
-                    <p class="text-xs text-gray-500 mt-1">Use this for each event instance. Start/end date and time above define the recurring schedule window.</p>
-                </div>
-            </fieldset>
-
-            <div class="border-t border-slate-200 my-6"></div>
-
-            <!-- Section 7: Cover Photo -->
-            <fieldset class="space-y-4 border-0 p-0 m-0">
-                <legend class="text-lg font-bold heading-serif text-tsts-ink mb-3 flex items-center gap-2"><i class="fas fa-image text-orange-600"></i> Cover Photo</legend>
-                <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 transition cursor-pointer relative">
-                    <input type="file" id="imageInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*">
-                    <div id="upload-placeholder">
-                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                        <p class="text-sm text-gray-500">Click to upload image</p>
-                    </div>
-                    <div id="upload-preview" class="hidden">
-                        <img id="upload-preview-img" class="mx-auto max-h-32 rounded-lg object-cover" alt="Upload preview">
-                        <p class="text-sm text-green-600 font-bold mt-2"><i class="fas fa-check"></i> Image Selected</p>
-                    </div>
-                </div>
-                <p class="text-xs text-gray-500 mt-1">Max 5 MB. JPG, PNG, or WebP recommended.</p>
-            </fieldset>
-
-            <div class="pt-4">
-                <button type="submit" id="submit-btn" class="w-full tsts-btn-primary py-3 rounded-xl font-bold transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+            <!-- Action buttons -->
+            <div class="flex flex-col sm:flex-row items-center gap-3 pt-4">
+                <button type="button" data-wizard-nav="prev" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <button type="button" id="wizard-save-draft-btn" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition">
+                    <i class="fas fa-save"></i> Save as Draft
+                </button>
+                <button type="submit" id="submit-btn" class="w-full sm:flex-1 tsts-btn-primary py-3 rounded-xl font-bold transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
                     Publish Experience
                 </button>
             </div>
+
+            </div><!-- /wizard-step-5 -->
+
         </form>
         <section class="mt-10">
             <div id="faq-context-host-onboarding" class="hidden mb-8"></div>
@@ -406,6 +467,6 @@
     <script src="js/faq-contextual.js?v=20260303a"></script>
     <script src="js/faq-init.js?v=20260224a"></script>
     <script src="https://js.stripe.com/v3"></script>
-    <script src="js/host.js?v=20260303e"></script>
+    <script src="js/host.js?v=20260304g"></script>
 </body>
 </html>

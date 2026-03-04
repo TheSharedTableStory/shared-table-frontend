@@ -7,73 +7,67 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/assets/icon-192.png">
   <meta name="theme-color" content="#ea580c">
-  <title>Admin God Mode — The Shared Table Story</title>
+  <title>Admin Dashboard — The Shared Table Story</title>
   <link rel="stylesheet" href="css/tailwind.css?v=20260304d">
   <link rel="stylesheet" href="css/fonts.css?v=20260224a" />
+  <link rel="stylesheet" href="css/help-center.css?v=20260224a">
 
-
-	
-<link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json">
 </head>
 
-<body class="bg-slate-50 text-slate-900">
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
   <nav id="navbar-placeholder" role="navigation"></nav>
 
   <main class="flex-grow" role="main">
-    <div class="max-w-7xl mx-auto px-4 py-10">
-      
-      <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
-        <div>
-          <p class="text-xs uppercase tracking-[0.2em] text-slate-500 mb-1">Admin Control Panel</p>
-          <h1 class="heading-serif text-3xl font-bold text-tsts-ink">Admin Dashboard</h1>
-        </div>
-        <div class="flex items-center gap-2 text-sm bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-bold">
-          <i class="fas fa-check-circle"></i> Super Admin Verified
-        </div>
-      </header>
+    <div class="flex min-h-[calc(100vh-4rem)]">
 
-      <div class="border-b border-gray-200 mb-8">
-        <nav class="flex space-x-8">
-            <button id="tab-dashboard" type="button" class="border-tsts-clay text-tsts-clay border-b-2 py-4 px-1 font-bold text-sm">
-                Dashboard
-            </button>
-            <button id="tab-listings" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
-                Manage Experiences
-            </button>
-            <button id="tab-pricing" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
-                Pricing &amp; Settings
-            </button>
-            <button id="tab-verification" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
-                Verification
-            </button>
-            <button id="tab-action-items" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
-                Action Items
-            </button>
-            <button id="tab-users" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
-                Manage Users
-            </button>
-            <button id="tab-coupons" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
-                Manage Coupons
-            </button>
-            <button id="tab-moderation" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
-                Moderation
-            </button>
-            <button id="tab-private-requests" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
-                Private Requests
-            </button>
-            <button id="tab-incidents" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
-                Attendance Issues
-            </button>
-            <button id="tab-fees-charges" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
-                Fees &amp; Charges
-            </button>
-            <button id="tab-audit" type="button" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm">
-                Audit Logs
-            </button>
+      <!-- SIDEBAR -->
+      <aside id="admin-sidebar" class="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 shrink-0">
+        <div class="p-4 border-b border-slate-100">
+          <p class="text-xs uppercase tracking-[0.2em] text-slate-400 mb-1">Admin Panel</p>
+          <p id="admin-identity-label" class="text-sm font-bold text-tsts-ink truncate">Admin</p>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto py-3 text-sm" aria-label="Admin navigation">
+          <!-- Overview -->
+          <p class="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest text-slate-400 font-bold">Overview</p>
+          <button id="tab-dashboard" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 font-bold text-tsts-ink bg-orange-50 border-l-2 border-tsts-clay">Dashboard</button>
+
+          <!-- Operations -->
+          <p class="px-4 pt-4 pb-1 text-[10px] uppercase tracking-widest text-slate-400 font-bold">Operations</p>
+          <button id="tab-listings" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Experiences</button>
+          <button id="tab-private-requests" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Bookings &amp; Requests</button>
+          <button id="tab-users" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Users</button>
+
+          <!-- Moderation -->
+          <p class="px-4 pt-4 pb-1 text-[10px] uppercase tracking-widest text-slate-400 font-bold">Moderation</p>
+          <button id="tab-moderation" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Reports</button>
+          <button id="tab-verification" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Verification</button>
+          <button id="tab-action-items" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Action Items</button>
+          <button id="tab-incidents" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Attendance Issues</button>
+
+          <!-- Configuration -->
+          <p class="px-4 pt-4 pb-1 text-[10px] uppercase tracking-widest text-slate-400 font-bold">Configuration</p>
+          <button id="tab-pricing" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Pricing &amp; Policies</button>
+          <button id="tab-coupons" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Promo Codes</button>
+          <button id="tab-fees-charges" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Fees &amp; Charges</button>
+          <button id="tab-audit" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Audit Logs</button>
         </nav>
+      </aside>
+
+      <!-- MOBILE SIDEBAR TOGGLE -->
+      <div class="lg:hidden fixed bottom-4 left-4 z-50">
+        <button id="admin-sidebar-toggle" type="button" class="flex items-center justify-center w-12 h-12 rounded-full bg-tsts-ink text-white shadow-lg hover:opacity-90 transition" aria-label="Toggle admin menu">
+          <i class="fas fa-bars text-lg"></i>
+        </button>
       </div>
 
+      <!-- CONTENT -->
+      <div class="flex-1 overflow-y-auto">
+        <div class="max-w-6xl mx-auto px-4 lg:px-8 py-8">
+
       <div id="view-dashboard" class="space-y-8">
+          <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Dashboard</h2>
           <section id="stats-tiles" class="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <article data-nav-tab="users" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 cursor-pointer hover:border-tsts-clay hover:shadow-md transition" role="button" tabindex="0" aria-label="View all users">
               <span class="text-xs uppercase tracking-widest text-slate-500">Total Users</span>
@@ -115,6 +109,7 @@
       </div>
 
       <div id="view-listings" class="hidden space-y-8">
+          <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Experiences</h2>
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100">
               <div class="flex justify-between items-center mb-3">
@@ -138,7 +133,7 @@
                 <tbody id="listings-table-body" class="divide-y divide-slate-100"></tbody>
               </table>
             </div>
-            <div class="mt-4 flex items-center justify-between">
+            <div class="mt-4 flex items-center justify-between px-6 pb-4">
               <p id="listings-count" class="text-xs text-slate-500"></p>
               <button id="listings-load-more" type="button" class="hidden px-4 py-2 text-xs font-semibold rounded-lg bg-tsts-ink text-white hover:bg-slate-800 transition">Load More</button>
             </div>
@@ -146,6 +141,7 @@
       </div>
 
       <div id="view-pricing" class="hidden space-y-8">
+          <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Pricing &amp; Policies</h2>
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
             <div class="flex items-center justify-between gap-4 mb-4">
               <h2 class="font-bold text-lg text-tsts-ink">Verification Fee Policy</h2>
@@ -158,7 +154,7 @@
               </div>
               <div class="flex flex-wrap items-center gap-2">
                 <button id="btn-save-verification-policy" type="button" class="inline-flex items-center justify-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90">Save Policy</button>
-                <span id="verification-policy-meta" class="text-xs text-slate-500">Policy details could not be loaded.</span>
+                <span id="verification-policy-meta" class="text-xs text-slate-500"></span>
               </div>
             </div>
           </section>
@@ -236,11 +232,19 @@
             </div>
             <button id="btn-edit-refund-policy" type="button" class="inline-flex items-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90">Edit Refund Windows</button>
           </section>
-
       </div>
 
       <div id="view-verification" class="hidden space-y-8">
+          <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Verification</h2>
 
+          <!-- Verification sub-tabs -->
+          <div class="flex gap-2 flex-wrap" id="verification-sub-tabs">
+            <button data-verification-sub="hosts" class="verification-sub-tab text-xs px-4 py-2 rounded-full font-semibold bg-tsts-ink text-white">Host Approvals</button>
+            <button data-verification-sub="events" class="verification-sub-tab text-xs px-4 py-2 rounded-full font-semibold bg-white border border-slate-200 text-slate-500 hover:bg-gray-50">Event Approvals</button>
+            <button data-verification-sub="funding" class="verification-sub-tab text-xs px-4 py-2 rounded-full font-semibold bg-white border border-slate-200 text-slate-500 hover:bg-gray-50">Funding Reviews</button>
+          </div>
+
+          <div id="verification-sub-hosts">
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                 <div class="font-bold text-lg">Host Verification Queue</div>
@@ -255,7 +259,9 @@
               </table>
             </div>
           </section>
+          </div>
 
+          <div id="verification-sub-events" class="hidden">
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                 <div class="font-bold text-lg">Event Verification Queue</div>
@@ -270,11 +276,13 @@
               </table>
             </div>
           </section>
+          </div>
 
+          <div id="verification-sub-funding" class="hidden">
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                <div class="font-bold text-lg">Deficit Shortfall Review Queue</div>
-                <button id="btn-refresh-shortfall-monitor" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh Shortfall</button>
+                <div class="font-bold text-lg">Funding Review Queue</div>
+                <button id="btn-refresh-shortfall-monitor" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
             </div>
             <div class="overflow-x-auto">
               <table class="min-w-full text-left text-sm">
@@ -287,7 +295,7 @@
           </section>
 
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100 font-bold text-lg">Shortfall Reconciliation Grid</div>
+            <div class="px-6 py-4 border-b border-slate-100 font-bold text-lg">Reconciliation Grid</div>
             <div class="overflow-x-auto">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
@@ -299,7 +307,7 @@
           </section>
 
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100 font-bold text-lg">Shortfall Settlement Cases</div>
+            <div class="px-6 py-4 border-b border-slate-100 font-bold text-lg">Settlement Cases</div>
             <div class="overflow-x-auto">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
@@ -309,9 +317,11 @@
               </table>
             </div>
           </section>
+          </div>
       </div>
 
       <div id="view-action-items" class="hidden space-y-8">
+          <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Action Items</h2>
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-3">
                 <div class="font-bold text-lg">Admin Action Items</div>
@@ -338,6 +348,7 @@
       </div>
 
       <div id="view-users" class="hidden space-y-8">
+          <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Users</h2>
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
             <div class="flex items-center justify-between gap-4 mb-5">
               <h2 class="font-bold text-lg text-tsts-ink">Invite Admin</h2>
@@ -379,6 +390,7 @@
       </div>
 
       <div id="view-coupons" class="hidden space-y-8">
+          <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Promo Codes</h2>
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
             <div class="flex items-center justify-between gap-4 mb-5">
               <h2 class="font-bold text-lg text-tsts-ink">Create Coupon</h2>
@@ -460,6 +472,7 @@
       </div>
 
       <div id="view-moderation" class="hidden space-y-8">
+          <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Reports</h2>
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                 <div class="font-bold text-lg">Reports Triage</div>
@@ -477,6 +490,7 @@
       </div>
 
       <div id="view-private-requests" class="hidden space-y-8">
+          <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Bookings &amp; Requests</h2>
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                 <div class="font-bold text-lg">Private Booking Requests</div>
@@ -494,11 +508,9 @@
       </div>
 
       <div id="view-incidents" class="hidden space-y-8">
+          <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Attendance Issues</h2>
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
-            <div class="mb-5">
-              <h2 class="heading-serif font-bold text-lg text-tsts-ink">Attendance Issues</h2>
-              <p class="text-xs text-slate-500 mt-1">Attendance incidents reported by the system.</p>
-            </div>
+            <p class="text-xs text-slate-500 mb-4">Attendance incidents reported by the system.</p>
             <div id="admin-incidents-body" class="overflow-x-auto">
               <p class="text-sm text-slate-500 text-center py-8">Loading...</p>
             </div>
@@ -506,11 +518,9 @@
       </div>
 
       <div id="view-fees-charges" class="hidden space-y-8">
+          <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Fees &amp; Charges</h2>
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
-            <div class="mb-5">
-              <h2 class="heading-serif font-bold text-lg text-tsts-ink">Fees &amp; Charges</h2>
-              <p class="text-xs text-slate-500 mt-1">Host cancellation charges across the platform.</p>
-            </div>
+            <p class="text-xs text-slate-500 mb-4">Host cancellation charges across the platform.</p>
             <div id="admin-fees-charges-body" class="overflow-x-auto">
               <p class="text-sm text-slate-500 text-center py-8">Loading...</p>
             </div>
@@ -518,10 +528,10 @@
       </div>
 
       <div id="view-audit" class="hidden space-y-8">
+          <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Audit Logs</h2>
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
             <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-5">
               <div>
-                <h2 class="font-bold text-lg text-tsts-ink">Admin Audit Log</h2>
                 <p class="text-xs text-slate-500 mt-1">Immutable request history for all admin API actions.</p>
               </div>
               <div class="flex items-center gap-2 text-xs text-slate-500">
@@ -590,6 +600,8 @@
           </section>
       </div>
 
+        </div>
+      </div>
 
     </div>
   </main>
@@ -597,6 +609,11 @@
 
   <script src="js/runtime-config.js?v=20260224a"></script>
   <script src="js/common.js?v=20260304f"></script>
-  <script src="js/admin.js?v=20260303f"></script>
+  <script src="data/faq-catalog.js?v=20260224a"></script>
+  <script src="data/faq-trust.js?v=20260303a"></script>
+  <script src="js/faq-renderer.js?v=20260303a"></script>
+  <script src="js/faq-contextual.js?v=20260303a"></script>
+  <script src="js/faq-init.js?v=20260224a"></script>
+  <script src="js/admin.js?v=20260304g"></script>
 </body>
 </html>

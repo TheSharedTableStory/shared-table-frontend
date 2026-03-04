@@ -91,16 +91,15 @@ const dashboardDeepLink = {
   panel: String(dashboardQueryParams.get("panel") || "").trim().toLowerCase(),
   requestId: String(dashboardQueryParams.get("requestId") || "").trim()
 };
-const HOSTING_SECTION_KEYS = Object.freeze(["overview", "listings", "bookings", "private-requests", "verification-payout", "earnings-payouts", "reviews", "fees-charges"]);
+const HOSTING_SECTION_KEYS = Object.freeze(["overview", "listings", "bookings", "funding", "earnings-fees", "reviews", "verification"]);
 const HOSTING_SECTION_LABELS = Object.freeze({
   overview: "Overview",
   listings: "My Listings",
-  bookings: "Booking Requests",
-  "private-requests": "Private Requests",
-  "verification-payout": "Verification & Payout",
-  "earnings-payouts": "Earnings & Payouts",
-  reviews: "Reviews & Performance",
-  "fees-charges": "Fees & Charges"
+  bookings: "Bookings",
+  funding: "Funding",
+  "earnings-fees": "Earnings & Fees",
+  reviews: "Reviews",
+  verification: "Verification"
 });
 const hostDashboardState = {
   section: "overview",
@@ -110,7 +109,8 @@ const hostDashboardState = {
   verification: { status: "idle", data: null, message: "" },
   reviews: { status: "idle", data: null, message: "" },
   earnings: { status: "idle", data: null, message: "" },
-  feesCharges: { status: "idle", rows: [], message: "" }
+  feesCharges: { status: "idle", rows: [], message: "" },
+  funding: { status: "idle", slots: [], message: "" }
 };
 const dashboardRequestState = {
   activeTab: resolveDashboardTab(dashboardDeepLink.tab),
@@ -208,8 +208,13 @@ function resolveDashboardTab(rawTab) {
 function resolveHostingSection(rawSection, panelHint) {
   const section = String(rawSection || "").trim().toLowerCase();
   if (HOSTING_SECTION_KEYS.includes(section)) return section;
+  // Backward-compat mapping for old section names
+  if (section === "private-requests") return "bookings";
+  if (section === "verification-payout") return "verification";
+  if (section === "earnings-payouts") return "earnings-fees";
+  if (section === "fees-charges") return "earnings-fees";
   const panel = String(panelHint || "").trim().toLowerCase();
-  if (panel === "private-request-actions") return "private-requests";
+  if (panel === "private-request-actions") return "bookings";
   return "overview";
 }
 
@@ -2614,7 +2619,7 @@ function renderHostEarningsSection(data) {
       recoveryDeductions > 0 ? El("button", {
         className: "text-xs text-orange-600 underline mt-1",
         textContent: "View details",
-        onclick: function () { setHostingSection("fees-charges"); }
+        onclick: function () { setHostingSection("earnings-fees"); }
       }) : null
     ].filter(Boolean))
   ]);
@@ -3256,32 +3261,74 @@ function renderHostingSectionContent() {
   }
 
   if (section === "bookings") {
-    if (bookingsState.status === "loading") return renderHostSourceLoading("Loading booking requests...");
-    if (bookingsState.status === "error") return renderHostSourceError("Bookings unavailable", bookingsState.message, "Retry Bookings");
-    return renderHostBookingsSection(bookingsState.rows);
+    // Merged: bookings + private requests
+    var anyLoading = bookingsState.status === "loading" || requestsState.status === "loading";
+    var allError = bookingsState.status === "error" && requestsState.status === "error";
+    if (anyLoading && bookingsState.status !== "ready" && requestsState.status !== "ready") return renderHostSourceLoading("Loading bookings...");
+    if (allError) return renderHostSourceError("Bookings unavailable", bookingsState.message || requestsState.message, "Retry Bookings");
+    var mergedWrap = El("div", { className: "space-y-6" });
+    // Regular bookings
+    if (bookingsState.status === "error") {
+      mergedWrap.appendChild(renderHostSourceError("Booking requests unavailable", bookingsState.message, "Retry Bookings"));
+    } else {
+      mergedWrap.appendChild(renderHostBookingsSection(bookingsState.rows));
+    }
+    // Private requests below
+    var prRows = Array.isArray(requestsState.rows) ? requestsState.rows : [];
+    if (requestsState.status === "error") {
+      mergedWrap.appendChild(renderHostSourceError("Private requests unavailable", requestsState.message, "Retry Private Requests"));
+    } else if (prRows.length > 0) {
+      mergedWrap.appendChild(El("h3", { className: "heading-serif text-lg font-bold text-tsts-ink mt-4", textContent: "Private Requests" }));
+      mergedWrap.appendChild(renderHostPrivateRequestActionsPanel(prRows));
+    }
+    return mergedWrap;
   }
 
-  if (section === "private-requests") {
-    if (requestsState.status === "loading") return renderHostSourceLoading("Loading private requests...");
-    if (requestsState.status === "error") return renderHostSourceError("Private requests unavailable", requestsState.message, "Retry Private Requests");
-    return renderHostPrivateRequestActionsPanel(requestsState.rows);
+  if (section === "funding") {
+    var fundState = hostDashboardState.funding || {};
+    if (fundState.status === "loading") return renderHostSourceLoading("Loading your funding details...");
+    if (fundState.status === "error") return renderHostSourceError("Funding unavailable", fundState.message, "Retry Funding");
+    if (fundState.status === "idle") {
+      loadHostFundingSection();
+      return renderHostSourceLoading("Loading your funding details...");
+    }
+    return renderHostFundingSection(fundState.slots);
   }
 
-  if (section === "verification-payout") {
+  if (section === "earnings-fees") {
+    // Merged: earnings + fees & charges
+    var earnState = hostDashboardState.earnings || {};
+    var fcState = hostDashboardState.feesCharges || {};
+    if (earnState.status === "idle") {
+      loadHostEarnings();
+      return renderHostSourceLoading("Loading earnings...");
+    }
+    if (earnState.status === "loading") return renderHostSourceLoading("Loading earnings...");
+    if (earnState.status === "error") return renderHostSourceError("Earnings unavailable", earnState.message, "Retry Earnings");
+    var earningsMerged = El("div", { className: "space-y-8" });
+    earningsMerged.appendChild(renderHostEarningsSection(earnState.data));
+    // Fees & charges below
+    if (fcState.status === "idle") {
+      loadHostFeesCharges();
+      earningsMerged.appendChild(renderHostSourceLoading("Loading fees and charges..."));
+    } else if (fcState.status === "loading") {
+      earningsMerged.appendChild(renderHostSourceLoading("Loading fees and charges..."));
+    } else if (fcState.status === "error") {
+      earningsMerged.appendChild(renderHostSourceError("Fees and charges unavailable", fcState.message, "Retry Fees & Charges"));
+    } else {
+      var fcRows = Array.isArray(fcState.rows) ? fcState.rows : [];
+      if (fcRows.length > 0) {
+        earningsMerged.appendChild(El("h3", { className: "heading-serif text-lg font-bold text-tsts-ink", textContent: "Cancellation Charges" }));
+        earningsMerged.appendChild(renderHostFeesChargesSection(fcRows));
+      }
+    }
+    return earningsMerged;
+  }
+
+  if (section === "verification") {
     if (verificationState.status === "loading") return renderHostSourceLoading("Loading verification and payout status...");
     if (verificationState.status === "error") return renderHostSourceError("Verification and payout unavailable", verificationState.message, "Retry Verification");
     return renderHostVerificationSection(verificationState.data);
-  }
-
-  if (section === "earnings-payouts") {
-    var earnState = hostDashboardState.earnings || {};
-    if (earnState.status === "loading") return renderHostSourceLoading("Loading earnings and payouts...");
-    if (earnState.status === "error") return renderHostSourceError("Earnings unavailable", earnState.message, "Retry Earnings");
-    if (earnState.status === "idle") {
-      loadHostEarnings();
-      return renderHostSourceLoading("Loading earnings and payouts...");
-    }
-    return renderHostEarningsSection(earnState.data);
   }
 
   if (section === "reviews") {
@@ -3293,17 +3340,6 @@ function renderHostingSectionContent() {
       return renderHostSourceLoading("Loading reviews and performance data...");
     }
     return renderHostReviewsSection(reviewsState.data);
-  }
-
-  if (section === "fees-charges") {
-    var fcState = hostDashboardState.feesCharges || {};
-    if (fcState.status === "loading") return renderHostSourceLoading("Loading fees and charges...");
-    if (fcState.status === "error") return renderHostSourceError("Fees and charges unavailable", fcState.message, "Retry Fees & Charges");
-    if (fcState.status === "idle") {
-      loadHostFeesCharges();
-      return renderHostSourceLoading("Loading fees and charges...");
-    }
-    return renderHostFeesChargesSection(fcState.rows);
   }
 
   return renderHostOverviewSection();
@@ -3403,6 +3439,427 @@ async function fetchHostVerificationSource() {
   } catch (_) {
     return { status: "error", data: null, message: "Failed to load verification and payout status." };
   }
+}
+
+/* ====================== FUNDING (ported from host.js shortfall) ====================== */
+
+var __fundingSlotsCache = [];
+var __fundingRequestCounter = 0;
+var __fundingPaymentInFlight = new Set();
+var __fundingPaymentPendingWebhook = new Set();
+
+function __fundingBadgeClass(state) {
+  var key = String(state || "").toUpperCase();
+  if (key === "APPROVED" || key === "FULLY_FUNDED") return "bg-emerald-100 text-emerald-700";
+  if (key === "UNDER_REVIEW" || key === "STAGE_A_DUE" || key === "STAGE_B_DUE" || key === "BOOKING_FROZEN_STAGE_B") return "bg-amber-100 text-amber-700";
+  if (key === "REJECTED") return "bg-red-100 text-red-700";
+  return "bg-slate-100 text-slate-700";
+}
+
+function __fundingStateLabel(state) {
+  var s = String(state || "none").toUpperCase();
+  var labels = {
+    "STAGE_A_DUE": "First payment due",
+    "STAGE_B_DUE": "Second payment due",
+    "APPROVED": "Approved",
+    "FULLY_FUNDED": "Fully funded",
+    "UNDER_REVIEW": "Under review",
+    "BOOKING_FROZEN_STAGE_B": "Bookings paused — second payment needed",
+    "REJECTED": "Not approved",
+    "NONE": "Pending"
+  };
+  return labels[s] || s.toLowerCase().replace(/_/g, " ");
+}
+
+function __fundingPaymentUiLabel(state) {
+  var s = String(state || "").toUpperCase();
+  if (s === "PAYMENT_IN_PROGRESS") return "Payment processing";
+  if (s === "PAYMENT_CONFIRMED_PENDING_WEBHOOK") return "Payment received — confirming";
+  if (s === "PAID") return "Paid";
+  return "Action needed";
+}
+
+function __fundingEffectiveUiState(slot) {
+  var slotId = String((slot && slot.slotId) || "");
+  if (__fundingPaymentInFlight.has(slotId)) return "PAYMENT_IN_PROGRESS";
+  if (__fundingPaymentPendingWebhook.has(slotId)) return "PAYMENT_CONFIRMED_PENDING_WEBHOOK";
+  return String((slot && slot.paymentUiState) || "PAYMENT_REQUIRED");
+}
+
+function __fundingNextStage(slot) {
+  var s = slot && typeof slot === "object" ? slot : {};
+  var stageARemaining = Number((s.stageA && s.stageA.remainingCents) || 0);
+  var stageBRemaining = Number((s.stageB && s.stageB.remainingCents) || 0);
+  var threshold = Number(s.thresholdSeatsSnapshot || 0);
+  var booked = Number(s.bookedSeats || 0);
+  if (stageARemaining > 0) return "A";
+  if (stageBRemaining > 0 && booked >= threshold) return "B";
+  return "";
+}
+
+function __fundingFormatCents(centsRaw) {
+  var cents = Number(centsRaw);
+  if (!Number.isFinite(cents)) return "—";
+  return "$" + (cents / 100).toFixed(2) + " AUD";
+}
+
+async function __fundingFetchStatus(opts) {
+  var options = opts && typeof opts === "object" ? opts : {};
+  var query = new URLSearchParams();
+  query.set("limit", String(options.limit || 150));
+  if (options.slotId) query.set("slotId", String(options.slotId));
+  var path = "/api/host/shortfall/status?" + query.toString();
+  var res = await window.authFetch(path, { method: "GET" });
+  var payload = await res.json().catch(function () { return {}; });
+  if (!res.ok || !payload || payload.ok !== true) {
+    var msg = String((payload && payload.message) || "We couldn't load your funding details. Please try refreshing.");
+    throw new Error(msg);
+  }
+  var data = (payload && payload.data && typeof payload.data === "object") ? payload.data : payload;
+  var slots = Array.isArray(data.slots) ? data.slots : [];
+  return { slots: slots, meta: data };
+}
+
+async function __fundingRequestWaiver(slotId) {
+  if (!slotId) return;
+  var note = await window.tstsPrompt("Reason for fee reduction request", "", { minLength: 10, placeholder: "Explain why you're requesting a fee reduction for this experience." });
+  note = String(note || "").trim();
+  if (!note) return;
+  try {
+    var res = await window.authFetch("/api/host/shortfall/" + encodeURIComponent(slotId) + "/waiver-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note: note })
+    });
+    var payload = await res.json().catch(function () { return {}; });
+    if (!res.ok || !payload || payload.ok !== true) throw new Error(String((payload && payload.message) || "We couldn't submit your request. Please try again."));
+    window.tstsNotify("Fee reduction request submitted.", "success");
+    await loadHostFundingSection();
+  } catch (err) {
+    window.tstsNotify(String((err && err.message) || "We couldn't submit your request. Please try again."), "error");
+  }
+}
+
+function __ensureFundingPaymentModal() {
+  var overlay = document.getElementById("funding-payment-overlay");
+  if (overlay) {
+    return {
+      overlay: overlay,
+      titleEl: document.getElementById("funding-payment-title"),
+      metaEl: document.getElementById("funding-payment-meta"),
+      elementMount: document.getElementById("funding-payment-element"),
+      statusEl: document.getElementById("funding-payment-status"),
+      closeBtn: document.getElementById("funding-payment-close"),
+      submitBtn: document.getElementById("funding-payment-submit")
+    };
+  }
+  var El = window.tstsEl;
+  if (!El) return null;
+
+  overlay = El("div", {
+    id: "funding-payment-overlay",
+    className: "fixed inset-0 z-[1000] hidden items-center justify-center bg-slate-900/50 px-4"
+  });
+  var card = El("div", { className: "w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl space-y-4" });
+  var header = El("div", { className: "flex items-start justify-between gap-3" }, [
+    El("div", { className: "space-y-1" }, [
+      El("h3", { id: "funding-payment-title", className: "text-lg font-bold text-slate-900", textContent: "Make your payment" }),
+      El("p", { id: "funding-payment-meta", className: "text-xs text-slate-600", textContent: "" })
+    ]),
+    El("button", { id: "funding-payment-close", type: "button", className: "rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50", textContent: "Close" })
+  ]);
+  var mount = El("div", { id: "funding-payment-element", className: "rounded-xl border border-slate-200 p-3 bg-white" });
+  var status = El("p", { id: "funding-payment-status", className: "text-xs text-slate-600", textContent: "Complete this payment to continue." });
+  var actions = El("div", { className: "flex items-center justify-end gap-2" }, [
+    El("button", { id: "funding-payment-submit", type: "button", className: "inline-flex items-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90", textContent: "Pay now" })
+  ]);
+  card.appendChild(header);
+  card.appendChild(mount);
+  card.appendChild(status);
+  card.appendChild(actions);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+
+  return {
+    overlay: overlay,
+    titleEl: document.getElementById("funding-payment-title"),
+    metaEl: document.getElementById("funding-payment-meta"),
+    elementMount: document.getElementById("funding-payment-element"),
+    statusEl: document.getElementById("funding-payment-status"),
+    closeBtn: document.getElementById("funding-payment-close"),
+    submitBtn: document.getElementById("funding-payment-submit")
+  };
+}
+
+async function __fundingPollSlotUntilWebhook(slotId, stage) {
+  var targetSlotId = String(slotId || "");
+  var targetStage = String(stage || "").toUpperCase();
+  for (var i = 0; i < 14; i++) {
+    await new Promise(function (resolve) { setTimeout(resolve, 2500); });
+    var loaded = await __fundingLoadDashboard({ silent: true, slotId: targetSlotId });
+    var slots = loaded && Array.isArray(loaded.slots) ? loaded.slots : __fundingSlotsCache;
+    var current = null;
+    for (var j = 0; j < slots.length; j++) {
+      if (String(slots[j] && slots[j].slotId || "") === targetSlotId) { current = slots[j]; break; }
+    }
+    if (!current) continue;
+    var stageAPaid = Number((current.stageA && current.stageA.remainingCents) || 0) <= 0;
+    var stageBPaid = Number((current.stageB && current.stageB.remainingCents) || 0) <= 0;
+    if (targetStage === "A" && stageAPaid) return true;
+    if (targetStage === "B" && stageBPaid) return true;
+    if (String(current.fundingStatus || "").toUpperCase() === "FULLY_FUNDED") return true;
+  }
+  return false;
+}
+
+async function __fundingOpenPaymentFlow(slot, stage, paymentData) {
+  var modal = __ensureFundingPaymentModal();
+  if (!modal) throw new Error("Payment modal could not be initialized.");
+  var publishableKey = String((paymentData && paymentData.publishableKey) || "").trim();
+  if (!publishableKey) throw new Error("Stripe publishable key is missing.");
+  if (!(window.Stripe && typeof window.Stripe === "function")) throw new Error("Stripe SDK not available.");
+  var stripe = window.Stripe(publishableKey);
+  if (!stripe) throw new Error("Stripe could not initialize.");
+
+  var clientSecret = String((paymentData && paymentData.clientSecret) || "").trim();
+  if (!clientSecret) throw new Error("Payment intent secret missing.");
+
+  modal.titleEl.textContent = "Make " + (String(stage || "").toUpperCase() === "A" ? "first" : "second") + " payment";
+  modal.metaEl.textContent = String((slot && slot.experienceTitle) || "Experience") + " • " +
+    String((slot && slot.bookingDate) || "") + " " + String((slot && slot.timeSlot) || "") + " • " +
+    __fundingFormatCents(Number((paymentData && paymentData.amountCents) || 0));
+  modal.statusEl.textContent = "Complete this payment to continue.";
+  modal.overlay.classList.remove("hidden");
+  modal.overlay.classList.add("flex");
+
+  var elements = stripe.elements({ clientSecret: clientSecret });
+  var paymentElement = elements.create("payment");
+  modal.elementMount.textContent = "";
+  paymentElement.mount(modal.elementMount);
+
+  var closed = false;
+  function closeModal() {
+    if (closed) return;
+    closed = true;
+    try { paymentElement.unmount(); } catch (_) {}
+    modal.overlay.classList.add("hidden");
+    modal.overlay.classList.remove("flex");
+    modal.elementMount.textContent = "";
+    modal.statusEl.textContent = "";
+    modal.submitBtn.disabled = false;
+  }
+
+  return await new Promise(function (resolve) {
+    modal.closeBtn.onclick = function () {
+      closeModal();
+      resolve(false);
+    };
+    modal.submitBtn.disabled = false;
+    modal.submitBtn.onclick = async function () {
+      modal.submitBtn.disabled = true;
+      modal.statusEl.textContent = "Processing your payment…";
+      var result = await stripe.confirmPayment({
+        elements: elements,
+        redirect: "if_required"
+      });
+      if (result && result.error) {
+        modal.statusEl.textContent = String(result.error.message || "Payment didn't go through. Please try again.");
+        modal.submitBtn.disabled = false;
+        return;
+      }
+      modal.statusEl.textContent = "Payment submitted — confirming. This may take a moment.";
+      resolve(true);
+      closeModal();
+    };
+  });
+}
+
+async function __fundingLoadDashboard(opts) {
+  var options = (opts && typeof opts === "object") ? opts : {};
+  var reqId = ++__fundingRequestCounter;
+  if (!options.silent) {
+    hostDashboardState.funding = { status: "loading", slots: [], message: "" };
+    renderHostingDashboard();
+  }
+  try {
+    var loaded = await __fundingFetchStatus({ limit: 150, slotId: options.slotId || "" });
+    if (reqId !== __fundingRequestCounter) return loaded;
+    var slots = Array.isArray(loaded.slots) ? loaded.slots : [];
+    __fundingSlotsCache = slots;
+    hostDashboardState.funding = { status: "ready", slots: slots, message: "" };
+    if (!options.silent) renderHostingDashboard();
+    return loaded;
+  } catch (err) {
+    if (reqId !== __fundingRequestCounter) return { slots: [] };
+    hostDashboardState.funding = { status: "error", slots: [], message: String((err && err.message) || "We couldn't load your funding details. Please try refreshing.") };
+    if (!options.silent) renderHostingDashboard();
+    return { slots: [] };
+  }
+}
+
+async function loadHostFundingSection() {
+  await __fundingLoadDashboard({ silent: false });
+}
+
+function renderHostFundingSection(slots) {
+  var El = window.tstsEl;
+  var list = Array.isArray(slots) ? slots : [];
+
+  if (list.length === 0) {
+    return El("div", { className: "text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm" }, [
+      El("div", { className: "text-5xl mb-4", textContent: "\u2705" }),
+      El("h3", { className: "heading-serif text-xl font-bold text-tsts-ink mb-2", textContent: "No funding required" }),
+      El("p", { className: "text-slate-500", textContent: "None of your experiences currently require additional funding." })
+    ]);
+  }
+
+  var section = El("div", { className: "space-y-4" }, [
+    El("p", { className: "text-sm text-slate-600", textContent: "Some experiences have platform costs that exceed the guest booking price. When this happens, you cover the difference in two payments as seats fill. After the event, you're refunded." })
+  ]);
+
+  for (var i = 0; i < list.length; i++) {
+    var slot = list[i] && typeof list[i] === "object" ? list[i] : {};
+    var uiState = __fundingEffectiveUiState(slot);
+    var approvalState = String(slot.approvalState || "NONE").toUpperCase();
+    var fundingState = String(slot.fundingStatus || "NONE").toUpperCase();
+    var nextStage = __fundingNextStage(slot);
+
+    var header = El("div", { className: "flex flex-wrap items-center justify-between gap-2" }, [
+      El("div", { className: "space-y-1" }, [
+        El("h4", { className: "text-sm font-bold text-slate-900", textContent: String(slot.experienceTitle || "Experience") }),
+        El("p", { className: "text-xs text-slate-600", textContent: String(slot.bookingDate || "") + " • " + String(slot.timeSlot || "") })
+      ]),
+      El("div", { className: "flex flex-wrap items-center gap-2 text-[11px]" }, [
+        El("span", { className: "rounded-full px-2 py-1 font-bold " + __fundingBadgeClass(approvalState), textContent: "Status: " + __fundingStateLabel(approvalState) }),
+        El("span", { className: "rounded-full px-2 py-1 font-bold " + __fundingBadgeClass(fundingState), textContent: "Funding: " + __fundingStateLabel(fundingState) }),
+        El("span", { className: "rounded-full px-2 py-1 font-bold " + __fundingBadgeClass(uiState), textContent: __fundingPaymentUiLabel(uiState) })
+      ])
+    ]);
+
+    var seatsPanel = El("div", { className: "rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1 text-xs text-slate-700" }, [
+      El("p", { className: "font-bold uppercase tracking-wide text-slate-500", textContent: "Seats" }),
+      El("p", { textContent: "Seats booked: " + String(Number(slot.bookedSeats || 0)) }),
+      El("p", { textContent: "Total capacity: " + String(Number(slot.capacityTotalSnapshot || 0)) }),
+      El("p", { textContent: "First payment triggers at: " + String(Number(slot.thresholdSeatsSnapshot || 0)) + " seats" })
+    ]);
+    var fundingPanel = El("div", { className: "rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1 text-xs text-slate-700" }, [
+      El("p", { className: "font-bold uppercase tracking-wide text-slate-500", textContent: "Your payments" }),
+      El("p", { textContent: "Extra cost per guest: " + __fundingFormatCents(Number(slot.shortfallPerSeatSnapshotCents || 0)) }),
+      El("p", { textContent: "First payment: " + __fundingFormatCents(Number(slot.stageA && slot.stageA.paidCents || 0)) + " of " + __fundingFormatCents(Number(slot.stageA && slot.stageA.dueCents || 0)) }),
+      El("p", { textContent: "Second payment: " + __fundingFormatCents(Number(slot.stageB && slot.stageB.paidCents || 0)) + " of " + __fundingFormatCents(Number(slot.stageB && slot.stageB.dueCents || 0)) })
+    ]);
+    var settlementPanel = El("div", { className: "rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1 text-xs text-slate-700" }, [
+      El("p", { className: "font-bold uppercase tracking-wide text-slate-500", textContent: "After the event" }),
+      El("p", { textContent: "Refund amount: " + __fundingFormatCents(Number(slot.settlement && slot.settlement.refundablePrincipalCents || 0)) }),
+      El("p", { textContent: "Processing fee (5%): " + __fundingFormatCents(Number(slot.settlement && slot.settlement.processingFeeCents || 0)) }),
+      El("p", { textContent: "You'll receive: " + __fundingFormatCents(Number(slot.settlement && slot.settlement.netRefundCents || 0)) }),
+      El("p", { textContent: "Refund status: " + __fundingStateLabel(slot.settlement && slot.settlement.status || "none") })
+    ]);
+
+    var actions = El("div", { className: "flex flex-wrap items-center gap-2 pt-1" });
+    if (approvalState === "APPROVED" && slot.hostConfirmed !== true) {
+      var confirmBtn = El("button", { type: "button", className: "inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50", textContent: "Agree to payment terms" });
+      confirmBtn.addEventListener("click", (function (slotIdCopy) {
+        return async function () {
+          try {
+            var r = await window.authFetch("/api/host/shortfall/confirm", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ slotId: slotIdCopy })
+            });
+            var p = await r.json().catch(function () { return {}; });
+            if (!r.ok || !p || p.ok !== true) throw new Error(String((p && p.message) || "Something went wrong. Please try again."));
+            window.tstsNotify("Payment terms accepted.", "success");
+            await __fundingLoadDashboard({ silent: true });
+            renderHostingDashboard();
+          } catch (err) {
+            window.tstsNotify(String((err && err.message) || "Something went wrong. Please try again."), "error");
+          }
+        };
+      })(String(slot.slotId || "")));
+      actions.appendChild(confirmBtn);
+    }
+    if (approvalState === "APPROVED" && slot.hostConfirmed === true && nextStage) {
+      var payBtn = El("button", { type: "button", className: "inline-flex items-center rounded-xl bg-tsts-ink px-3 py-2 text-xs font-bold text-white hover:opacity-90", textContent: "Make " + (nextStage === "A" ? "first" : "second") + " payment" });
+      var slotId = String(slot.slotId || "");
+      if (__fundingPaymentInFlight.has(slotId)) {
+        payBtn.disabled = true;
+        payBtn.classList.add("opacity-60");
+        payBtn.textContent = "Payment processing";
+      }
+      payBtn.addEventListener("click", (function (slotCopy, stageCopy) {
+        return async function () {
+          var slotIdLocal = String((slotCopy && slotCopy.slotId) || "");
+          try {
+            __fundingPaymentInFlight.add(slotIdLocal);
+            renderHostingDashboard();
+            var res = await window.authFetch("/api/host/shortfall/pay-intent", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ slotId: slotIdLocal, stage: stageCopy })
+            });
+            var payload = await res.json().catch(function () { return {}; });
+            if (!res.ok || !payload || payload.ok !== true) throw new Error(String((payload && payload.message) || "Could not initialize payment."));
+            var data = payload.data || {};
+            var submitted = await __fundingOpenPaymentFlow(slotCopy, stageCopy, data);
+            if (!submitted) return;
+            __fundingPaymentPendingWebhook.add(slotIdLocal);
+            renderHostingDashboard();
+            var webhookApplied = await __fundingPollSlotUntilWebhook(slotIdLocal, stageCopy);
+            if (!webhookApplied) {
+              window.tstsNotify("Payment submitted. Confirmation may take a moment — try refreshing shortly.", "warning");
+            } else {
+              __fundingPaymentPendingWebhook.delete(slotIdLocal);
+              window.tstsNotify("Payment confirmed.", "success");
+            }
+            await __fundingLoadDashboard({ silent: true });
+            renderHostingDashboard();
+          } catch (err) {
+            window.tstsNotify(String((err && err.message) || "Payment didn't go through. Please try again."), "error");
+          } finally {
+            __fundingPaymentInFlight.delete(slotIdLocal);
+            renderHostingDashboard();
+          }
+        };
+      })(slot, nextStage));
+      actions.appendChild(payBtn);
+    }
+    // Waiver section
+    var waiver = (slot && slot.waiver && typeof slot.waiver === "object") ? slot.waiver : {};
+    var waiverStatus = String(waiver.status || "none");
+    var stageADue = Number((slot.stageA && slot.stageA.dueCents) || 0);
+    var stageAPaid = Number((slot.stageA && slot.stageA.paidCents) || 0);
+    var canRequestWaiver = approvalState === "APPROVED" && (waiverStatus === "none" || waiverStatus === "rejected") && stageAPaid < stageADue;
+    if (canRequestWaiver) {
+      var waiverRequestBtn = El("button", { type: "button", className: "inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50", textContent: "Request fee reduction" });
+      waiverRequestBtn.addEventListener("click", (function (slotIdCopy) {
+        return async function () { await __fundingRequestWaiver(slotIdCopy); };
+      })(String(slot.slotId || "")));
+      actions.appendChild(waiverRequestBtn);
+    }
+    if (waiverStatus === "pending") {
+      actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-amber-100 text-amber-800", textContent: "Fee reduction request under review" }));
+    } else if (waiverStatus === "approved_full") {
+      actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-emerald-100 text-emerald-800", textContent: "Fee reduction approved — no additional payment needed" }));
+    } else if (waiverStatus === "approved_partial") {
+      actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-emerald-100 text-emerald-800", textContent: "Partial reduction approved — reduced amount applies" }));
+    } else if (waiverStatus === "rejected") {
+      actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-slate-100 text-slate-600", textContent: "Fee reduction request was not approved" }));
+    }
+
+    if (actions.childNodes.length === 0) {
+      actions.appendChild(El("p", { className: "text-xs text-slate-500", textContent: "Nothing for you to do right now." }));
+    }
+
+    var card = El("article", { className: "rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-sm" }, [
+      header,
+      El("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, [seatsPanel, fundingPanel, settlementPanel]),
+      actions
+    ]);
+    section.appendChild(card);
+  }
+
+  return section;
 }
 
 async function loadHost(sectionOverride, loadToken) {

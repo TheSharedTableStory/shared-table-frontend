@@ -2324,8 +2324,8 @@ var _currentAdminTab = "";
 function switchTab(tabName) {
   _currentAdminTab = tabName;
   const views = ['dashboard', 'listings', 'pricing', 'verification', 'action-items', 'users', 'coupons', 'moderation', 'private-requests', 'incidents', 'fees-charges', 'audit'];
-  const activeClass = "border-tsts-clay text-tsts-clay border-b-2 py-4 px-1 font-bold text-sm";
-  const inactiveClass = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-4 px-1 font-medium text-sm";
+  const activeClass = "admin-sidebar-btn w-full text-left px-4 py-2.5 font-bold text-tsts-ink bg-orange-50 border-l-2 border-tsts-clay";
+  const inactiveClass = "admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent";
 
   views.forEach(view => {
     const viewEl = document.getElementById('view-' + view);
@@ -2342,6 +2342,13 @@ function switchTab(tabName) {
 
   const selectedTab = document.getElementById('tab-' + tabName);
   if (selectedTab) selectedTab.className = activeClass;
+
+  // Close mobile sidebar when tab is selected
+  var sidebar = document.getElementById("admin-sidebar");
+  if (sidebar && window.innerWidth < 1024) {
+    sidebar.classList.add("hidden");
+    sidebar.classList.remove("fixed", "inset-0", "z-40", "flex");
+  }
 
   if (tabName === 'users') {
     loadUsers().then(renderUsers).catch(function () { window.tstsNotify("Failed to load users.", "error"); renderUsers([]); });
@@ -2427,6 +2434,7 @@ function resolveInitialAdminTab() {
   var allowed = {
     "dashboard": true,
     "listings": true,
+    "pricing": true,
     "verification": true,
     "action-items": true,
     "users": true,
@@ -3110,12 +3118,58 @@ function wireAdminEvents() {
   if (adminInviteForm) adminInviteForm.addEventListener("submit", handleInviteAdminSubmit);
   if (refreshAdminInvitesBtn) refreshAdminInvitesBtn.addEventListener("click", () => refreshAdminInvites().catch(function () { window.tstsNotify("Failed to refresh admin invites.", "error"); renderAdminInvites([]); }));
   if (couponCreateForm) couponCreateForm.addEventListener("submit", handleCreateCoupon);
+
+  // Mobile sidebar toggle
+  var sidebarToggle = $("admin-sidebar-toggle");
+  var sidebar = $("admin-sidebar");
+  if (sidebarToggle && sidebar) {
+    sidebarToggle.addEventListener("click", function () {
+      if (sidebar.classList.contains("hidden")) {
+        sidebar.classList.remove("hidden");
+        sidebar.classList.add("fixed", "inset-0", "z-40", "flex");
+      } else {
+        sidebar.classList.add("hidden");
+        sidebar.classList.remove("fixed", "inset-0", "z-40", "flex");
+      }
+    });
+  }
+
+  // Verification sub-tabs
+  var verSubTabs = document.getElementById("verification-sub-tabs");
+  if (verSubTabs) {
+    verSubTabs.addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-verification-sub]");
+      if (!btn) return;
+      var sub = btn.getAttribute("data-verification-sub");
+      var subs = ["hosts", "events", "funding"];
+      subs.forEach(function (s) {
+        var panel = document.getElementById("verification-sub-" + s);
+        if (panel) panel.classList.toggle("hidden", s !== sub);
+      });
+      verSubTabs.querySelectorAll("[data-verification-sub]").forEach(function (b) {
+        if (b.getAttribute("data-verification-sub") === sub) {
+          b.className = "verification-sub-tab text-xs px-4 py-2 rounded-full font-semibold bg-tsts-ink text-white";
+        } else {
+          b.className = "verification-sub-tab text-xs px-4 py-2 rounded-full font-semibold bg-white border border-slate-200 text-slate-500 hover:bg-gray-50";
+        }
+      });
+    });
+  }
 }
 
 async function boot() {
   if (!(await mustBeAdmin())) return;
 
   wireAdminEvents();
+
+  // Set admin identity label
+  try {
+    var sess = await window.tstsGetSession({ force: false });
+    var identityLabel = $("admin-identity-label");
+    if (identityLabel && sess && sess.user) {
+      identityLabel.textContent = "Admin: " + String(sess.user.email || sess.user.name || "Admin");
+    }
+  } catch (_) {}
 
   // basic skeleton if containers exist
   try {

@@ -1423,7 +1423,7 @@
 
       if (existingImageUrl) setPreview(existingImageUrl);
 
-      if (submitBtn) submitBtn.textContent = "Update Experience";
+      if (submitBtn) submitBtn.textContent = "Save Changes";
     } catch (_) {}
   }
 
@@ -1758,6 +1758,7 @@
         syncPrivateConfigUi();
         syncVerifiedUi();
         syncPricingTransparency();
+        __showWizardStep(1);
         await loadHostListings();
         await loadShortfallDashboard({ silent: true });
       } catch (_) {
@@ -2000,7 +2001,7 @@
       if (submitBtn) submitBtn.textContent = "Save Changes";
       syncVerifiedUi();
       syncPricingTransparency();
-      if (form) form.scrollIntoView({ behavior: "smooth", block: "start" });
+      __showWizardStep(1);
     } catch (_) {
       if (window.tstsNotify) window.tstsNotify("Could not load listing for editing.", "error");
     }
@@ -2029,6 +2030,278 @@
   if (shortfallRefreshBtn) {
     shortfallRefreshBtn.addEventListener("click", function () {
       loadShortfallDashboard({ silent: false });
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Wizard Step Navigation (Action 11)
+  // ═══════════════════════════════════════════════════════
+  var __wizardStep = 1;
+  var __WIZARD_STEPS = 5;
+
+  function __showWizardStep(step) {
+    hideNotice();
+    for (var s = 1; s <= __WIZARD_STEPS; s++) {
+      var el = document.getElementById("wizard-step-" + s);
+      if (el) el.classList.toggle("hidden", s !== step);
+    }
+    var bar = document.getElementById("wizard-progress-bar");
+    if (bar) bar.style.width = String(Math.round(step / __WIZARD_STEPS * 100)) + "%";
+    var labels = document.querySelectorAll("[data-step-label]");
+    for (var i = 0; i < labels.length; i++) {
+      var num = parseInt(labels[i].getAttribute("data-step-label"), 10) || 0;
+      if (num <= step) {
+        labels[i].classList.add("text-tsts-ink");
+        labels[i].classList.remove("text-slate-400");
+      } else {
+        labels[i].classList.remove("text-tsts-ink");
+        labels[i].classList.add("text-slate-400");
+      }
+      if (num === step) labels[i].classList.add("font-bold");
+      else labels[i].classList.remove("font-bold");
+    }
+    __wizardStep = step;
+    if (form) form.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (step === 5) {
+      syncPricingTransparency();
+      __buildReviewSummary();
+    }
+  }
+
+  function __validateWizardStep(step) {
+    if (step === 1) {
+      var t = titleInput ? String(titleInput.value || "").trim() : "";
+      if (!t) { showNotice("error", "Please enter a title for your experience."); if (titleInput) titleInput.focus(); return false; }
+      var tags = getSelectedTags();
+      if (!tags || tags.length < 1) { showNotice("error", "Please select at least one category."); return false; }
+      var desc = descriptionInput ? String(descriptionInput.value || "").trim() : "";
+      if (!desc || desc.length < 150) { showNotice("error", "Description must be at least 150 characters."); if (descriptionInput) descriptionInput.focus(); return false; }
+      if (desc.length > 1500) { showNotice("error", "Description must be under 1500 characters."); if (descriptionInput) descriptionInput.focus(); return false; }
+      var req = requirementsInput ? String(requirementsInput.value || "").trim() : "";
+      if (!req) { showNotice("error", "Please fill in what guests should know before attending."); if (requirementsInput) requirementsInput.focus(); return false; }
+      return true;
+    }
+    if (step === 2) {
+      var city = locationInput ? String(locationInput.value || "").trim() : "";
+      if (!city) { showNotice("error", "Please enter a city."); if (locationInput) locationInput.focus(); return false; }
+      var suburb = suburbInput ? String(suburbInput.value || "").trim() : "";
+      if (!suburb) { showNotice("error", "Please enter a suburb."); if (suburbInput) suburbInput.focus(); return false; }
+      var pc = postcodeInput ? String(postcodeInput.value || "").trim() : "";
+      if (!pc || !/^[0-9]{4}$/.test(pc)) { showNotice("error", "Postcode must be 4 digits."); if (postcodeInput) postcodeInput.focus(); return false; }
+      var addr = addressLineInput ? String(addressLineInput.value || "").trim() : "";
+      if (!addr) { showNotice("error", "Please enter a street address."); if (addressLineInput) addressLineInput.focus(); return false; }
+      var sd = dateInput ? String(dateInput.value || "").trim() : "";
+      if (!sd) { showNotice("error", "Please select a start date."); if (dateInput) dateInput.focus(); return false; }
+      var ed = endDateInput ? String(endDateInput.value || "").trim() : "";
+      if (!ed) { showNotice("error", "Please select an end date."); if (endDateInput) endDateInput.focus(); return false; }
+      if (new Date(ed) < new Date(sd)) { showNotice("error", "End date must be on or after start date."); return false; }
+      var st = timeInput ? String(timeInput.value || "").trim() : "";
+      if (!st) { showNotice("error", "Please enter a start time."); if (timeInput) timeInput.focus(); return false; }
+      var et = endTimeInput ? String(endTimeInput.value || "").trim() : "";
+      if (!et) { showNotice("error", "Please enter an end time."); if (endTimeInput) endTimeInput.focus(); return false; }
+      var timeRe = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (st && !timeRe.test(st)) { showNotice("error", "Start time must be valid (HH:MM)."); return false; }
+      if (et && !timeRe.test(et)) { showNotice("error", "End time must be valid (HH:MM)."); return false; }
+      if (st && et && et <= st) { showNotice("error", "End time must be after start time."); return false; }
+      var dur = eventDurationMinutesInput ? parseInt(eventDurationMinutesInput.value, 10) : null;
+      if (!dur || dur < 15) { showNotice("error", "Please enter a duration (minimum 15 minutes)."); if (eventDurationMinutesInput) eventDurationMinutesInput.focus(); return false; }
+      return true;
+    }
+    if (step === 3) {
+      var price = priceInput ? safeNum(priceInput.value) : null;
+      if (price == null || price <= 0) { showNotice("error", "Please enter a valid price."); if (priceInput) priceInput.focus(); return false; }
+      var mg = maxGuestsInput ? safeNum(maxGuestsInput.value) : null;
+      if (mg == null || mg < 1) { showNotice("error", "Please enter max guests (at least 1)."); if (maxGuestsInput) maxGuestsInput.focus(); return false; }
+      var ad = document.querySelectorAll('input[name="availableDays"]:checked');
+      if (!ad || ad.length === 0) { showNotice("error", "Please select at least one available day."); return false; }
+      return true;
+    }
+    return true;
+  }
+
+  function __buildReviewSummary() {
+    var el = document.getElementById("wizard-review-summary");
+    if (!el) return;
+    el.textContent = "";
+    var El = window.tstsEl;
+    if (!El) return;
+    function addRow(label, value) {
+      el.appendChild(El("div", { className: "flex justify-between py-2 border-b border-slate-100 text-sm" }, [
+        El("span", { className: "text-slate-500 flex-shrink-0", textContent: label }),
+        El("span", { className: "font-medium text-slate-800 text-right max-w-[60%]", style: "overflow-wrap:break-word", textContent: String(value || "\u2014") })
+      ]));
+    }
+    addRow("Title", titleInput ? titleInput.value : "");
+    addRow("Category", getSelectedTags().join(", ") || "None");
+    var descVal = descriptionInput ? String(descriptionInput.value || "").trim() : "";
+    addRow("Description", descVal.length > 100 ? descVal.substring(0, 100) + "\u2026" : descVal);
+    var reqVal = requirementsInput ? String(requirementsInput.value || "").trim() : "";
+    addRow("Requirements", reqVal.length > 100 ? reqVal.substring(0, 100) + "\u2026" : reqVal);
+    addRow("City", locationInput ? locationInput.value : "");
+    addRow("Suburb", suburbInput ? suburbInput.value : "");
+    addRow("Postcode", postcodeInput ? postcodeInput.value : "");
+    addRow("Address", addressLineInput ? addressLineInput.value : "");
+    if (addressNotesInput && addressNotesInput.value) addRow("Address notes", addressNotesInput.value);
+    addRow("Dates", (dateInput ? dateInput.value : "") + " to " + (endDateInput ? endDateInput.value : ""));
+    addRow("Time", (timeInput ? timeInput.value : "") + " \u2013 " + (endTimeInput ? endTimeInput.value : ""));
+    addRow("Duration", eventDurationMinutesInput && eventDurationMinutesInput.value ? eventDurationMinutesInput.value + " min" : "");
+    addRow("Timezone", timezoneInput ? timezoneInput.value : "");
+    addRow("Price", priceInput && priceInput.value ? "$" + priceInput.value + " AUD" : "");
+    addRow("Max guests", maxGuestsInput ? maxGuestsInput.value : "");
+    var days = [];
+    try { days = Array.from(document.querySelectorAll('input[name="availableDays"]:checked')).map(function (cb) { return cb.value; }); } catch (_) {}
+    addRow("Available days", days.join(", ") || "None");
+    var cutoffOn = cutoffEnabledInput ? cutoffEnabledInput.checked : true;
+    addRow("Booking cutoff", cutoffOn ? ((cutoffHoursInput ? cutoffHoursInput.value : "24") + "h before start") : "Open until start");
+    var hasImg = (imageInput && imageInput.files && imageInput.files.length > 0) || !!existingImageUrl;
+    addRow("Cover photo", hasImg ? "Added" : "None");
+    var privOn = privateEnabledInput ? privateEnabledInput.checked : false;
+    addRow("Private booking", privOn ? "Enabled" : "Disabled");
+  }
+
+  async function __wizardAutoSaveDraft() {
+    try {
+      var title = titleInput ? String(titleInput.value || "").trim() : "";
+      if (!title) return;
+      var body = {
+        title: title,
+        description: descriptionInput ? String(descriptionInput.value || "").trim() : "",
+        requirements: requirementsInput ? String(requirementsInput.value || "").trim() : "",
+        city: locationInput ? String(locationInput.value || "").trim() : "",
+        suburb: suburbInput ? String(suburbInput.value || "").trim() : "",
+        postcode: postcodeInput ? String(postcodeInput.value || "").trim() : "",
+        addressLine: addressLineInput ? String(addressLineInput.value || "").trim() : "",
+        addressNotes: addressNotesInput ? String(addressNotesInput.value || "").trim() : "",
+        tags: getSelectedTags(),
+        status: "DRAFT"
+      };
+      var price = priceInput ? safeNum(priceInput.value) : null;
+      if (price != null && price > 0) body.price = price;
+      var capacity = maxGuestsInput ? safeNum(maxGuestsInput.value) : null;
+      if (capacity != null && capacity > 0) body.capacity = Math.max(1, Math.floor(Number(capacity)));
+      var sd = dateInput ? String(dateInput.value || "").trim() : "";
+      if (sd) body.startDate = sd;
+      var ed = endDateInput ? String(endDateInput.value || "").trim() : "";
+      if (ed) body.endDate = ed;
+      var st = timeInput ? String(timeInput.value || "").trim() : "";
+      if (st) body.startTime = st;
+      var et = endTimeInput ? String(endTimeInput.value || "").trim() : "";
+      if (et) body.endTime = et;
+      if (st && et) body.timeSlots = [st + "-" + et];
+      body.timezone = timezoneInput ? timezoneInput.value : "Australia/Melbourne";
+      var dur = eventDurationMinutesInput ? parseInt(eventDurationMinutesInput.value, 10) : null;
+      if (dur && dur > 0) body.eventDurationMinutes = dur;
+      var ad = [];
+      try { ad = Array.from(document.querySelectorAll('input[name="availableDays"]:checked')).map(function (cb) { return cb.value; }); } catch (_) {}
+      if (ad.length > 0) body.availableDays = ad;
+      if (existingImageUrl) body.imageUrl = existingImageUrl;
+      body.bookingCutoffEnabled = cutoffEnabledInput ? cutoffEnabledInput.checked : true;
+      body.bookingCutoffMinutes = cutoffHoursInput ? Math.max(0, parseInt(cutoffHoursInput.value, 10) || 0) * 60 : 1440;
+      body.dynamicDiscounts = buildDynamicDiscountsFromForm();
+      var url = isEditing && editId ? "/api/experiences/" + encodeURIComponent(editId) : "/api/experiences";
+      var method = isEditing && editId ? "PUT" : "POST";
+      var res = await window.authFetch(url, {
+        method: method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        var payload = await res.json().catch(function () { return {}; });
+        var saved = (payload && payload.data) ? payload.data : ((payload && payload.experience) ? payload.experience : payload);
+        var savedId = String((saved && (saved._id || saved.id)) || "").trim();
+        if (savedId && !editId) {
+          isEditing = true;
+          editId = savedId;
+          var hiddenId = document.getElementById("editing-experience-id");
+          if (hiddenId) hiddenId.value = savedId;
+          if (submitBtn) submitBtn.textContent = "Save Changes";
+        }
+      }
+    } catch (_) { /* Silent best-effort */ }
+  }
+
+  async function __checkDuplicateListing() {
+    var sd = dateInput ? String(dateInput.value || "").trim() : "";
+    var st = timeInput ? String(timeInput.value || "").trim() : "";
+    var dupeNotice = document.getElementById("wizard-dupe-notice");
+    if (!dupeNotice) return;
+    dupeNotice.classList.add("hidden");
+    dupeNotice.textContent = "";
+    if (!sd || !st) return;
+    try {
+      var res = await window.authFetch("/api/host/experiences");
+      if (!res.ok) return;
+      var data = await res.json().catch(function () { return {}; });
+      var unwrapped = (data && data.data !== undefined) ? data.data : data;
+      var exps = Array.isArray(unwrapped && unwrapped.items)
+        ? unwrapped.items
+        : (Array.isArray(unwrapped) ? unwrapped : ((unwrapped && unwrapped.experiences) ? unwrapped.experiences : []));
+      for (var i = 0; i < exps.length; i++) {
+        var exp = exps[i];
+        if (!exp) continue;
+        var expId = String(exp._id || exp.id || "");
+        if (editId && expId === editId) continue;
+        var expStart = String(exp.startDate || "").slice(0, 10);
+        var expTime = String(exp.startTime || "").trim();
+        if (expStart === sd && expTime === st) {
+          dupeNotice.classList.remove("hidden");
+          var El = window.tstsEl;
+          if (El) {
+            dupeNotice.textContent = "";
+            var text1 = document.createTextNode("You already have \u201c" + String(exp.title || "Untitled") + "\u201d scheduled for " + sd + " at " + st + ". ");
+            var link = El("a", {
+              href: "host.html?edit=" + encodeURIComponent(expId),
+              className: "underline font-bold text-orange-700 hover:text-orange-900"
+            });
+            link.textContent = "Edit existing";
+            var text2 = document.createTextNode(" instead?");
+            dupeNotice.appendChild(text1);
+            dupeNotice.appendChild(link);
+            dupeNotice.appendChild(text2);
+          }
+          return;
+        }
+      }
+    } catch (_) { /* Silent */ }
+  }
+
+  // Trigger duplicate check on date/time change in Step 2
+  if (dateInput) dateInput.addEventListener("change", function () { if (__wizardStep === 2) __checkDuplicateListing(); });
+  if (timeInput) timeInput.addEventListener("change", function () { if (__wizardStep === 2) __checkDuplicateListing(); });
+
+  // Wire wizard navigation buttons (event delegation)
+  document.addEventListener("click", function (e) {
+    if (!e.target) return;
+    var btn = e.target.closest("[data-wizard-nav]");
+    if (!btn) return;
+    var action = btn.getAttribute("data-wizard-nav");
+    if (action === "next") {
+      if (!__validateWizardStep(__wizardStep)) return;
+      hideNotice();
+      var fromStep = __wizardStep;
+      __showWizardStep(Math.min(__wizardStep + 1, __WIZARD_STEPS));
+      __wizardAutoSaveDraft();
+      if (fromStep === 2) __checkDuplicateListing();
+    } else if (action === "prev") {
+      hideNotice();
+      __showWizardStep(Math.max(__wizardStep - 1, 1));
+    }
+  });
+
+  // Save as Draft button
+  var wizardDraftBtn = document.getElementById("wizard-save-draft-btn");
+  if (wizardDraftBtn) {
+    wizardDraftBtn.addEventListener("click", async function () {
+      hideNotice();
+      wizardDraftBtn.disabled = true;
+      try {
+        await __wizardAutoSaveDraft();
+        showNotice("success", "Draft saved successfully.");
+      } catch (_) {
+        showNotice("error", "Could not save draft. Please try again.");
+      } finally {
+        wizardDraftBtn.disabled = false;
+      }
     });
   }
 
