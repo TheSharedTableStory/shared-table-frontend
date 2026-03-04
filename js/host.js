@@ -1538,6 +1538,25 @@
           showNotice("error", "Please fill all required fields.");
           return;
         }
+        if (title.length < 3) {
+          showNotice("error", "Title must be at least 3 characters.");
+          if (titleInput) titleInput.focus();
+          return;
+        }
+        if (price <= 0) {
+          showNotice("error", "Price must be greater than zero.");
+          if (priceInput) priceInput.focus();
+          return;
+        }
+        if (capacity < 1) {
+          showNotice("error", "Capacity must be at least 1 guest.");
+          if (maxGuestsInput) maxGuestsInput.focus();
+          return;
+        }
+        if (!availableDays || availableDays.length < 1) {
+          showNotice("error", "Please select at least one available day.");
+          return;
+        }
         if (description.length < 150 || description.length > 1500) {
           showNotice("error", "Description must be between 150 and 1500 characters.");
           if (descriptionInput) descriptionInput.focus();
