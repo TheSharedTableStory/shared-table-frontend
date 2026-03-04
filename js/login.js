@@ -331,6 +331,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    // Cross-link buttons (below forms)
+    var switchToSignup = document.getElementById("switch-to-signup");
+    var switchToLogin = document.getElementById("switch-to-login");
+    if (switchToSignup) switchToSignup.addEventListener("click", function () { toggleAuth("signup"); });
+    if (switchToLogin) switchToLogin.addEventListener("click", function () { toggleAuth("login"); });
+
     if (loginForm && signupForm && tabLogin && tabSignup) {
         toggleAuth("login");
     }

@@ -47,6 +47,8 @@
         </div>
 
         <button type="submit" class="w-full py-3 tsts-btn-primary font-bold rounded-xl transition transform active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">Log In</button>
+
+        <p class="text-center text-xs text-slate-500">Don't have an account? <button type="button" id="switch-to-signup" class="font-bold text-orange-600 hover:underline">Sign up</button></p>
       </form>
 
       <form id="form-signup" class="space-y-5 hidden" autocomplete="on">
@@ -60,22 +62,33 @@
         <label for="signup-email" class="sr-only">Email Address</label>
         <input id="signup-email" type="email" maxlength="254" autocomplete="email" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Email Address" required />
         <label for="signup-password" class="sr-only">Create Password</label>
-        <input id="signup-password" type="password" maxlength="128" autocomplete="new-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Create Password" minlength="8" required />
+        <div>
+          <input id="signup-password" type="password" maxlength="128" autocomplete="new-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Create Password" minlength="8" required />
+          <p class="text-xs text-slate-500 mt-1 ml-1">Minimum 8 characters</p>
+        </div>
         <label for="signup-confirm-password" class="sr-only">Confirm Password</label>
         <input id="signup-confirm-password" type="password" maxlength="128" autocomplete="new-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Confirm Password" minlength="8" required />
-
-        <div class="bg-orange-50 p-3 rounded-lg border border-orange-100 h-24 overflow-y-auto text-[11px] text-gray-600 leading-relaxed">
-            <strong>Terms & Waiver:</strong> By signing up, I acknowledge that "The Shared Table Story" is a marketplace. I assume all risks associated with experiences (food, travel, etc.) and release the platform from liability. I agree to the Privacy Policy.
-        </div>
 
         <div class="flex items-start gap-3">
             <input id="signup-terms" type="checkbox" class="mt-1 h-4 w-4 text-orange-600 rounded border-gray-300 cursor-pointer" required />
             <label for="signup-terms" class="text-xs text-gray-600 cursor-pointer select-none">
-                I agree to the <a href="terms.html" target="_blank" rel="noopener noreferrer" class="font-bold text-orange-600 hover:underline">Terms</a> & <a href="privacy.html" target="_blank" rel="noopener noreferrer" class="font-bold text-orange-600 hover:underline">Privacy Policy</a>.
+                By signing up, you agree to our <a href="terms.html" target="_blank" rel="noopener noreferrer" class="font-bold text-orange-600 hover:underline">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener noreferrer" class="font-bold text-orange-600 hover:underline">Privacy Policy</a>.
             </label>
         </div>
 
+        <details id="signup-terms-detail" class="border border-slate-200 rounded-xl overflow-hidden">
+          <summary class="flex items-center justify-between px-4 py-2.5 bg-slate-50 cursor-pointer hover:bg-slate-100 transition text-xs font-semibold text-slate-600">
+            Read full terms & waiver
+            <svg class="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </summary>
+          <div class="px-4 py-3 text-xs text-slate-600 leading-relaxed border-t border-slate-100">
+            By creating an account, I acknowledge that The Shared Table Story is a marketplace connecting hosts and guests. I understand that experiences are organised and run by independent hosts, not the platform. I assume all risks associated with attending experiences (including food, outdoor activities, cultural events, and social gatherings) and release the platform from liability to the extent permitted by law. Full details are in our <a href="terms.html" target="_blank" rel="noopener noreferrer" class="font-bold text-orange-600 hover:underline">Terms of Service</a>.
+          </div>
+        </details>
+
         <button type="submit" class="w-full py-3 tsts-btn-primary font-bold rounded-xl transition transform active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">Create Account</button>
+
+        <p class="text-center text-xs text-slate-500">Already have an account? <button type="button" id="switch-to-login" class="font-bold text-orange-600 hover:underline">Log in</button></p>
       </form>
 
     </div>
@@ -91,6 +104,6 @@
   <footer id="footer-placeholder" role="contentinfo"></footer>
   <script src="js/runtime-config.js?v=20260224a" defer></script>
   <script src="js/common.js?v=20260304c" defer></script>
-  <script src="js/login.js?v=20260303a" defer></script>
+  <script src="js/login.js?v=20260304a" defer></script>
 </body>
 </html>
