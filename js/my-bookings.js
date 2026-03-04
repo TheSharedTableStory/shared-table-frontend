@@ -4221,7 +4221,7 @@ function openShareModal(expId, bookingDate, timeSlot, expTitle) {
       findBtn.disabled = false;
       findBtn.textContent = "Search";
       if (!users || users.length === 0) {
-        findResult.appendChild(El("p", { className: "text-sm text-gray-400 italic", textContent: "No users found. Use the shareable link above instead." }));
+        findResult.appendChild(El("p", { className: "text-sm text-slate-500", textContent: "No users found. Use the shareable link above instead." }));
         return;
       }
       users.forEach(function (u) {
