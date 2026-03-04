@@ -146,12 +146,6 @@ if (cloud) {
 fs.writeFileSync(file, s);
 NODE
 
-# ISS-ENV-001: Strip localhost CSP origins from production builds.
-# Source HTML files include http://localhost:* and http://127.0.0.1:* in connect-src
-# for local development parity. Production must NOT serve these.
-find "$DIST" -maxdepth 1 -name "*.html" -exec \
-  sed -i "s| http://localhost:\*||g; s| http://127\.0\.0\.1:\*||g" {} +
-
 # Defense-in-depth: never publish dotfiles/internal build artifacts.
 find "$DIST" -mindepth 1 -name ".*" -exec rm -rf {} + || true
 rm -f "$DIST/render-build.sh" "$DIST/package.json" "$DIST/package-lock.json" "$DIST/README.md" || true
