@@ -37,8 +37,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // F2: Block user button — only for authenticated users viewing someone else
     var blockBtn = document.getElementById("block-user-btn");
     if (blockBtn) {
-        var session = window.tstsGetSession ? window.tstsGetSession() : null;
-        var myId = session && session.userId ? String(session.userId) : "";
+        var session = window.tstsGetSession ? await window.tstsGetSession() : null;
+        var myId = (session && session.user && (session.user._id || session.user.id)) ? String(session.user._id || session.user.id) : "";
         if (myId && myId !== userId) {
             blockBtn.classList.remove("hidden");
             blockBtn.addEventListener("click", async function () {
