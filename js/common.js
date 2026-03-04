@@ -1254,24 +1254,22 @@ function injectFooter() {
   ]);
 
   const col2 = tstsEl("div", {}, [
-    tstsEl("h4", { className: "font-bold mb-4" }, "Company"),
+    tstsEl("h4", { className: "font-bold mb-4" }, "Our Story"),
     tstsEl("ul", { className: "space-y-2 text-gray-400 text-sm" }, [
       tstsEl("li", {}, [tstsEl("a", { href: "about.html", className: "hover:text-white transition" }, "About Us")]),
       tstsEl("li", {}, [tstsEl("a", { href: "host.html", className: "hover:text-white transition" }, "Become a Host")]),
-      tstsEl("li", {}, [tstsEl("a", { href: "mailto:contact@thesharedtablestory.com", className: "hover:text-white transition" }, "Contact")])
+      tstsEl("li", {}, [tstsEl("a", { href: "help-center.html", className: "hover:text-white transition" }, "Help Centre")]),
+      tstsEl("li", {}, [tstsEl("a", { href: "mailto:contact@thesharedtablestory.com", className: "hover:text-white transition" }, "Contact Us")])
     ])
   ]);
 
   const col3 = tstsEl("div", {}, [
-    tstsEl("h4", { className: "font-bold mb-4" }, "Support"),
+    tstsEl("h4", { className: "font-bold mb-4" }, "Policies & Support"),
     tstsEl("ul", { className: "space-y-2 text-gray-400 text-sm" }, [
-      tstsEl("li", {}, [tstsEl("a", { href: "help-center.html", className: "hover:text-white transition" }, "FAQs")]),
       tstsEl("li", {}, [tstsEl("a", { href: "terms.html", className: "hover:text-white transition" }, "Terms of Service")]),
       tstsEl("li", {}, [tstsEl("a", { href: "host-terms.html", className: "hover:text-white transition" }, "Host Terms")]),
       tstsEl("li", {}, [tstsEl("a", { href: "privacy.html", className: "hover:text-white transition" }, "Privacy Policy")]),
-      tstsEl("li", {}, [tstsEl("a", { href: "privacy.html#cookies", className: "hover:text-white transition" }, "Cookie Policy")]),
-      tstsEl("li", {}, [tstsEl("a", { href: "policy.html", className: "hover:text-white transition" }, "Cancellation Policy")]),
-      tstsEl("li", {}, [tstsEl("a", { href: "settings-data.html", className: "hover:text-white transition" }, "Data & Privacy")]),
+      tstsEl("li", {}, [tstsEl("a", { href: "policy.html", className: "hover:text-white transition" }, "Cancellation & Refund Policy")]),
       tstsEl("li", {}, [tstsEl("a", { href: "report.html", className: "hover:text-white transition" }, "Report an Issue")])
     ])
   ]);
