@@ -717,7 +717,7 @@ function renderTripCard(booking) {
 
   const expId = exp._id || exp.id || booking.experienceId || booking.expId || "";
   const bookingId = booking._id || "";
-  const title = sanitizeExperienceTitle(exp.title || booking.title || "Unknown Experience");
+  const title = sanitizeExperienceTitle(exp.title || booking.title || "Untitled experience");
   const guests = booking.guests || booking.numGuests || booking.guestCount || 1;
   const city = exp.city || booking.city || "Location TBA";
   const policyVersion = bookingPolicyVersion(booking) || "Unavailable";
@@ -849,7 +849,7 @@ function renderTripCard(booking) {
     El("div", { className: "flex-grow flex flex-col justify-between min-w-0" }, [
       El("div", {}, [
         El("div", { className: "flex justify-between items-start mb-2 gap-4" }, [
-          El("h3", { className: "font-bold text-xl text-gray-900 leading-tight truncate", textContent: title }),
+          El("h3", { className: "font-bold text-xl text-gray-900 leading-tight line-clamp-2", textContent: title, title: title }),
           statusBadge
         ]),
         El("div", { className: "text-gray-500 text-sm flex flex-col gap-1" }, [
@@ -880,7 +880,7 @@ function renderGroupedTripCard(bookings) {
   var El = window.tstsEl;
   var first = bookings[0];
   var exp = (first && (first.experience || first.experienceDetails)) || {};
-  var title = sanitizeExperienceTitle(exp.title || first.title || "Unknown Experience");
+  var title = sanitizeExperienceTitle(exp.title || first.title || "Untitled experience");
   var dt = safeDate(first.bookingDate || first.experienceDate || first.date || first.createdAt);
   var dateStr = dt ? fmtTripDate(dt) : "Date TBA";
   var city = exp.city || first.city || "Location TBA";
@@ -943,7 +943,7 @@ function renderGroupedTripCard(bookings) {
       El("div", { className: "flex-grow flex flex-col justify-between min-w-0" }, [
         El("div", {}, [
           El("div", { className: "flex justify-between items-start mb-2 gap-4" }, [
-            El("h3", { className: "font-bold text-xl text-gray-900 leading-tight truncate", textContent: title }),
+            El("h3", { className: "font-bold text-xl text-gray-900 leading-tight line-clamp-2", textContent: title, title: title }),
             El("span", { className: "px-2 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-700 whitespace-nowrap", textContent: totalSeats + " seats (" + bookings.length + " bookings)" })
           ]),
           El("div", { className: "text-gray-500 text-sm flex flex-col gap-1" }, [
@@ -1123,7 +1123,7 @@ function renderGuestReviewHostReply(reviewData) {
       El("div", { className: "flex items-center gap-2 mb-1" }, [
         El("span", { className: "text-xs font-bold text-orange-700 uppercase tracking-wide", textContent: "Host Reply" })
       ]),
-      El("p", { className: "text-sm text-slate-700", textContent: hostReply })
+      El("p", { className: "text-sm text-slate-700 break-words", textContent: hostReply })
     ])
   );
 }
@@ -2061,8 +2061,8 @@ function _renderHostBookingCard(El, b) {
     const title = sanitizeExperienceTitle(exp.title || b.title || "Listing");
 
     const guest = b.guestId || b.user || {};
-    const guestName = guest.name || b.guestName || "Unknown Guest";
-    const pax = b.guests || b.numGuests || b.guestCount || "-";
+    const guestName = guest.name || b.guestName || "Guest";
+    const pax = b.guests || b.numGuests || b.guestCount || 1;
     const paid = b.amountTotal || (b.pricing && b.pricing.totalPrice) || "";
     const policyVersion = bookingPolicyVersion(b) || "Unavailable";
     const policyEffective = formatPolicyEffective(b) || "Unavailable";
@@ -2164,7 +2164,7 @@ function _renderGroupedHostBookingCard(El, group) {
   var exp = first.experience || {};
   var title = sanitizeExperienceTitle(exp.title || first.title || "Listing");
   var guest = first.guestId || first.user || {};
-  var guestName = guest.name || first.guestName || "Unknown Guest";
+  var guestName = guest.name || first.guestName || "Guest";
 
   var totalSeats = 0;
   var checkinBookingId = null;
@@ -2790,7 +2790,7 @@ function openCheckinModal(bookingId) {
   var maxSeats = Math.max(_totalOccurrenceSeats, Math.max(1, Number(b.numGuests) || 1));
 
   var nameEl = document.getElementById("checkin-guest-name");
-  if (nameEl) nameEl.textContent = "Guest: " + (b.guestName || "—") + " (" + maxSeats + " pax)";
+  if (nameEl) nameEl.textContent = "Guest: " + (b.guestName || "Guest") + " (" + maxSeats + " pax)";
   var otpInput = document.getElementById("checkin-otp");
   if (otpInput) otpInput.value = "";
   var seatsSelect = document.getElementById("checkin-seats");
@@ -3116,7 +3116,7 @@ function renderHostReviewsSection(data) {
       reviewCard.appendChild(headerLine);
 
       if (rv.comment) {
-        reviewCard.appendChild(El("p", { className: "text-sm text-gray-700", textContent: rv.comment }));
+        reviewCard.appendChild(El("p", { className: "text-sm text-gray-700 break-words", textContent: rv.comment }));
       }
 
       // Host reply block
@@ -3126,7 +3126,7 @@ function renderHostReviewsSection(data) {
           El("div", { className: "flex items-center justify-between gap-2 mb-1" }, [
             El("span", { className: "text-xs font-bold text-orange-700 uppercase tracking-wide", textContent: "Your Reply" })
           ]),
-          El("p", { className: "text-sm text-slate-700", textContent: hostReply })
+          El("p", { className: "text-sm text-slate-700 break-words", textContent: hostReply })
         ]);
         // Edit button if within 24 hours
         if (rv.hostReplyAt) {
@@ -3185,7 +3185,7 @@ function renderHostReviewsSection(data) {
             ]),
             cmDateStr ? El("span", { className: "text-xs text-gray-400 flex-shrink-0", textContent: cmDateStr }) : El("span", { textContent: "" })
           ]),
-          El("p", { className: "text-sm text-gray-700", textContent: cm.text || "" })
+          El("p", { className: "text-sm text-gray-700 break-words", textContent: cm.text || "" })
         ])
       );
     });
@@ -3514,7 +3514,7 @@ function openGuestModalById(bookingId) {
     listEl.appendChild(
       El("div", { className: "bg-gray-50 p-4 rounded-lg border border-gray-100 mt-4 text-sm" }, [
         El("p", { className: "font-bold text-gray-500 text-xs uppercase mb-1", textContent: "Guest Note" }),
-        El("p", { className: "italic text-gray-700", textContent: b.guestNotes || "No notes provided." })
+        El("p", { className: "italic text-gray-700 break-words", textContent: b.guestNotes || "No notes provided." })
       ])
     );
   }

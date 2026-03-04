@@ -644,7 +644,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 imageContainer,
                 El("div", { className: "p-4 flex flex-col gap-2 flex-grow" }, [
                     hostMeta,
-                    El("h3", { className: "font-bold text-gray-900 mb-1 truncate", textContent: title, title: title }),
+                    El("h3", { className: "font-bold text-gray-900 mb-1 line-clamp-2", textContent: title, title: title }),
                     El("p", { className: "text-xs text-gray-600 mb-2 line-clamp-2", textContent: teaser }),
                     El("p", { className: "text-xs text-gray-500 flex items-center gap-1 mb-1" }, [markerIcon, " " + (exp.city || "")]),
                     El("p", { className: "text-[11px] text-gray-500 mb-2", textContent: (duration ? (duration + " \u2022 ") : "") + groupLabel }),

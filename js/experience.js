@@ -1252,7 +1252,7 @@
         ]),
         El("div", { className: "text-xs text-yellow-500", textContent: "★".repeat(rating) + "☆".repeat(5 - rating) })
       ]),
-      El("p", { className: "text-sm text-slate-700 mt-3 italic", textContent: '"' + comment + '"' })
+      El("p", { className: "text-sm text-slate-700 mt-3 italic break-words", textContent: '"' + comment + '"' })
     ];
 
     // Show host reply if present
@@ -1263,7 +1263,7 @@
           El("div", { className: "flex items-center gap-2 mb-1" }, [
             El("span", { className: "text-xs font-bold text-orange-700 uppercase tracking-wide", textContent: "Host Reply" })
           ]),
-          El("p", { className: "text-sm text-slate-700", textContent: hostReply })
+          El("p", { className: "text-sm text-slate-700 break-words", textContent: hostReply })
         ])
       );
     }
@@ -1298,14 +1298,14 @@
                 El("p", { className: "font-semibold text-tsts-ink", textContent: top.authorName || "Guest" }),
                 El("p", { className: "text-xs text-yellow-500", textContent: "★".repeat(rating) + "☆".repeat(5 - rating) })
               ]),
-              El("p", { className: "text-sm text-slate-700 mt-3 italic", textContent: '"' + String(top.comment || "") + '"' })
+              El("p", { className: "text-sm text-slate-700 mt-3 italic break-words", textContent: '"' + String(top.comment || "") + '"' })
           ];
           var topHostReply = String(top.hostReply || "").trim();
           if (topHostReply) {
             featChildren.push(
               El("div", { className: "mt-3 pl-3 border-l-2 border-orange-200 bg-orange-50/50 rounded-r-lg p-2" }, [
                 El("span", { className: "text-xs font-bold text-orange-700 uppercase tracking-wide", textContent: "Host Reply" }),
-                El("p", { className: "text-sm text-slate-700 mt-1", textContent: topHostReply })
+                El("p", { className: "text-sm text-slate-700 mt-1 break-words", textContent: topHostReply })
               ])
             );
           }
@@ -1343,7 +1343,7 @@
             El("div", { className: "absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold shadow-sm", textContent: "$" + price })
           ]),
           El("div", { className: "p-4" }, [
-            El("div", { className: "font-bold text-slate-900 truncate", textContent: publicTitle(e.title || "") }),
+            El("div", { className: "font-bold text-slate-900 line-clamp-2", textContent: publicTitle(e.title || ""), title: publicTitle(e.title || "") }),
             El("div", { className: "text-xs text-slate-500 mt-1", textContent: e.city || "" })
           ])
         ]);

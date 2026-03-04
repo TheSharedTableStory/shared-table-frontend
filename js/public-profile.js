@@ -176,7 +176,7 @@ function createExperienceCard(exp) {
             tagsContainer
         ]),
         El('div', { className: 'p-4 flex flex-col gap-2 flex-grow' }, [
-            El('h3', { className: 'font-bold text-gray-900 mb-1 truncate', textContent: safeTitle }),
+            El('h3', { className: 'font-bold text-gray-900 mb-1 line-clamp-2', textContent: safeTitle, title: safeTitle }),
             El('p', { className: 'text-xs text-gray-500 flex items-center gap-1' }, [markerIcon, ' ' + (exp.city || '')]),
             El('div', { className: 'mt-auto pt-3 border-t border-gray-50 flex justify-between items-center' }, [
                 El('div', { className: 'flex items-center text-xs text-yellow-500 gap-1' }, [
