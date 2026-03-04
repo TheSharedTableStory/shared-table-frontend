@@ -415,7 +415,7 @@ html[data-auth-pending="1"] body { visibility: hidden; }
    ========================================================================= */
 .tsts-carousel { scroll-snap-type: x mandatory; scroll-padding-left: 1rem; }
 .tsts-carousel > * { scroll-snap-align: start; }
-.tsts-home-hero { height: min(78vh, 46rem); overflow: hidden; }
+.tsts-home-hero { height: 80vh; overflow: hidden; }
 .tsts-home-hero > img { transition: transform 700ms ease; }
 .tsts-home-hero:hover > img { transform: scale(1.05); }
 .tsts-ways-section { padding-top: 5rem; padding-bottom: 5rem; }
@@ -445,22 +445,22 @@ html[data-auth-pending="1"] body { visibility: hidden; }
 .tsts-cat-card[open] .tsts-cat-more { opacity: 1; transform: translateY(0); pointer-events: auto; }
 /* Category card overlay — Tailwind bg-black/35 etc. do NOT exist in compiled CSS.
    Define all overlay states here using real rgba values. */
-.tsts-cat-overlay { background: rgba(0, 0, 0, 0.50); transition: background 300ms ease; }
-.tsts-cat-card:hover .tsts-cat-overlay { background: rgba(0, 0, 0, 0.60); }
-.tsts-cat-card[open] .tsts-cat-overlay { background: rgba(0, 0, 0, 0.65); }
+.tsts-cat-overlay { background: rgba(0, 0, 0, 0.35); transition: background 300ms ease; }
+.tsts-cat-card:hover .tsts-cat-overlay { background: rgba(0, 0, 0, 0.45); }
+.tsts-cat-card[open] .tsts-cat-overlay { background: rgba(0, 0, 0, 0.50); }
 
 @media (max-height: 900px) {
-  .tsts-home-hero { height: min(62vh, 34rem); }
+  .tsts-home-hero { height: 70vh; }
   .tsts-ways-section { padding-top: 3.25rem; padding-bottom: 3.25rem; }
   .tsts-ways-heading { margin-bottom: 1.75rem; }
 }
 @media (max-height: 800px) {
-  .tsts-home-hero { height: min(56vh, 30rem); }
+  .tsts-home-hero { height: 65vh; }
   .tsts-ways-section { padding-top: 2.5rem; padding-bottom: 2.75rem; }
   .tsts-ways-heading { margin-bottom: 1.25rem; }
 }
 @media (max-height: 700px) {
-  .tsts-home-hero { height: min(50vh, 25rem); }
+  .tsts-home-hero { height: 55vh; }
   .tsts-ways-section { padding-top: 2rem; padding-bottom: 2.25rem; }
   .tsts-ways-heading { margin-bottom: 1rem; }
   .tsts-home-hero h1 {
