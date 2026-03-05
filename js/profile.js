@@ -352,10 +352,12 @@
       setChangeEmailStatus("info", "Sending verification...");
 
       try {
+        var __chEmailIdemKey = window.tstsIdempotencyKey ? window.tstsIdempotencyKey(changeEmailSubmit) : "";
         const res = await window.authFetch("/api/auth/change-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ newEmail: newEmail, password: password, otpToken: otpToken })
+          body: JSON.stringify({ newEmail: newEmail, password: password, otpToken: otpToken }),
+          idempotencyKey: __chEmailIdemKey
         });
 
         if (handleUnauthorized(res)) return;
@@ -665,10 +667,12 @@
       var prevLabel = deleteBtn.textContent;
       deleteBtn.textContent = "Deleting...";
       try {
+        var __delIdemKey = window.tstsIdempotencyKey ? window.tstsIdempotencyKey(deleteBtn) : "";
         var res = await window.authFetch("/api/auth/delete-account", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ otpToken: otpToken })
+          body: JSON.stringify({ otpToken: otpToken }),
+          idempotencyKey: __delIdemKey
         });
         var payload = await res.json().catch(function () { return {}; });
         if (!res.ok || !payload || payload.ok !== true) throw new Error((payload && payload.message) ? payload.message : "Account deletion failed.");

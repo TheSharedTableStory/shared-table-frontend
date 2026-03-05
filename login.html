@@ -12,7 +12,7 @@
   <meta property="og:image" content="/assets/og-image.jpg">
 
   <link rel="stylesheet" href="css/tailwind.css?v=20260304d">
-  <link rel="stylesheet" href="css/fonts.css?v=20260304g">
+  <link rel="stylesheet" href="css/fonts.css?v=20260305a">
 
   <link rel="icon" type="image/png" href="/assets/icon-192.png">
   <link rel="apple-touch-icon" href="/assets/icon-192.png">
@@ -40,7 +40,7 @@
         <label for="login-email" class="sr-only">Email Address</label>
         <input id="login-email" type="email" maxlength="254" autocomplete="email" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Email Address" required />
         <label for="login-password" class="sr-only">Password</label>
-        <input id="login-password" type="password" autocomplete="current-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Password" required />
+        <input id="login-password" type="password" maxlength="24" autocomplete="current-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Password" required />
         
         <div class="text-right">
             <button id="btn-forgot-password" type="button" class="text-xs text-orange-600 hover:underline font-bold">Forgot Password?</button>
@@ -63,11 +63,11 @@
         <input id="signup-email" type="email" maxlength="254" autocomplete="email" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Email Address" required />
         <label for="signup-password" class="sr-only">Create Password</label>
         <div>
-          <input id="signup-password" type="password" maxlength="128" autocomplete="new-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Create Password" minlength="8" required />
+          <input id="signup-password" type="password" maxlength="24" autocomplete="new-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Create Password" minlength="8" required />
           <p class="text-xs text-slate-500 mt-1 ml-1">Minimum 8 characters</p>
         </div>
         <label for="signup-confirm-password" class="sr-only">Confirm Password</label>
-        <input id="signup-confirm-password" type="password" maxlength="128" autocomplete="new-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Confirm Password" minlength="8" required />
+        <input id="signup-confirm-password" type="password" maxlength="24" autocomplete="new-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Confirm Password" minlength="8" required />
 
         <div class="flex items-start gap-3">
             <input id="signup-terms" type="checkbox" class="mt-1 h-4 w-4 text-orange-600 rounded border-gray-300 cursor-pointer" required />

@@ -1766,11 +1766,13 @@
         };
         if (inviteToken && inviteToken.length === 48) bookingPayload.inviteToken = inviteToken;
 
+        var __bookIdemKey = window.tstsIdempotencyKey ? window.tstsIdempotencyKey(submitBtn) : "";
         async function submitBookingOnce() {
           return af(`/api/experiences/${experienceId}/book`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(bookingPayload)
+            body: JSON.stringify(bookingPayload),
+            idempotencyKey: __bookIdemKey
           });
         }
 

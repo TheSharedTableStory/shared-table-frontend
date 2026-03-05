@@ -350,10 +350,12 @@ async function exportAuditLogs(format, filters) {
 async function grantAdmin(userId, otpToken) {
   var body = {};
   if (otpToken) body.otpToken = otpToken;
+  var __grantIdemKey = window.tstsIdempotencyKey ? window.tstsIdempotencyKey({ dataset: {} }) : "";
   const res = await adminFetch("/api/admin/users/" + encodeURIComponent(userId) + "/grant-admin", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    idempotencyKey: __grantIdemKey
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data || data.ok !== true) {
@@ -2576,10 +2578,12 @@ async function handleSuspendUser(userId, currentStatus) {
   if (!ok) return;
   try {
     var bodyPayload = { status: isSuspended ? "active" : "suspended" };
+    var __suspIdemKey = window.tstsIdempotencyKey ? window.tstsIdempotencyKey({ dataset: {} }) : "";
     var res = await adminFetch("/api/admin/users/" + encodeURIComponent(userId) + "/status", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(bodyPayload)
+      body: JSON.stringify(bodyPayload),
+      idempotencyKey: __suspIdemKey
     });
     var payload = await res.json().catch(() => ({}));
     if (!res.ok) { window.tstsNotify(String((payload && payload.message) || "Failed to " + action + " user."), "error"); return; }

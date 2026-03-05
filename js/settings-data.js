@@ -209,10 +209,12 @@
     var previousLabel = deleteBtn.textContent;
     deleteBtn.textContent = "Deleting...";
     try {
+      var __delIdemKey = window.tstsIdempotencyKey ? window.tstsIdempotencyKey(deleteBtn) : "";
       var res = await window.authFetch("/api/auth/delete-account", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ otpToken: otpToken })
+        body: JSON.stringify({ otpToken: otpToken }),
+        idempotencyKey: __delIdemKey
       });
       var payload = await res.json().catch(function () { return {}; });
       if (!res.ok || !payload || payload.ok !== true) {

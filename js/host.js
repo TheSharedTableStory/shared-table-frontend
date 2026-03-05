@@ -1723,11 +1723,13 @@
 
         const url = isEditing ? ("/api/experiences/" + encodeURIComponent(editId)) : "/api/experiences";
         const method = isEditing ? "PUT" : "POST";
+        var __expIdemKey = (!isEditing && window.tstsIdempotencyKey) ? window.tstsIdempotencyKey(submitBtn) : "";
 
         const res = await window.authFetch(url, {
           method,
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
+          body: JSON.stringify(body),
+          idempotencyKey: __expIdemKey || undefined
         });
         const payload = await res.json().catch(() => ({}));
 
@@ -2219,10 +2221,12 @@
       body.dynamicDiscounts = buildDynamicDiscountsFromForm();
       var url = isEditing && editId ? "/api/experiences/" + encodeURIComponent(editId) : "/api/experiences";
       var method = isEditing && editId ? "PUT" : "POST";
+      var __expIdemKey2 = (!(isEditing && editId) && window.tstsIdempotencyKey) ? window.tstsIdempotencyKey(submitBtn) : "";
       var res = await window.authFetch(url, {
         method: method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
+        idempotencyKey: __expIdemKey2 || undefined
       });
       if (res.ok) {
         var payload = await res.json().catch(function () { return {}; });

@@ -1430,10 +1430,12 @@ async function cancelBooking(id, skipInlineConfirm) {
   if (!otpToken) return false;
 
   try {
+    var __cancelIdemKey = window.tstsIdempotencyKey ? window.tstsIdempotencyKey({ dataset: {} }) : "";
     const res = await window.authFetch("/api/bookings/" + encodeURIComponent(id) + "/cancel", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ otpToken: otpToken })
+      body: JSON.stringify({ otpToken: otpToken }),
+      idempotencyKey: __cancelIdemKey
     });
     const envelope = await res.json().catch(() => ({}));
     const data = (envelope && envelope.data) ? envelope.data : envelope;

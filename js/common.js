@@ -888,6 +888,15 @@ window.tstsOtpVerify = function(purpose, opts) {
     return path;
   }
   
+  // Idempotency key helper: generates a unique key per element (reusable on retry).
+  // Usage: window.tstsIdempotencyKey(buttonElement) — returns the same key if called again on the same element.
+  window.tstsIdempotencyKey = function (element) {
+    if (element && element.dataset && element.dataset.idempotencyKey) return element.dataset.idempotencyKey;
+    var key = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + "-" + Math.random().toString(36).slice(2));
+    if (element && element.dataset) element.dataset.idempotencyKey = key;
+    return key;
+  };
+
   // SEC-002: authFetch uses credentials: "include" for cookie auth
   // SEC-035: Add CSRF header on state-changing requests
   // GUARD: 401 Interceptor with redirect loop guard
@@ -900,6 +909,9 @@ window.tstsOtpVerify = function(purpose, opts) {
       const csrfToken = __getCsrfToken();
       if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
     }
+
+    // Idempotency-Key header support
+    if (opts && opts.idempotencyKey) headers["Idempotency-Key"] = String(opts.idempotencyKey);
     
     // RF-05: Do NOT set Content-Type when body is FormData (breaks multipart boundary)
     const body = opts && opts.body;
