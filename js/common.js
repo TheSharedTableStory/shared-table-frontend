@@ -1379,9 +1379,8 @@ function injectFooter() {
 
   const grid = tstsEl("div", { className: "container mx-auto px-4 grid md:grid-cols-3 gap-8" }, [col1, col2, col3]);
   const companyInfo = tstsEl("p", { className: "text-gray-500 text-sm" }, "The Shared Table Story PTY LTD | 24 Balance Pl, Birtinya QLD 4575");
-  const policyMeta = tstsEl("p", { id: "footer-policy-version", className: "text-gray-500 text-xs" }, "");
   const copyrightText = "© " + new Date().getFullYear() + " The Shared Table Story. All rights reserved.";
-  const copyright = tstsEl("div", { className: "border-t border-gray-800 mt-12 pt-8 text-center text-gray-500 text-sm space-y-2" }, [tstsEl("p", {}, copyrightText), companyInfo, policyMeta]);
+  const copyright = tstsEl("div", { className: "border-t border-gray-800 mt-12 pt-8 text-center text-gray-500 text-sm space-y-2" }, [tstsEl("p", {}, copyrightText), companyInfo]);
   const footer = tstsEl("footer", { className: "bg-gray-900 text-white py-12 mt-auto" }, [grid, copyright]);
   root.appendChild(footer);
 }
