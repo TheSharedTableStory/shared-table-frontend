@@ -1976,7 +1976,7 @@
     if (!bar || !bookingForm) return;
 
     // Set price
-    if (barPrice && sharedUnitPrice) barPrice.textContent = "$" + moneyNumberString(sharedUnitPrice);
+    if (barPrice && sharedUnitPrice) barPrice.textContent = moneyNumberString(sharedUnitPrice);
 
     // Scroll to booking form on CTA click
     if (barCta) barCta.addEventListener("click", function() {
