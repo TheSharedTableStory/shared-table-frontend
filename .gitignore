@@ -8,3 +8,6 @@ _local_bak/
 
 # local/garbage quarantines
 _local_bak/
+
+# temp artifacts
+.tmp/
