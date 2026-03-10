@@ -1327,13 +1327,19 @@
       const safeUrl = window.tstsSafeUrl;
       const fallbackImg = "/assets/experience-default.jpg";
 
+      // Cloudinary CDN optimization: resize to exact display dimensions, auto-format (WebP), auto-quality
+      function cloudinaryCardImg(url, w, h) {
+        if (!url || url.indexOf('res.cloudinary.com') === -1) return url;
+        return url.replace('/upload/', '/upload/c_fill,w_' + w + ',h_' + h + ',f_auto,q_auto/');
+      }
+
       similarGrid.textContent = "";
       list.slice(0, 3).forEach(function(e) {
         const id = e._id || e.id || "";
-        const imgUrl = safeUrl(e.imageUrl || (Array.isArray(e.images) ? e.images[0] : ""), fallbackImg);
+        const imgUrl = cloudinaryCardImg(safeUrl(e.imageUrl || (Array.isArray(e.images) ? e.images[0] : ""), fallbackImg), 400, 160);
         const price = (e.price == null) ? "" : String(e.price);
 
-        var imgEl = El("img", { className: "w-full h-full object-cover group-hover:scale-105 transition duration-500", loading: "lazy" });
+        var imgEl = El("img", { className: "w-full h-full object-cover group-hover:scale-105 transition duration-500", loading: "lazy", width: 400, height: 160 });
         window.tstsSafeImg(imgEl, imgUrl, fallbackImg);
 
         var a = El("a", { href: "experience.html?id=" + encodeURIComponent(id), className: "group block bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col" }, [

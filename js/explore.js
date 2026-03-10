@@ -551,6 +551,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // === RENDER LOGIC ===
+
+    // Cloudinary CDN optimization: resize to exact display dimensions, auto-format (WebP), auto-quality
+    function cloudinaryCardImg(url, w, h) {
+        if (!url || url.indexOf('res.cloudinary.com') === -1) return url;
+        return url.replace('/upload/', '/upload/c_fill,w_' + w + ',h_' + h + ',f_auto,q_auto/');
+    }
+
     const renderExperienceCards = (experiences) => {
         const El = window.tstsEl;
         const safeUrl = window.tstsSafeUrl;
@@ -568,9 +575,9 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         experiences.forEach(function(exp, idx) {
-            const imgUrl = safeUrl(exp.imageUrl || (exp.images && exp.images[0]), fallbackImg);
+            const imgUrl = cloudinaryCardImg(safeUrl(exp.imageUrl || (exp.images && exp.images[0]), fallbackImg), 400, 192);
             const price = exp.price || 0;
-            const hostPicUrl = safeUrl(exp.hostPic, fallbackHostPic);
+            const hostPicUrl = cloudinaryCardImg(safeUrl(exp.hostPic, fallbackHostPic), 24, 24);
             const privateAvailable = isPrivateBookingAvailable(exp);
             const verifiedState = normalizedVerifiedStatus(exp);
             const title = publicExperienceTitle(exp);
@@ -580,12 +587,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const groupLabel = (Number.isFinite(groupCap) && groupCap > 0) ? ("Up to " + String(groupCap) + " guests") : "Small group";
             const hostId = normalizeHostId(exp);
 
-            var imgAttrs = { className: "w-full h-full object-cover group-hover:scale-105 transition duration-500" };
+            var imgAttrs = { className: "w-full h-full object-cover group-hover:scale-105 transition duration-500", width: 400, height: 192 };
             if (idx === 0) { imgAttrs.fetchPriority = "high"; } else { imgAttrs.loading = "lazy"; }
             var imgEl = El("img", imgAttrs);
             window.tstsSafeImg(imgEl, imgUrl, fallbackImg);
 
-            var hostImgEl = El("img", { className: "w-6 h-6 rounded-full border border-gray-100", loading: "lazy" });
+            var hostImgEl = El("img", { className: "w-6 h-6 rounded-full border border-gray-100", loading: "lazy", width: 24, height: 24 });
             window.tstsSafeImg(hostImgEl, hostPicUrl, fallbackHostPic);
 
             var imageContainer = El("div", { className: "relative h-48 w-full overflow-hidden bg-gray-100" }, [
