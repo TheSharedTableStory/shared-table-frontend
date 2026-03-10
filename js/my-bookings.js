@@ -2450,7 +2450,6 @@ async function loadHostReviewsSummary() {
 
 async function loadHostFeesCharges() {
   hostDashboardState.feesCharges = { status: "loading", rows: [], message: "" };
-  renderHostingDashboard();
   try {
     var res = await window.authFetch("/api/host/cancellation-charges", { method: "GET" });
     var payload = await res.json().catch(function () { return {}; });
@@ -2521,7 +2520,6 @@ function renderHostFeesChargesSection(rows) {
 
 async function loadHostEarnings() {
   hostDashboardState.earnings = { status: "loading", data: null, message: "" };
-  renderHostingDashboard();
   try {
     var res = await window.authFetch("/api/host/earnings", { method: "GET" });
     var payload = await res.json().catch(function () { return {}; });
