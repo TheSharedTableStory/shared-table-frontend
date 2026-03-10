@@ -868,15 +868,9 @@ function renderTripCard(booking) {
         ]),
         El("div", { className: "text-gray-500 text-sm flex flex-col gap-1" }, [
           El("span", { className: "flex items-center gap-2" }, [El("i", { className: "far fa-calendar w-4" }), " " + dateStr]),
-          El("span", { className: "flex items-center gap-2" }, [El("i", { className: "fas fa-user-friends w-4" }), " " + guests + " Guests"]),
+          El("span", { className: "flex items-center gap-2" }, [El("i", { className: "fas fa-user-friends w-4" }), " " + guests + (Number(guests) === 1 ? " Guest" : " Guests")]),
           El("span", { className: "flex items-center gap-2" }, [El("i", { className: "fas fa-map-marker-alt w-4" }), " " + city]),
-          El("span", { className: "flex items-center gap-2 text-xs text-slate-500" }, [El("i", { className: "fas fa-file-contract w-4" }), " Policy: " + policyVersion + " • Effective: " + policyEffective]),
-          El("span", { className: "flex items-center gap-2 text-xs text-slate-500" }, [El("i", { className: "fas fa-receipt w-4" }), " Refund: " + refundState + refundAmountText + " • Payout: " + payoutState]),
-          El("span", { className: "flex items-center gap-2 text-xs text-slate-500" }, [
-            El("i", { className: "fas fa-eye w-4" }),
-            " Visible to:",
-            El("span", { className: "px-2 py-0.5 rounded-full text-[11px] font-bold " + visibilityClass, textContent: visibilityLabel })
-          ])
+          (refundDecision.status && refundDecision.status !== "none") ? El("span", { className: "flex items-center gap-2 text-xs text-slate-500" }, [El("i", { className: "fas fa-receipt w-4" }), " Refund: " + refundState + refundAmountText]) : El("span", { className: "hidden", textContent: "" })
         ])
       ]),
       El("div", { className: "mt-4 md:mt-0 pt-4 md:pt-0 flex flex-col gap-2 items-stretch md:items-end" }, [

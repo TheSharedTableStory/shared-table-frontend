@@ -349,7 +349,7 @@
     const isPrivate = bookingMode === "private" && privateBookingEnabled;
     if (!isPrivate) {
       expPriceValueEl.textContent = moneyNumberString(sharedUnitPrice);
-      if (expPriceSuffixEl) expPriceSuffixEl.textContent = " AUD per guest (pre-tax)";
+      if (expPriceSuffixEl) expPriceSuffixEl.textContent = " AUD per person";
       var gc = guestInput ? parseInt(guestInput.value, 10) || 1 : 1;
       updateDiscountDisplay(gc);
       return;
