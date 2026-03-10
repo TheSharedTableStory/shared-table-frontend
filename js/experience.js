@@ -1333,7 +1333,7 @@
         const imgUrl = safeUrl(e.imageUrl || (Array.isArray(e.images) ? e.images[0] : ""), fallbackImg);
         const price = (e.price == null) ? "" : String(e.price);
 
-        var imgEl = El("img", { className: "w-full h-full object-cover group-hover:scale-105 transition duration-500" });
+        var imgEl = El("img", { className: "w-full h-full object-cover group-hover:scale-105 transition duration-500", loading: "lazy" });
         window.tstsSafeImg(imgEl, imgUrl, fallbackImg);
 
         var a = El("a", { href: "experience.html?id=" + encodeURIComponent(id), className: "group block bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col" }, [

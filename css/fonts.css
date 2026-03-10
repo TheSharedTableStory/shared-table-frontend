@@ -573,3 +573,12 @@ html[data-auth-pending="1"] body { visibility: hidden; }
   backdrop-filter: blur(16px);
 }
 
+/* CLS prevention: reserve footer space before JS injects footer content */
+#footer-placeholder {
+  min-height: 320px;
+}
+@media (max-width: 767px) {
+  #footer-placeholder {
+    min-height: 600px;
+  }
+}

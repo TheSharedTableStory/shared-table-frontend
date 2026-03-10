@@ -564,7 +564,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return node;
         };
 
-        experiences.forEach(function(exp) {
+        experiences.forEach(function(exp, idx) {
             const imgUrl = safeUrl(exp.imageUrl || (exp.images && exp.images[0]), fallbackImg);
             const price = exp.price || 0;
             const hostPicUrl = safeUrl(exp.hostPic, fallbackHostPic);
@@ -577,10 +577,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const groupLabel = (Number.isFinite(groupCap) && groupCap > 0) ? ("Up to " + String(groupCap) + " guests") : "Small group";
             const hostId = normalizeHostId(exp);
 
-            var imgEl = El("img", { className: "w-full h-full object-cover group-hover:scale-105 transition duration-500" });
+            var imgAttrs = { className: "w-full h-full object-cover group-hover:scale-105 transition duration-500" };
+            if (idx === 0) { imgAttrs.fetchPriority = "high"; } else { imgAttrs.loading = "lazy"; }
+            var imgEl = El("img", imgAttrs);
             window.tstsSafeImg(imgEl, imgUrl, fallbackImg);
 
-            var hostImgEl = El("img", { className: "w-6 h-6 rounded-full border border-gray-100" });
+            var hostImgEl = El("img", { className: "w-6 h-6 rounded-full border border-gray-100", loading: "lazy" });
             window.tstsSafeImg(hostImgEl, hostPicUrl, fallbackHostPic);
 
             var imageContainer = El("div", { className: "relative h-48 w-full overflow-hidden bg-gray-100" }, [
