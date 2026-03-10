@@ -859,7 +859,8 @@
     let hostPic = normalizeHostPic(exp);
 
     // Backfill host display for legacy experiences that were saved without hostName/hostPic.
-    if ((!hostName || !hostPic) && /^[a-f0-9]{24}$/i.test(String(exp.hostId || "").trim())) {
+    var hostBio = "";
+    if (/^[a-f0-9]{24}$/i.test(String(exp.hostId || "").trim())) {
       try {
         const profileRes = await af("/api/users/" + encodeURIComponent(String(exp.hostId || "")) + "/profile", { method: "GET" });
         if (profileRes && profileRes.ok) {
@@ -870,6 +871,7 @@
             if (profileName && !looksLikeEmail(profileName)) hostName = profileName;
           }
           if (!hostPic) hostPic = String((profile && profile.profilePic) || "").trim();
+          hostBio = String((profile && profile.bio) || "").trim();
         }
       } catch (_) {
         // Keep safe fallbacks below.
@@ -879,6 +881,7 @@
     const verifiedState = normalizedVerifiedStatus(exp.verifiedStatus);
     const hostFallbackName = (verifiedState === "verified") ? "Verified Host" : "Host";
     setText("host-name", hostName || hostFallbackName);
+    if (hostBio) setText("host-bio", hostBio);
     setImg("host-pic", hostPic || "", "/assets/avatar-default.svg");
     const hostLinkEl = document.getElementById("host-profile-link");
     const hostCtaEl = document.getElementById("host-profile-cta");
