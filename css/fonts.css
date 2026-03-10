@@ -582,3 +582,8 @@ html[data-auth-pending="1"] body { visibility: hidden; }
     min-height: 720px;
   }
 }
+
+/* CLS prevention: hold grid height during loading so footer never enters viewport */
+#experiences-grid.explore-loading {
+  min-height: 1500px;
+}

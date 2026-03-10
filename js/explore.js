@@ -417,6 +417,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const fetchExperiences = async () => {
         // UI Loading - DOM-safe
         experiencesGrid.textContent = "";
+        experiencesGrid.classList.add("explore-loading");
         experiencesGrid.classList.remove("hidden");
         var spinnerWrap = window.tstsEl("div", { className: "col-span-full text-center py-12" }, [
             window.tstsEl("i", { className: "fas fa-spinner fa-spin text-3xl text-orange-500" })
@@ -465,6 +466,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 renderExperiences(privateFiltered);
             }
         } catch (err) {
+            experiencesGrid.classList.remove("explore-loading");
             experiencesGrid.classList.add("hidden");
             noResultsEl.classList.add("hidden");
             experiencesGrid.textContent = "";
@@ -526,6 +528,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // === DEALS EMPTY FALLBACK ===
     function renderDealsEmptyFallback(allExperiences) {
         const El = window.tstsEl;
+        experiencesGrid.classList.remove("explore-loading");
         experiencesGrid.textContent = "";
         experiencesGrid.classList.remove("hidden");
         noResultsEl.classList.add("hidden");
@@ -685,6 +688,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     const renderExperiences = (experiences) => {
+        experiencesGrid.classList.remove("explore-loading");
         experiencesGrid.textContent = "";
         if (!experiences || !experiences.length) {
             experiencesGrid.classList.add("hidden");
