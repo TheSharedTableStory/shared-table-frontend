@@ -4407,6 +4407,7 @@ async function loadWishlist() {
 /* ====================== EVENT WIRING ====================== */
 
 document.addEventListener("DOMContentLoaded", async () => {
+  if (contentEl) contentEl.textContent = "";
   if (!(await requireAuthOrRedirect())) return;
 
   if (tabTrips) tabTrips.addEventListener("click", () => {
