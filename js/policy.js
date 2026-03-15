@@ -119,17 +119,21 @@
       const refundPolicy = (payload.data && payload.data.refundPolicy) ? payload.data.refundPolicy : {};
       const rules = p.rules || {};
 
-      if (vEl) vEl.textContent = String(p.version || "—");
+      var fmt = window.tstsFormatDateShort || function(v) {
+        if (!v) return "";
+        try { var d = new Date(v); return d.toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" }); } catch(_) { return String(v); }
+      };
+      if (vEl) vEl.textContent = fmt(p.version) || "—";
       if (effEl) {
-        const d = (window.tstsFormatDateShort ? window.tstsFormatDateShort(p.effectiveFrom) : "");
+        var d = fmt(p.effectiveFrom);
         effEl.textContent = d ? ("Effective from: " + d) : "";
       }
       if (curEl) curEl.textContent = String(rules.currency || "aud").toUpperCase();
       if (freeEl) freeEl.textContent = String(Number(rules.guestFreeCancelHours || 0)) + " hours";
       if (gmaxEl) gmaxEl.textContent = pct(rules.guestMaxRefundPercent);
       if (hostEl) hostEl.textContent = pct(rules.hostRefundPercent);
-      if (pricingVersionEl) pricingVersionEl.textContent = String(pricingPolicy.version || "—");
-      if (refundVersionEl) refundVersionEl.textContent = String(refundPolicy.version || "—");
+      if (pricingVersionEl) pricingVersionEl.textContent = fmt(pricingPolicy.version) || "—";
+      if (refundVersionEl) refundVersionEl.textContent = fmt(refundPolicy.version) || "—";
       renderTierRows(pricingPolicy);
       renderRefundWindows(refundPolicy);
 

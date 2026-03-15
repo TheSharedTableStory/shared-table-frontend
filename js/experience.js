@@ -405,7 +405,9 @@
     const content = document.getElementById("experience-content");
     const empty = document.getElementById("experience-not-found");
     const text = document.getElementById("experience-not-found-text");
+    const mobileBar = document.getElementById("mobile-booking-bar");
     if (content) content.classList.add("hidden");
+    if (mobileBar) mobileBar.style.display = "none";
     if (text) text.textContent = String(msg || "This experience is unavailable or may have been removed.");
     if (empty) empty.classList.remove("hidden");
   }
@@ -1077,6 +1079,9 @@
     } catch (_) {}
 
     show("experience-content");
+    // Ensure not-found is hidden when content loads successfully
+    const notFoundEl = document.getElementById("experience-not-found");
+    if (notFoundEl) notFoundEl.classList.add("hidden");
 
     // D2: Show host-only status banner if viewer is the host and listing is not ACTIVE
     if (exp.status && exp.status !== "ACTIVE" && viewerIsHostForExperience) {
