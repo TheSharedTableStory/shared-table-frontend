@@ -576,7 +576,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         experiences.forEach(function(exp, idx) {
             const imgUrl = cloudinaryCardImg(safeUrl(exp.imageUrl || (exp.images && exp.images[0]), fallbackImg), 400, 192);
-            const price = exp.price || 0;
+            const rawPrice = exp.price || 0;
+            const price = typeof rawPrice === 'string' ? Number(String(rawPrice).replace(/[^0-9.]/g, '')) || 0 : Number(rawPrice) || 0;
             const hostPicUrl = cloudinaryCardImg(safeUrl(exp.hostPic, fallbackHostPic), 24, 24);
             const privateAvailable = isPrivateBookingAvailable(exp);
             const verifiedState = normalizedVerifiedStatus(exp);
