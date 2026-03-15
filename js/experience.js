@@ -1992,7 +1992,9 @@
     if (window.IntersectionObserver) {
       var observer = new IntersectionObserver(function(entries) {
         entries.forEach(function(entry) {
-          bar.style.display = entry.isIntersecting ? "none" : "flex";
+          var notFound = document.getElementById("experience-not-found");
+          var isNotFoundVisible = notFound && !notFound.classList.contains("hidden");
+          bar.style.display = (entry.isIntersecting || isNotFoundVisible) ? "none" : "flex";
         });
       }, { threshold: 0.1 });
       observer.observe(bookingForm);
