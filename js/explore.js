@@ -276,7 +276,7 @@ document.addEventListener("DOMContentLoaded", () => {
         var renderedTitles = new Set();
         collections.slice(0, 3).forEach((c) => {
           const a = document.createElement("a");
-          a.className = "bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition cursor-pointer group flex flex-col justify-between h-full";
+          a.className = "bg-white px-4 py-3 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition cursor-pointer group flex items-center gap-3";
           a.href = (function() {
             const p = new URLSearchParams();
             if (c.filters && c.filters.q) p.set("q", String(c.filters.q));
@@ -292,7 +292,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const titleDiv = document.createElement("div");
           const h3 = document.createElement("h3");
-          h3.className = "text-xl font-bold font-serif text-gray-900";
+          h3.className = "text-sm font-bold font-serif text-gray-900";
           var safeTitle = (function () {
             const raw = String(title || "").trim();
             if (!raw) return "Recommended experiences";
@@ -310,21 +310,11 @@ document.addEventListener("DOMContentLoaded", () => {
           renderedTitles.add(safeTitle);
           h3.textContent = safeTitle;
           titleDiv.appendChild(h3);
-          if (subtitle) {
-            const pSub = document.createElement("p");
-            pSub.className = "text-gray-600 text-sm mt-2";
-            pSub.textContent = subtitle;
-            titleDiv.appendChild(pSub);
-          } else {
-            const pSub = document.createElement("p");
-            pSub.className = "text-gray-600 text-sm mt-2";
-            pSub.textContent = "Picked from currently available experiences.";
-            titleDiv.appendChild(pSub);
-          }
+          // Subtitle hidden for compact card layout
           a.appendChild(titleDiv);
 
           const browseDiv = document.createElement("div");
-          browseDiv.className = "mt-6 flex items-center text-sm font-bold text-orange-600";
+          browseDiv.className = "flex items-center text-xs font-bold text-orange-600 whitespace-nowrap";
           browseDiv.textContent = "Browse \u2192";
           a.appendChild(browseDiv);
 
@@ -332,22 +322,19 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         const more = document.createElement("a");
-        more.className = "bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition cursor-pointer group flex flex-col justify-between h-full";
+        more.className = "bg-white px-4 py-3 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition cursor-pointer group flex items-center gap-3";
         more.href = "explore.html";
 
         const moreTitleDiv = document.createElement("div");
         const moreH3 = document.createElement("h3");
-        moreH3.className = "text-xl font-bold font-serif text-gray-900";
+        moreH3.className = "text-sm font-bold font-serif text-gray-900";
         moreH3.textContent = "Explore more experiences \u2192";
         moreTitleDiv.appendChild(moreH3);
         const morePSub = document.createElement("p");
-        morePSub.className = "text-gray-600 text-sm mt-2";
-        morePSub.textContent = "See everything available right now.";
-        moreTitleDiv.appendChild(morePSub);
         more.appendChild(moreTitleDiv);
 
         const moreBrowseDiv = document.createElement("div");
-        moreBrowseDiv.className = "mt-6 flex items-center text-sm font-bold text-orange-600";
+        moreBrowseDiv.className = "flex items-center text-xs font-bold text-orange-600 whitespace-nowrap";
         moreBrowseDiv.textContent = "Explore \u2192";
         more.appendChild(moreBrowseDiv);
 
