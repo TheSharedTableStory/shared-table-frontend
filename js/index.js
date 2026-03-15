@@ -241,13 +241,12 @@ function renderCurationTile(c) {
 
   return El("a", {
     href,
-    className: "bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition cursor-pointer group flex flex-col justify-between h-full"
+    className: "bg-white px-4 py-3 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition cursor-pointer group flex items-center gap-3"
   }, [
-    El("div", {}, [
-      El("h3", { className: "text-xl font-bold font-serif text-gray-900", textContent: title || "Explore" }),
-      subtitle ? El("p", { className: "text-gray-600 text-sm mt-2", textContent: subtitle }) : El("div", {})
+    El("div", { className: "flex-1" }, [
+      El("h3", { className: "text-sm font-bold font-serif text-gray-900", textContent: title || "Explore" }),
     ]),
-    El("div", { className: "mt-6 flex items-center text-sm font-bold text-orange-600", textContent: "Browse →" })
+    El("div", { className: "flex items-center text-xs font-bold text-orange-600 whitespace-nowrap", textContent: "Browse →" })
   ]);
 }
 
@@ -255,13 +254,12 @@ function renderExploreMoreTile() {
   const El = window.tstsEl;
   return El("a", {
     href: "explore.html",
-    className: "bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition cursor-pointer group flex flex-col justify-between h-full"
+    className: "bg-white px-4 py-3 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition cursor-pointer group flex items-center gap-3"
   }, [
-    El("div", {}, [
-      El("h3", { className: "text-xl font-bold font-serif text-gray-900", textContent: "Explore more experiences →" }),
-      El("p", { className: "text-gray-600 text-sm mt-2", textContent: "See everything available right now." })
+    El("div", { className: "flex-1" }, [
+      El("h3", { className: "text-sm font-bold font-serif text-gray-900", textContent: "Explore more experiences →" }),
     ]),
-    El("div", { className: "mt-6 flex items-center text-sm font-bold text-orange-600", textContent: "Explore →" })
+    El("div", { className: "flex items-center text-xs font-bold text-orange-600 whitespace-nowrap", textContent: "Explore →" })
   ]);
 }
 
