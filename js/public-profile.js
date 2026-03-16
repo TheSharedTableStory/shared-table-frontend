@@ -179,7 +179,7 @@ async function loadHostPortfolio() {
         var stats = host.stats || {};
         var headerCard = hostNameEl ? hostNameEl.closest(".bg-white") : null;
         if (headerCard && headerCard.parentNode) {
-            var statsGrid = El("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3 mt-6 mb-8" }, [
+            var statsGrid = El("div", { className: "grid grid-cols-4 gap-3 mt-8 mb-10" }, [
                 El("div", { className: "bg-white rounded-2xl border border-slate-100 shadow-sm p-4 text-center" }, [
                     El("p", { className: "text-xs uppercase tracking-wide text-slate-400", textContent: "Experiences" }),
                     El("p", { className: "text-lg font-bold text-tsts-ink mt-1", textContent: String(stats.experienceCount || 0) })
