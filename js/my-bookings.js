@@ -97,7 +97,7 @@ const dashboardDeepLink = {
   panel: String(dashboardQueryParams.get("panel") || "").trim().toLowerCase(),
   requestId: String(dashboardQueryParams.get("requestId") || "").trim()
 };
-const HOSTING_SECTION_KEYS = Object.freeze(["overview", "listings", "bookings", "funding", "earnings-fees", "reviews", "verification"]);
+const HOSTING_SECTION_KEYS = Object.freeze(["overview", "listings", "bookings", "funding", "earnings-fees", "reviews", "verification", "analytics"]);
 const HOSTING_SECTION_LABELS = Object.freeze({
   overview: "Overview",
   listings: "My Listings",
@@ -105,7 +105,8 @@ const HOSTING_SECTION_LABELS = Object.freeze({
   funding: "Funding",
   "earnings-fees": "Earnings & Fees",
   reviews: "Reviews",
-  verification: "Verification"
+  verification: "Verification",
+  analytics: "Analytics"
 });
 const hostDashboardState = {
   section: "overview",
@@ -116,12 +117,60 @@ const hostDashboardState = {
   reviews: { status: "idle", data: null, message: "" },
   earnings: { status: "idle", data: null, message: "" },
   feesCharges: { status: "idle", rows: [], message: "" },
-  funding: { status: "idle", slots: [], message: "" }
+  funding: { status: "idle", slots: [], message: "" },
+  analytics: { status: "idle", data: null, message: "" }
 };
 const dashboardRequestState = {
   activeTab: resolveDashboardTab(dashboardDeepLink.tab),
   loadToken: 0
 };
+
+// ── WebSocket live updates for host dashboard ──
+var _ws = null;
+var _wsReconnectTimer = null;
+var _wsReconnectAttempts = 0;
+
+function connectHostWebSocket() {
+  if (_ws && (_ws.readyState === WebSocket.OPEN || _ws.readyState === WebSocket.CONNECTING)) return;
+  var session = (window.tstsGetSession) ? window.tstsGetSession({ force: false }) : null;
+  if (!session || !session.ok) return;
+  var token = String((session.csrfToken) || "").trim();
+  // Use access token from cookie — we pass CSRF as a hint, backend verifies JWT from cookie
+  var base = String(window.API_BASE || "").replace(/^http/, "ws");
+  if (!base) return;
+  try { _ws = new WebSocket(base + "/ws?token=" + encodeURIComponent(token)); } catch (_) { return; }
+  _ws.onopen = function() { _wsReconnectAttempts = 0; };
+  _ws.onmessage = function(event) {
+    try {
+      var msg = JSON.parse(event.data);
+      if (msg && msg.event === "booking:confirmed" && msg.data) {
+        var gn = String(msg.data.guestName || "A guest");
+        var et = String(msg.data.experienceTitle || "your experience");
+        if (window.tstsNotify) window.tstsNotify("New booking from " + gn + " for " + et, "success");
+        if (dashboardRequestState.activeTab === "hosting") {
+          hostDashboardState.bookings = { status: "idle", rows: [], message: "" };
+          renderHostingDashboard();
+        }
+      }
+    } catch (_) {}
+  };
+  _ws.onclose = function() {
+    _ws = null;
+    if (_wsReconnectAttempts < 5) {
+      _wsReconnectAttempts++;
+      clearTimeout(_wsReconnectTimer);
+      _wsReconnectTimer = setTimeout(connectHostWebSocket, 3000 * _wsReconnectAttempts);
+    }
+  };
+  _ws.onerror = function() {};
+}
+
+function disconnectHostWebSocket() {
+  clearTimeout(_wsReconnectTimer);
+  if (_ws) { _ws.onclose = null; _ws.close(); _ws = null; }
+}
+
+window.addEventListener("beforeunload", disconnectHostWebSocket);
 
 function nextDashboardLoadToken(tabKey) {
   dashboardRequestState.activeTab = (tabKey === "hosting") ? "hosting" : (tabKey === "wishlist") ? "wishlist" : "trips";
@@ -3344,7 +3393,77 @@ function renderHostingSectionContent() {
     return renderHostReviewsSection(reviewsState.data);
   }
 
+  if (section === "analytics") {
+    var analyticsState = hostDashboardState.analytics || {};
+    if (analyticsState.status === "idle") {
+      loadHostAnalytics();
+      return renderHostSourceLoading("Loading analytics...");
+    }
+    if (analyticsState.status === "loading") return renderHostSourceLoading("Loading analytics...");
+    if (analyticsState.status === "error") return renderHostSourceError("Analytics unavailable", analyticsState.message, "Retry Analytics");
+    return renderHostAnalyticsSection(analyticsState.data);
+  }
+
   return renderHostOverviewSection();
+}
+
+async function loadHostAnalytics() {
+  hostDashboardState.analytics = { status: "loading", data: null, message: "" };
+  try {
+    var res = await window.authFetch("/api/host/analytics", { method: "GET" });
+    var payload = await res.json().catch(function() { return {}; });
+    if (!res.ok) {
+      hostDashboardState.analytics = { status: "error", data: null, message: String((payload && payload.error) || "Failed to load analytics.") };
+      renderHostingDashboard();
+      return;
+    }
+    var d = (payload && payload.data) ? payload.data : payload;
+    hostDashboardState.analytics = { status: "ready", data: d, message: "" };
+    renderHostingDashboard();
+  } catch (_) {
+    hostDashboardState.analytics = { status: "error", data: null, message: "Failed to load analytics." };
+    renderHostingDashboard();
+  }
+}
+
+function renderHostAnalyticsSection(data) {
+  var El = window.tstsEl;
+  var d = data || {};
+  if (!d.totalBookings && !d.last30Days && !d.last90Days && !d.repeatGuestCount) {
+    return El("div", { className: "text-center py-12 bg-white rounded-2xl border border-gray-100 shadow-sm" }, [
+      El("p", { className: "text-4xl mb-3", textContent: "\uD83D\uDCC8" }),
+      El("h3", { className: "heading-serif text-lg font-bold text-tsts-ink mb-1", textContent: "No analytics yet" }),
+      El("p", { className: "text-sm text-slate-500", textContent: "Analytics will appear once you start receiving bookings." })
+    ]);
+  }
+  var section = El("div", { className: "space-y-4" });
+  var grid = El("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3" });
+  var tiles = [
+    { label: "Total Bookings", value: String(d.totalBookings || 0) },
+    { label: "Last 30 Days", value: String(d.last30Days || 0) },
+    { label: "Last 90 Days", value: String(d.last90Days || 0) },
+    { label: "Repeat Guests", value: String(d.repeatGuestCount || 0) }
+  ];
+  tiles.forEach(function(t) {
+    grid.appendChild(
+      El("div", { className: "bg-white rounded-2xl border border-slate-100 shadow-sm p-4 text-center" }, [
+        El("p", { className: "text-xs uppercase tracking-wide text-slate-400", textContent: t.label }),
+        El("p", { className: "text-lg font-bold text-tsts-ink mt-1", textContent: t.value })
+      ])
+    );
+  });
+  section.appendChild(grid);
+  if (d.topExperience && d.topExperience.title) {
+    var top = d.topExperience;
+    section.appendChild(
+      El("div", { className: "bg-white rounded-2xl border border-slate-100 shadow-sm p-5" }, [
+        El("p", { className: "text-xs uppercase tracking-wide text-slate-400 mb-2", textContent: "Top Experience" }),
+        El("h4", { className: "font-bold text-tsts-ink text-sm mb-1", textContent: String(top.title || "") }),
+        El("p", { className: "text-xs text-slate-500", textContent: String(top.bookings || 0) + " bookings \u00b7 " + String(top.guests || 0) + " guests" })
+      ])
+    );
+  }
+  return section;
 }
 
 function renderHostingDashboard() {
@@ -4411,6 +4530,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (tabHost) tabHost.addEventListener("click", () => {
     const token = toggleTab("hosting");
     loadHost(hostDashboardState.section || dashboardDeepLink.section || "overview", token);
+    connectHostWebSocket();
   });
   if (tabWishlist) tabWishlist.addEventListener("click", () => {
     toggleTab("wishlist");

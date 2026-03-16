@@ -813,6 +813,7 @@
     }
 
     setText("exp-title", publicTitle(exp.title || ""));
+    if (window.__trackAnalytics) window.__trackAnalytics("experience:view", "engagement", { experienceId: String(exp._id || exp.id || ""), title: String(exp.title || "") });
     // FIX-02: Build location text + Google Maps link
     var cityParts = [exp.city, exp.suburb, exp.postcode].filter(function (v) { return v && String(v).trim(); });
     var cityText = cityParts.join(", ") || "";
@@ -1717,6 +1718,7 @@
   if (bookingForm) {
     bookingForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (window.__trackAnalytics) window.__trackAnalytics("booking:start", "conversion", { experienceId: String(expId || "") });
 
       if (termsBox && !termsBox.checked) {
         window.tstsNotify("Please accept the cancellation policy.", "warning");

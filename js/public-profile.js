@@ -134,6 +134,77 @@ function renderProfile(profile) {
     loadReviews().catch(() => {});
     loadHostExperiences().catch(() => {});
     loadVisibleBookings().catch(() => {});
+    loadHostPortfolio().catch(() => {});
+}
+
+async function loadHostPortfolio() {
+    try {
+        var base = String(window.API_BASE || "").replace(/\/$/, "");
+        if (!base || !userId) return;
+        var res = await fetch(base + "/api/hosts/" + encodeURIComponent(userId) + "/portfolio", {
+            method: "GET",
+            headers: { "Accept": "application/json" }
+        });
+        if (!res.ok) return;
+        var payload = await res.json().catch(function() { return null; });
+        if (!payload || !payload.ok || !payload.data || !payload.data.host) return;
+        var host = payload.data.host;
+        var El = window.tstsEl;
+
+        // Tier badge — insert next to host name
+        var tier = String(host.tier || "").toLowerCase();
+        if (tier && tier !== "new") {
+            var tierColors = {
+                active: "bg-green-100 text-green-700",
+                rising: "bg-blue-100 text-blue-700",
+                super: "bg-amber-100 text-amber-700",
+                elite: "bg-purple-100 text-purple-700"
+            };
+            var tierLabels = {
+                active: "Active Host",
+                rising: "Rising Host",
+                super: "Super Host",
+                elite: "Elite Host"
+            };
+            var tierBadge = El("span", {
+                className: "ml-3 px-3 py-1 rounded-full text-xs font-bold " + (tierColors[tier] || "bg-slate-100 text-slate-700"),
+                textContent: tierLabels[tier] || tier
+            });
+            if (hostNameEl && hostNameEl.parentNode) {
+                hostNameEl.parentNode.insertBefore(tierBadge, hostNameEl.nextSibling);
+            }
+        }
+
+        // Stats row — insert after the header card
+        var stats = host.stats || {};
+        var headerCard = hostNameEl ? hostNameEl.closest(".bg-white") : null;
+        if (headerCard && headerCard.parentNode) {
+            var statsGrid = El("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3 mt-6 mb-8" }, [
+                El("div", { className: "bg-white rounded-2xl border border-slate-100 shadow-sm p-4 text-center" }, [
+                    El("p", { className: "text-xs uppercase tracking-wide text-slate-400", textContent: "Experiences" }),
+                    El("p", { className: "text-lg font-bold text-tsts-ink mt-1", textContent: String(stats.experienceCount || 0) })
+                ]),
+                El("div", { className: "bg-white rounded-2xl border border-slate-100 shadow-sm p-4 text-center" }, [
+                    El("p", { className: "text-xs uppercase tracking-wide text-slate-400", textContent: "Bookings Completed" }),
+                    El("p", { className: "text-lg font-bold text-tsts-ink mt-1", textContent: String(stats.completedBookings || 0) })
+                ]),
+                El("div", { className: "bg-white rounded-2xl border border-slate-100 shadow-sm p-4 text-center" }, [
+                    El("p", { className: "text-xs uppercase tracking-wide text-slate-400", textContent: "Guests Hosted" }),
+                    El("p", { className: "text-lg font-bold text-tsts-ink mt-1", textContent: String(stats.guestsHosted || 0) })
+                ]),
+                El("div", { className: "bg-white rounded-2xl border border-slate-100 shadow-sm p-4 text-center" }, [
+                    El("p", { className: "text-xs uppercase tracking-wide text-slate-400", textContent: "Avg Rating" }),
+                    El("p", { className: "text-lg font-bold text-tsts-ink mt-1", textContent: stats.avgRating ? String(stats.avgRating) : "New" })
+                ])
+            ]);
+            headerCard.parentNode.insertBefore(statsGrid, headerCard.nextSibling);
+        }
+
+        // Update rating display
+        if (hostRatingEl && stats.avgRating) {
+            hostRatingEl.textContent = String(stats.avgRating) + " avg";
+        }
+    } catch (_) {}
 }
 
 async function loadReviews() {

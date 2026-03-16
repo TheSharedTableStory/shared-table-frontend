@@ -215,6 +215,26 @@ window.tstsSafeMailto = function(email) {
   };
 })();
 
+// ── Analytics event tracking (fire-and-forget, never blocks UI) ──
+window.__trackAnalytics = function(event, category, properties) {
+  if (!event) return;
+  try {
+    var base = String(window.API_BASE || "").replace(/\/$/, "");
+    if (!base) return;
+    fetch(base + "/api/analytics/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event: String(event),
+        category: String(category || ""),
+        properties: (properties && typeof properties === "object") ? properties : {},
+        platform: "web"
+      }),
+      credentials: "include"
+    }).catch(function() {});
+  } catch (_) {}
+};
+
 // ── Shared form validation helpers ──
 window.tstsShowFieldError = function(input, msg) {
   if (!input) return;

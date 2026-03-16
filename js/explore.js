@@ -452,6 +452,7 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 renderExperiences(privateFiltered);
             }
+            if (window.__trackAnalytics) window.__trackAnalytics("explore:view", "engagement", { resultCount: privateFiltered.length });
         } catch (err) {
             experiencesGrid.classList.remove("explore-loading");
             experiencesGrid.classList.add("hidden");
