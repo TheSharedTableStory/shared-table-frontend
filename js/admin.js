@@ -731,7 +731,7 @@ function renderStats(stats) {
   if (usersEl) usersEl.textContent = userCount === null ? "—" : String(userCount);
   if (hostsEl) hostsEl.textContent = hostCount === null ? "—" : String(hostCount);
   if (bookingsEl) bookingsEl.textContent = bookingCount === null ? "—" : String(bookingCount);
-  if (revenueEl) revenueEl.textContent = revenue === null ? "—" : "$" + String(revenue);
+  if (revenueEl) revenueEl.textContent = revenue === null ? "—" : "$" + Number(revenue).toLocaleString("en-AU");
 }
 
 function renderBookings(bookings) {
