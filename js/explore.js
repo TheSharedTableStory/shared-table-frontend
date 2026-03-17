@@ -586,7 +586,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             var imageContainer = El("div", { className: "relative h-48 w-full overflow-hidden bg-gray-100" }, [
                 imgEl,
-                El("div", { className: "absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold shadow-sm", textContent: "$" + price })
+                El("div", { className: "absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold shadow-sm", textContent: "$" + Number(price || 0).toFixed(2) + " /person" })
             ]);
             if (privateAvailable) {
                 const privateBadge = preventCardNav(El("div", {

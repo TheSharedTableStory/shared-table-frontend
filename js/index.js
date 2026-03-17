@@ -376,7 +376,8 @@ function renderCard(exp) {
       .map((t) => String(t || "").trim())
       .filter((t) => t);
     const tag = labels.length ? labels.slice(0, 2).join(" · ") : "Experience";
-    const price = (exp && (typeof exp.price === 'number' || typeof exp.price === 'string')) ? String(exp.price) : "";
+    const priceRaw = (exp && (typeof exp.price === 'number' || typeof exp.price === 'string')) ? Number(exp.price || 0) : 0;
+    const price = priceRaw ? "$" + priceRaw.toFixed(2) + " /person" : "";
 
     var imgEl = El("img", { className: "w-full h-full object-cover group-hover:scale-105 transition duration-500", loading: "lazy" });
     window.tstsSafeImg(imgEl, imgSrc, fallbackImg);

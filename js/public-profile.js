@@ -314,7 +314,7 @@ function createExperienceCard(exp) {
             imgEl,
             visibilityChip,
             verifiedChip || El('span', { className: 'hidden', textContent: '' }),
-            El('div', { className: 'absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold shadow-sm', textContent: '$' + (exp.price || '') }),
+            El('div', { className: 'absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold shadow-sm', textContent: '$' + Number(exp.price || 0).toFixed(2) + ' /person' }),
             tagsContainer
         ]),
         El('div', { className: 'p-4 flex flex-col gap-2 flex-grow' }, [
