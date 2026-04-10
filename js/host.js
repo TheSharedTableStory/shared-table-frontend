@@ -1699,8 +1699,8 @@
           }
           body.weeklySchedule = ws;
         }
-        if (imageUrl) body.imageUrl = imageUrl;
-        else body.imageUrl = "/assets/experience-default.jpg";
+        if (imageUrl) body.images = [imageUrl];
+        else body.images = [];
         if (privateEnabled) {
           body.privatePrice = Number(privatePrice);
           body.privateCapacity = Math.max(1, Math.floor(Number(privateCapacity)));
@@ -2215,7 +2215,7 @@
       var ad = [];
       try { ad = Array.from(document.querySelectorAll('input[name="availableDays"]:checked')).map(function (cb) { return cb.value; }); } catch (_) {}
       if (ad.length > 0) body.availableDays = ad;
-      if (existingImageUrl) body.imageUrl = existingImageUrl;
+      if (existingImageUrl) body.images = [existingImageUrl];
       body.bookingCutoffEnabled = cutoffEnabledInput ? cutoffEnabledInput.checked : true;
       body.bookingCutoffMinutes = cutoffHoursInput ? Math.max(0, parseInt(cutoffHoursInput.value, 10) || 0) * 60 : 1440;
       body.dynamicDiscounts = buildDynamicDiscountsFromForm();
