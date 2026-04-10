@@ -1718,7 +1718,7 @@
   if (bookingForm) {
     bookingForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (window.__trackAnalytics) window.__trackAnalytics("booking:start", "conversion", { experienceId: String(expId || "") });
+      if (window.__trackAnalytics) window.__trackAnalytics("booking:start", "conversion", { experienceId: String(experienceId || "") });
 
       if (termsBox && !termsBox.checked) {
         window.tstsNotify("Please accept the cancellation policy.", "warning");
