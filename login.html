@@ -22,9 +22,10 @@
 <body class="bg-tsts-cream text-slate-900 flex flex-col min-h-screen">
   <nav id="navbar-placeholder" role="navigation"></nav>
   <main class="flex-grow" role="main">
+  <h1 class="sr-only">Log In or Sign Up — The Shared Table Story</h1>
   <div class="flex-grow flex flex-col items-center justify-center p-4">
     
-    <div class="max-w-md w-full bg-white rounded-3xl shadow-soft-card p-8 border border-gray-100">
+    <div id="login-card" class="max-w-md w-full bg-white rounded-3xl shadow-soft-card p-8 border border-gray-100" style="opacity:0;transition:opacity 0.2s ease">
       
       <div class="flex border-b border-gray-200 mb-8" role="tablist" aria-label="Account actions">
         <button id="tab-login" type="button" aria-label="Switch to login form" role="tab" aria-selected="true" class="flex-1 pb-3 font-bold text-orange-600 border-b-2 border-orange-600 transition-colors">Log In</button>

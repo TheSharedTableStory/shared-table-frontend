@@ -439,6 +439,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const redirected = await redirectIfAlreadyAuthed();
     if (redirected) return;
 
+    // Show login card after auth check completes (prevents redirect flash)
+    var loginCard = document.getElementById("login-card");
+    if (loginCard) loginCard.style.opacity = "1";
+
     const tabLogin = document.getElementById("tab-login");
     const tabSignup = document.getElementById("tab-signup");
     const loginForm = document.getElementById("form-login");
