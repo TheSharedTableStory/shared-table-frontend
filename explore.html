@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com https://maps.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com https://maps.gstatic.com https://maps.googleapis.com data: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com https://maps.googleapis.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="/assets/logo-mark.png">
@@ -18,6 +18,16 @@
     <script defer src="vendor/nouislider/nouislider.min.js?v=15.7.0"></script>
 
 <link rel="manifest" href="manifest.json">
+<style>
+  /* Google Places autocomplete dropdown — TSTS warm palette */
+  .pac-container { border-radius: 12px; border: 1px solid #e2e8f0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; box-shadow: 0 4px 16px rgba(0,0,0,0.08); margin-top: 4px; }
+  .pac-item { padding: 10px 16px; border-top: 1px solid #f1f5f9; cursor: pointer; }
+  .pac-item:first-child { border-top: none; }
+  .pac-item:hover, .pac-item.pac-item-selected { background-color: #FDF9F5; }
+  .pac-item-query { color: #1F2933; font-weight: 600; }
+  .pac-matched { color: #ea580c; }
+  .pac-icon { display: none; }
+</style>
 </head>
 <body class="bg-tsts-cream text-slate-900 flex flex-col min-h-screen">
 
@@ -178,8 +188,9 @@
     </main>
 
     <footer id="footer-placeholder" role="contentinfo"></footer>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBxFIeROPTRgYYpg_dw0WUNrPJBGIh0iX4&libraries=places" async defer></script>
     <script src="js/runtime-config.js?v=20260224a"></script>
   <script src="js/common.js?v=20260316c"></script>
-    <script src="js/explore.js?v=20260317b"></script>
+    <script src="js/explore.js?v=20260412a"></script>
 </body>
 </html>

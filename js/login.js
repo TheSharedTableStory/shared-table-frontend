@@ -8,6 +8,133 @@ window.showModal = window.showModal || function (title, message, type) {
   window.tstsNotify(String(title || "") + ": " + String(message || ""), notifyType);
 };
 
+// ── Google Sign-In ──────────────────────────────────────────────────────
+// Uses Google Identity Services (GIS) One Tap / popup flow.
+// Backend: POST /api/auth/google { idToken, termsAccepted? }
+
+var __googleSignInBusy = false;
+
+function __initGoogleSignIn() {
+  if (typeof google === "undefined" || !google.accounts || !google.accounts.id) {
+    setTimeout(__initGoogleSignIn, 200);
+    return;
+  }
+
+  var clientId = (window.__runtimeConfig && window.__runtimeConfig.GOOGLE_CLIENT_ID_WEB)
+    ? String(window.__runtimeConfig.GOOGLE_CLIENT_ID_WEB)
+    : "758078162613-i5kungjqa0s862qa1h2uhhuuck9db0u0.apps.googleusercontent.com";
+
+  google.accounts.id.initialize({
+    client_id: clientId,
+    callback: __handleGoogleCredential,
+    auto_select: false,
+    cancel_on_tap_outside: true,
+  });
+
+  var btnLogin = document.getElementById("btn-google-login");
+  var btnSignup = document.getElementById("btn-google-signup");
+  if (btnLogin) btnLogin.addEventListener("click", function () { __triggerGoogleSignIn(false); });
+  if (btnSignup) btnSignup.addEventListener("click", function () { __triggerGoogleSignIn(true); });
+}
+
+function __triggerGoogleSignIn(isSignup) {
+  if (__googleSignInBusy) return;
+
+  if (isSignup) {
+    var termsEl = document.getElementById("signup-terms");
+    if (termsEl && !termsEl.checked) {
+      showModal("Terms Required", "Please accept the Terms of Service before continuing with Google.", "error");
+      return;
+    }
+  }
+
+  google.accounts.id.prompt(function (notification) {
+    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+      // One Tap blocked by browser — user can use email/password instead
+    }
+  });
+
+  window.__googleSignInIsSignup = !!isSignup;
+}
+
+async function __handleGoogleCredential(response) {
+  if (__googleSignInBusy) return;
+  __googleSignInBusy = true;
+
+  var idToken = response && response.credential;
+  if (!idToken) {
+    showModal("Google Sign-In", "Google sign-in failed. Please try again.", "error");
+    __googleSignInBusy = false;
+    return;
+  }
+
+  var isSignup = !!window.__googleSignInIsSignup;
+  var termsAccepted = false;
+  if (isSignup) {
+    var termsEl = document.getElementById("signup-terms");
+    termsAccepted = !!(termsEl && termsEl.checked);
+  }
+
+  var btnLogin = document.getElementById("btn-google-login");
+  var btnSignup = document.getElementById("btn-google-signup");
+  if (btnLogin) { btnLogin.disabled = true; window.tstsText(btnLogin, "Signing in\u2026"); }
+  if (btnSignup) { btnSignup.disabled = true; window.tstsText(btnSignup, "Signing in\u2026"); }
+
+  try {
+    var res = await window.authFetch("/api/auth/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken: idToken, termsAccepted: termsAccepted }),
+    });
+
+    var data = null;
+    try { data = await res.json(); } catch (parseErr) {
+      showModal("Google Sign-In", "Invalid server response. Please try again.", "error");
+      return;
+    }
+
+    if (!res.ok) {
+      var errMsg = "Google sign-in failed. Please try again.";
+      var errCode = (data && data.error) ? String(data.error) : "";
+      if (errCode === "GOOGLE_ACCOUNT_CONFLICT") errMsg = "This email is linked to a different Google account.";
+      else if (errCode === "TERMS_REQUIRED") errMsg = "Please accept the Terms of Service to continue.";
+      else if (errCode === "ACCOUNT_DISABLED") errMsg = "This account has been disabled. Please contact support.";
+      else if (data && data.message) errMsg = String(data.message);
+      showModal("Google Sign-In", errMsg, "error");
+      return;
+    }
+
+    var payload = (window.tstsUnwrap && typeof window.tstsUnwrap === "function") ? window.tstsUnwrap(data) : (data && data.data !== undefined ? data.data : data);
+    var user = (payload && payload.user) ? payload.user : null;
+    var csrfToken = (payload && (payload.csrfToken || payload.token)) ? String(payload.csrfToken || payload.token) : "";
+
+    if (window.setAuth) window.setAuth(csrfToken, user);
+    try {
+      if (window.tstsMarkLoginOk) window.tstsMarkLoginOk();
+      else if (window.sessionStorage) window.sessionStorage.setItem("tsts_login_ok_ts", String(Date.now()));
+    } catch (markErr) {
+      if (window.tstsNotify) window.tstsNotify("Session state warning", "info");
+    }
+
+    var isAdmin = !!(user && (user.isAdmin === true || String(user.role || "").toLowerCase() === "admin"));
+    if (isAdmin) {
+      window.location.href = "admin.html";
+      return;
+    }
+
+    var params = new URLSearchParams(window.location.search);
+    var rawTarget = params.get("redirect") || params.get("returnTo") || "index.html";
+    window.location.href = safeRedirectTarget(rawTarget);
+
+  } catch (networkErr) {
+    showModal("Connection Error", "Could not connect to the server. Please try again.", "error");
+  } finally {
+    __googleSignInBusy = false;
+    if (btnLogin) { btnLogin.disabled = false; while (btnLogin.firstChild) btnLogin.removeChild(btnLogin.firstChild); var i1 = document.createElement("img"); i1.src = "assets/google-g.svg"; i1.alt = ""; i1.width = 20; i1.height = 20; i1.className = "flex-shrink-0"; btnLogin.appendChild(i1); btnLogin.appendChild(document.createTextNode(" Continue with Google")); }
+    if (btnSignup) { btnSignup.disabled = false; while (btnSignup.firstChild) btnSignup.removeChild(btnSignup.firstChild); var i2 = document.createElement("img"); i2.src = "assets/google-g.svg"; i2.alt = ""; i2.width = 20; i2.height = 20; i2.className = "flex-shrink-0"; btnSignup.appendChild(i2); btnSignup.appendChild(document.createTextNode(" Continue with Google")); }
+  }
+}
+
 let forgotPasswordInFlight = false;
 
 async function handleForgotPassword(e) {
@@ -340,6 +467,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (loginForm && signupForm && tabLogin && tabSignup) {
         toggleAuth("login");
     }
+
+    // Initialize Google Sign-In
+    __initGoogleSignIn();
 
     const urlReason = new URLSearchParams(window.location.search).get("reason");
     if (urlReason === "session_expired") {

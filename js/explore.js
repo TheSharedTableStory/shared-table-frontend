@@ -794,10 +794,70 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
     
-    // --- AU City Autocomplete for Explore ---
+    // --- Location Autocomplete for Explore ---
+    // Uses Google Places when API available, falls back to AU datalist otherwise.
+    var __explorePlacesAttached = false;
+
+    function __initExplorePlaces() {
+      if (!elLocation) return;
+      if (typeof google === "undefined" || !google.maps || !google.maps.places) {
+        // Google Places not loaded — fall back to AU datalist
+        __initExploreAuDatalist();
+        return;
+      }
+
+      try {
+        // Remove datalist attribute so it doesn't interfere with Places dropdown
+        elLocation.removeAttribute("list");
+        var datalistEl = document.getElementById("explore-city-suggestions");
+        if (datalistEl) datalistEl.remove();
+
+        var autocomplete = new google.maps.places.Autocomplete(elLocation, {
+          componentRestrictions: { country: "au" },
+          fields: ["address_components", "name"],
+        });
+
+        autocomplete.addListener("place_changed", function () {
+          var place = autocomplete.getPlace();
+          if (!place || !place.address_components) return;
+          var components = place.address_components;
+          var city = "";
+          for (var i = 0; i < components.length; i++) {
+            var types = components[i].types;
+            if (types.indexOf("locality") >= 0 || types.indexOf("administrative_area_level_2") >= 0) {
+              city = components[i].long_name;
+              break;
+            }
+          }
+          if (city) {
+            elLocation.value = city;
+            filterState.location = city;
+            applyFilters();
+          }
+        });
+
+        __explorePlacesAttached = true;
+      } catch (placesErr) {
+        // Places init failed — fall back to datalist
+        __initExploreAuDatalist();
+      }
+    }
+
+    // Fallback: AU locations datalist (same as previous implementation)
     const exploreCityDatalist = document.getElementById("explore-city-suggestions");
     var __exploreAuLocations = null;
     var __exploreAuLoadPromise = null;
+
+    function __initExploreAuDatalist() {
+      if (!elLocation) return;
+      elLocation.addEventListener("focus", function () { __loadExploreAuLocations(); }, { once: true });
+      elLocation.addEventListener("input", function () {
+        clearTimeout(__exploreCityTimer);
+        var val = elLocation.value;
+        __exploreCityTimer = setTimeout(function () { __filterExploreCitySuggestions(val); }, 150);
+      });
+    }
+
     function __loadExploreAuLocations() {
       if (__exploreAuLoadPromise) return __exploreAuLoadPromise;
       __exploreAuLoadPromise = fetch("/data/au-locations.json").then(function (r) {
@@ -805,7 +865,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }).then(function (arr) {
         __exploreAuLocations = Array.isArray(arr) ? arr : [];
         return __exploreAuLocations;
-      }).catch(function () { __exploreAuLocations = []; return []; });
+      }).catch(function (loadErr) {
+        __exploreAuLocations = [];
+        return [];
+      });
       return __exploreAuLoadPromise;
     }
     var __exploreCityTimer = null;
@@ -813,7 +876,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!exploreCityDatalist || !__exploreAuLocations) return;
       var tok = String(val || "").trim().toLowerCase();
       if (tok.length < 2) { while (exploreCityDatalist.firstChild) exploreCityDatalist.removeChild(exploreCityDatalist.firstChild); return; }
-      // Collect unique city names (no duplicates for same locality)
       var seen = {};
       var matches = [];
       for (var i = 0; i < __exploreAuLocations.length && matches.length < 15; i++) {
@@ -832,15 +894,21 @@ document.addEventListener("DOMContentLoaded", () => {
         exploreCityDatalist.appendChild(opt);
       }
     }
-    if (elLocation) {
-      elLocation.addEventListener("focus", function () { __loadExploreAuLocations(); }, { once: true });
-      elLocation.addEventListener("input", function () {
-        clearTimeout(__exploreCityTimer);
-        var val = elLocation.value;
-        __exploreCityTimer = setTimeout(function () { __filterExploreCitySuggestions(val); }, 150);
+
+    // Try Google Places first, datalist fallback
+    if (typeof google !== "undefined" && google.maps && google.maps.places) {
+      __initExplorePlaces();
+    } else {
+      // Wait for Google Maps script to load (async defer)
+      window.addEventListener("load", function () {
+        if (!__explorePlacesAttached) __initExplorePlaces();
       });
+      // If still not loaded after 3s, fall back to datalist
+      setTimeout(function () {
+        if (!__explorePlacesAttached) __initExploreAuDatalist();
+      }, 3000);
     }
-    // --- End AU City Autocomplete ---
+    // --- End Location Autocomplete ---
 
     if (elLocation) elLocation.addEventListener("change", applyFilters);
     if (elDate) elDate.addEventListener("change", applyFilters);
