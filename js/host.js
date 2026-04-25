@@ -566,7 +566,8 @@
     if (!warningEl) return;
     var b = pricingBreakdown;
     var active = !!(b && Number(b.platformFeeCents) > Number(b.guestPriceCents));
-    if (!active) {
+    var guestCents = b ? Number(b.guestPriceCents) : 0;
+    if (!active || !Number.isFinite(guestCents) || guestCents < 500) {
       warningEl.classList.add("hidden");
       warningEl.textContent = "";
       return;
@@ -589,7 +590,7 @@
       if (pricingPlatformFeePerGuestEl) pricingPlatformFeePerGuestEl.textContent = "Loading fee policy\u2026";
       if (pricingHostPayoutEstimateEl) pricingHostPayoutEstimateEl.textContent = "Loading\u2026";
       if (pricingVerifiedImpactEl) pricingVerifiedImpactEl.textContent = "Loading\u2026";
-      if (pricingPolicyReferenceEl) pricingPolicyReferenceEl.textContent = "Loading policy\u2026";
+      if (pricingPolicyReferenceEl) { pricingPolicyReferenceEl.textContent = ""; pricingPolicyReferenceEl.classList.add("hidden"); }
       syncPricingShortfallWarning(null);
       return;
     }
@@ -614,11 +615,8 @@
       pricingHostChargeNoteEl.textContent = "Estimated payout shown above is after platform fee. Verified-event deduction (if approved) and recovery offsets are host-side payout deductions. No guest surcharge is applied for verification.";
     }
     if (pricingPolicyReferenceEl) {
-      const ver = resolvePolicyVersion();
-      const feeVer = verificationPolicyVersion ? String(verificationPolicyVersion) : "Unavailable";
-      const pricingVer = activePricingPolicy && activePricingPolicy.version ? String(activePricingPolicy.version) : "Unavailable";
-      const refundVer = activeRefundPolicy && activeRefundPolicy.version ? String(activeRefundPolicy.version) : "Unavailable";
-      pricingPolicyReferenceEl.textContent = "Policy reference: " + ver + " (legacy booking policy) • " + pricingVer + " (tier pricing) • " + refundVer + " (refund windows) • " + feeVer + " (verification fee policy " + verificationFeePercent.toFixed(1) + "%).";
+      pricingPolicyReferenceEl.textContent = "";
+      pricingPolicyReferenceEl.classList.add("hidden");
     }
     syncPricingShortfallWarning(pricingBreakdown);
   }
@@ -1619,7 +1617,8 @@
         }
 
         const deficitBreakdown = computePublicPricingBreakdown(price);
-        if (deficitBreakdown && Number(deficitBreakdown.platformFeeCents) > Number(deficitBreakdown.guestPriceCents)) {
+        const _deficitGuestCents = deficitBreakdown ? Number(deficitBreakdown.guestPriceCents) : 0;
+        if (deficitBreakdown && Number.isFinite(_deficitGuestCents) && _deficitGuestCents >= 500 && Number(deficitBreakdown.platformFeeCents) > Number(deficitBreakdown.guestPriceCents)) {
           const shortfallPerSeatCents = Math.max(0, Number(deficitBreakdown.platformFeeCents) - Number(deficitBreakdown.guestPriceCents));
           const thresholdSeats = Math.max(1, Math.ceil(Number(capacity) * 0.5));
           const stageADueCents = shortfallPerSeatCents * thresholdSeats;
