@@ -252,35 +252,20 @@
   const shortfallPaymentInFlight = new Set();
   const shortfallPaymentPendingWebhook = new Set();
 
-  function ensureInlineNotice() {
-    let el = document.getElementById("host-inline-notice");
-    if (el) return el;
-
-    if (!form) return null;
-    el = window.tstsEl("div", {
-      id: "host-inline-notice",
-      className: "hidden mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700"
-    }, "");
-    form.prepend(el);
-    return el;
-  }
-
+  // Toast feedback — uses the global tstsNotify (common.js) so messages always render
+  // in the bottom-right corner regardless of where the user is in the wizard.
+  // The previous implementation prepended a notice to the form, which sat above wizard
+  // step 1 and was invisible from the publish button on step 5.
   function showNotice(kind, msg) {
-    const el = ensureInlineNotice();
-    if (!el) return;
-    el.classList.remove("hidden");
-    el.textContent = msg;
-
-    el.classList.remove("border-red-200", "bg-red-50", "text-red-700", "border-green-200", "bg-green-50", "text-green-700", "border-gray-200", "bg-gray-50", "text-gray-700");
-
-    if (kind === "error") el.classList.add("border-red-200", "bg-red-50", "text-red-700");
-    else if (kind === "success") el.classList.add("border-green-200", "bg-green-50", "text-green-700");
-    else el.classList.add("border-gray-200", "bg-gray-50", "text-gray-700");
+    var k = (kind === "error" || kind === "success" || kind === "warning" || kind === "info") ? kind : "info";
+    if (window.tstsNotify) { window.tstsNotify(String(msg || ""), k); return; }
+    if (typeof console !== "undefined" && console && typeof console.warn === "function") {
+      console.warn("tstsNotify unavailable, falling back:", k, msg);
+    }
   }
 
   function hideNotice() {
-    const el = document.getElementById("host-inline-notice");
-    if (el) el.classList.add("hidden");
+    // No-op: tstsNotify toasts auto-dismiss after 5s.
   }
 
   async function ensureCsrfCookieReady() {
@@ -1541,8 +1526,8 @@
           if (titleInput) titleInput.focus();
           return;
         }
-        if (price <= 0) {
-          showNotice("error", "Price must be greater than zero.");
+        if (price < 0) {
+          showNotice("error", "Price can't be negative.");
           if (priceInput) priceInput.focus();
           return;
         }
