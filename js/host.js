@@ -1853,8 +1853,7 @@
           }
         }
 
-        showNotice("success", isEditing ? "Experience updated." : "Experience published.");
-        // Reset to create mode after save
+        // Reset form state but DON'T toast — the success card below is the visible feedback.
         isEditing = false;
         editId = null;
         existingImageUrl = null;
@@ -1868,6 +1867,8 @@
         syncVerifiedUi();
         syncPricingTransparency();
         __showWizardStep(1);
+        // Show the post-publish success card (replaces the form on screen).
+        renderPublishSuccessCard(savedExp);
         await loadHostListings();
         await loadShortfallDashboard({ silent: true });
       } catch (_) {
@@ -1878,17 +1879,128 @@
     });
   }
 
+  // Replaces the wizard form with a status-aware success card after a successful publish.
+  // For ACTIVE: "Your experience is live!" with View / Share / Edit / Publish another.
+  // For PENDING_REVIEW: "We're taking a quick look — usually live within 24h" with Edit / Publish another.
+  // No internal status names ever surface to the host.
+  function renderPublishSuccessCard(savedExp) {
+    var card = document.getElementById("publish-success-card");
+    var formEl = document.getElementById("create-experience-form");
+    if (!card) return;
+    var status = String((savedExp && savedExp.status) || "ACTIVE").toUpperCase();
+    var queued = (status === "PENDING_REVIEW" || status === "DRAFT");
+    var title = String((savedExp && savedExp.title) || "Your experience");
+    var price = Number((savedExp && savedExp.price) != null ? savedExp.price : 0);
+    var img = String((savedExp && (savedExp.imageUrl || (Array.isArray(savedExp.images) && savedExp.images[0]) || "")));
+    var startDate = String((savedExp && savedExp.startDate) || "");
+    var startTime = String((savedExp && savedExp.startTime) || "");
+    var expId = String((savedExp && (savedExp._id || savedExp.id)) || "");
+    var publicUrl = expId ? (window.location.origin + "/experience.html?id=" + encodeURIComponent(expId)) : "";
+
+    // Heading + sub-heading + icon tone based on status
+    var iconWrap = document.getElementById("publish-success-icon");
+    var iconI = iconWrap ? iconWrap.querySelector("i") : null;
+    var heading = document.getElementById("publish-success-heading");
+    var sub = document.getElementById("publish-success-subheading");
+    if (queued) {
+      if (iconWrap) { iconWrap.classList.remove("bg-emerald-100"); iconWrap.classList.add("bg-amber-100"); }
+      if (iconI) { iconI.className = "fas fa-clock text-2xl text-amber-600"; }
+      if (heading) heading.textContent = "We're taking a quick look at your experience";
+      if (sub) sub.textContent = "A team member will check your listing — usually within 24 hours, often much sooner. We'll email you the moment it's live on Explore.";
+    } else {
+      if (iconWrap) { iconWrap.classList.add("bg-emerald-100"); iconWrap.classList.remove("bg-amber-100"); }
+      if (iconI) { iconI.className = "fas fa-check text-2xl text-emerald-600"; }
+      if (heading) heading.textContent = "Your experience is live!";
+      if (sub) sub.textContent = "Guests can now discover and book your experience on Explore. Sharing it with your community helps it build momentum early.";
+    }
+
+    var titleEl = document.getElementById("publish-success-title");
+    if (titleEl) titleEl.textContent = title;
+    var priceEl = document.getElementById("publish-success-price");
+    if (priceEl) priceEl.textContent = price > 0 ? ("$" + price.toFixed(2) + " / guest") : "Free event";
+    var whenEl = document.getElementById("publish-success-when");
+    if (whenEl) {
+      var whenStr = startDate || "";
+      if (startDate && startTime) whenStr = startDate + " · " + startTime;
+      whenEl.textContent = whenStr || "—";
+    }
+
+    var imgEl = document.getElementById("publish-success-image");
+    if (imgEl) {
+      if (img) {
+        imgEl.src = img; imgEl.alt = title;
+        imgEl.style.display = "";
+      } else {
+        imgEl.style.display = "none";
+      }
+    }
+
+    // CTA buttons
+    var viewBtn = document.getElementById("publish-success-view");
+    var shareBtn = document.getElementById("publish-success-share");
+    var editBtn = document.getElementById("publish-success-edit");
+    var anotherBtn = document.getElementById("publish-success-another");
+
+    if (viewBtn) {
+      if (!queued && publicUrl) {
+        viewBtn.href = publicUrl;
+        viewBtn.classList.remove("hidden");
+      } else {
+        viewBtn.classList.add("hidden");
+      }
+    }
+    if (shareBtn) {
+      if (!queued && publicUrl) {
+        shareBtn.classList.remove("hidden");
+        shareBtn.onclick = function () {
+          var shareData = { title: title, text: "I'm hosting on The Shared Table Story — would you like to join?", url: publicUrl };
+          if (navigator.share) {
+            navigator.share(shareData).catch(function () { /* user cancelled or share failed; copy fallback below covers this */ });
+          } else if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(publicUrl).then(function () {
+              if (window.tstsNotify) window.tstsNotify("Link copied to clipboard.", "success");
+            });
+          } else {
+            window.prompt("Copy this link to share:", publicUrl);
+          }
+        };
+      } else {
+        shareBtn.classList.add("hidden");
+      }
+    }
+    if (editBtn) {
+      editBtn.onclick = function () {
+        if (!expId) return;
+        window.location.href = window.location.pathname + "?edit=" + encodeURIComponent(expId);
+      };
+    }
+    if (anotherBtn) {
+      anotherBtn.onclick = function () {
+        card.classList.add("hidden");
+        if (formEl) formEl.classList.remove("hidden");
+        try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { window.scrollTo(0, 0); }
+      };
+    }
+
+    // Hide the form, reveal the card, scroll to top so it's actually seen.
+    if (formEl) formEl.classList.add("hidden");
+    card.classList.remove("hidden");
+    try { card.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    catch (e) { window.scrollTo(0, 0); }
+  }
+
   function renderListingCard(exp) {
     var El = window.tstsEl;
     var id = String((exp && (exp._id || exp.id)) || "");
     var rawTitle = String((exp && exp.title) || "Untitled");
     var status = String((exp && exp.status) || "ACTIVE");
-    var labels = { ACTIVE: "Active", PAUSED: "Paused", DRAFT: "Draft", PENDING_REVIEW: "In Review", DELETED_SOFT: "Deleted" };
+    // User-facing labels — never expose internal status names
+    var labels = { ACTIVE: "Live on Explore", PAUSED: "Paused", DRAFT: "Draft", PENDING_REVIEW: "Awaiting review", DELETED_SOFT: "Deleted" };
     var badgeClasses = {
       ACTIVE: "bg-green-100 text-green-800",
       PAUSED: "bg-yellow-100 text-yellow-800",
       DRAFT: "bg-gray-100 text-gray-600",
-      PENDING_REVIEW: "bg-blue-100 text-blue-800",
+      PENDING_REVIEW: "bg-amber-100 text-amber-800",
       DELETED_SOFT: "bg-red-100 text-red-800"
     };
     var badgeEl = El("span", { className: "inline-block rounded-full px-2 py-0.5 text-xs font-semibold " + (badgeClasses[status] || "bg-gray-100 text-gray-600"), textContent: labels[status] || status });
@@ -1917,10 +2029,28 @@
       actionBtns.push(makeBtn("Delete Experience", "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100", "delete"));
     }
 
-    var li = El("div", { className: "flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm" }, [
+    // For DRAFT events that were rejected, show the admin's reason inline so the host
+    // knows exactly what to fix before resubmitting. statusReason is set by the
+    // backend reject endpoint.
+    var rejectionReasonEl = null;
+    var statusReasonRaw = String((exp && exp.statusReason) || "").trim();
+    var isRejectedDraft = (status === "DRAFT" && statusReasonRaw && statusReasonRaw !== "approved_by_admin");
+    if (isRejectedDraft) {
+      rejectionReasonEl = El("div", { className: "mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900" }, [
+        El("p", { className: "font-bold" }, [El("i", { className: "fas fa-info-circle mr-1" }), document.createTextNode("A team member asked for a small change before this goes live:")]),
+        El("p", { className: "mt-1" }, statusReasonRaw)
+      ]);
+    }
+
+    var headerRow = El("div", { className: "flex items-center justify-between gap-4" }, [
       El("div", { className: "flex items-center gap-3 min-w-0" }, [titleEl, badgeEl]),
       El("div", { className: "flex items-center gap-2 flex-shrink-0" }, actionBtns)
     ]);
+
+    var children = [headerRow];
+    if (rejectionReasonEl) children.push(rejectionReasonEl);
+
+    var li = El("div", { className: "rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm" }, children);
     return li;
   }
 

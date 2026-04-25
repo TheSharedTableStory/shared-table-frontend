@@ -459,6 +459,45 @@
             </div><!-- /wizard-step-5 -->
 
         </form>
+
+        <!-- Post-publish success card. Replaces the form after a successful publish. -->
+        <section id="publish-success-card" class="hidden bg-white rounded-3xl shadow-soft-card border border-gray-100 p-8 sm:p-10">
+            <div class="flex flex-col items-center text-center">
+                <div id="publish-success-icon" class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
+                    <i class="fas fa-check text-2xl text-emerald-600"></i>
+                </div>
+                <h2 id="publish-success-heading" class="text-2xl font-bold heading-serif text-tsts-ink mb-2">Your experience is live!</h2>
+                <p id="publish-success-subheading" class="text-sm text-gray-600 max-w-md">Guests can now discover and book your experience on Explore.</p>
+            </div>
+
+            <div class="mt-8 mx-auto max-w-md rounded-2xl border border-gray-100 bg-gray-50 overflow-hidden">
+                <img id="publish-success-image" src="" alt="" class="w-full h-44 object-cover">
+                <div class="p-5">
+                    <h3 id="publish-success-title" class="text-lg font-bold text-tsts-ink mb-1">—</h3>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span id="publish-success-price" class="text-sm font-bold text-emerald-700">—</span>
+                        <span class="text-gray-300">·</span>
+                        <span id="publish-success-when" class="text-sm text-gray-600">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 flex flex-col sm:flex-row items-center gap-3 justify-center">
+                <a id="publish-success-view" href="#" target="_blank" rel="noopener" class="hidden w-full sm:w-auto inline-flex items-center justify-center gap-2 tsts-btn-primary py-3 px-6 rounded-xl font-bold transition shadow-lg">
+                    <i class="fas fa-external-link-alt"></i> View on Explore
+                </a>
+                <button type="button" id="publish-success-share" class="hidden w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition">
+                    <i class="fas fa-share-alt"></i> Share link
+                </button>
+                <button type="button" id="publish-success-edit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition">
+                    <i class="fas fa-pen"></i> Edit
+                </button>
+                <button type="button" id="publish-success-another" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition">
+                    <i class="fas fa-plus"></i> Publish another
+                </button>
+            </div>
+        </section>
+
         <section class="mt-10">
             <div id="faq-context-host-onboarding" class="hidden mb-8"></div>
             <div id="faq-context-dashboard-host" class="hidden"></div>
@@ -475,6 +514,6 @@
     <script src="js/faq-contextual.js?v=20260303a"></script>
     <script src="js/faq-init.js?v=20260224a"></script>
     <script src="https://js.stripe.com/v3"></script>
-    <script src="js/host.js?v=20260425c"></script>
+    <script src="js/host.js?v=20260425d"></script>
 </body>
 </html>
