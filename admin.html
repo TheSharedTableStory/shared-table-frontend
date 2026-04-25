@@ -168,6 +168,41 @@
 
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
             <div class="flex items-center justify-between gap-4 mb-4">
+              <h2 class="font-bold text-lg text-tsts-ink">Experience Approval Threshold</h2>
+              <button id="btn-refresh-approval-threshold" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
+            </div>
+            <p class="text-sm text-slate-600 mb-4">Free events ($0) always go to the moderation queue. Paid events priced below this threshold also queue for review. Paid events priced at or above this threshold publish straight to Explore.</p>
+            <div class="grid gap-4 md:grid-cols-[240px_auto] items-end">
+              <div>
+                <label for="experience-approval-threshold" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Threshold ($AUD, 0 to 1000)</label>
+                <input id="experience-approval-threshold" type="number" min="0" max="1000" step="1" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button id="btn-save-approval-threshold" type="button" class="inline-flex items-center justify-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90">Save Threshold</button>
+                <span id="approval-threshold-meta" class="text-xs text-slate-500"></span>
+              </div>
+            </div>
+          </section>
+
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+            <div class="flex items-center justify-between gap-4 mb-4">
+              <h2 class="font-bold text-lg text-tsts-ink">Email Diagnostics</h2>
+            </div>
+            <p class="text-sm text-slate-600 mb-4">Send a test email to verify Resend deliverability. Useful when a host reports they didn't receive a publish or approval confirmation.</p>
+            <div class="grid gap-4 md:grid-cols-[320px_auto] items-end">
+              <div>
+                <label for="diagnostic-test-email-to" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Recipient email</label>
+                <input id="diagnostic-test-email-to" type="email" placeholder="host@example.com" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button id="btn-send-test-email" type="button" class="inline-flex items-center justify-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90">Send Test Email</button>
+              </div>
+            </div>
+            <div id="diagnostic-test-email-result" class="hidden mt-4 rounded-xl border px-4 py-3 text-sm"></div>
+          </section>
+
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+            <div class="flex items-center justify-between gap-4 mb-4">
               <h2 class="font-bold text-lg text-tsts-ink">Marketing Emails</h2>
               <button id="btn-refresh-marketing-status" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh Status</button>
             </div>
@@ -621,6 +656,6 @@
   <script src="js/faq-renderer.js?v=20260303a"></script>
   <script src="js/faq-contextual.js?v=20260303a"></script>
   <script src="js/faq-init.js?v=20260224a"></script>
-  <script src="js/admin.js?v=20260317b"></script>
+  <script src="js/admin.js?v=20260425a"></script>
 </body>
 </html>

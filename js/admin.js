@@ -287,6 +287,50 @@ async function saveVerificationFeePolicy(feePercent) {
   return data;
 }
 
+async function __safeJsonForAdmin(res) {
+  try {
+    return await res.json();
+  } catch (err) {
+    var fallback = { ok: false, error: "json_parse_failed", message: "Bad JSON response", _parseError: String((err && err.message) || err) };
+    return fallback;
+  }
+}
+
+async function loadApprovalThreshold() {
+  const res = await adminFetch("/api/admin/platform-config/experience-approval-threshold", { method: "GET" });
+  const data = await __safeJsonForAdmin(res);
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to load approval threshold");
+  }
+  return data.data || {};
+}
+
+async function saveApprovalThreshold(thresholdDollars) {
+  const res = await adminFetch("/api/admin/platform-config/experience-approval-threshold", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ thresholdDollars: thresholdDollars })
+  });
+  const data = await __safeJsonForAdmin(res);
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to save approval threshold");
+  }
+  return data.data || {};
+}
+
+async function sendDiagnosticTestEmail(toAddr) {
+  const res = await adminFetch("/api/admin/diagnostics/send-test-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ to: toAddr })
+  });
+  const data = await __safeJsonForAdmin(res);
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to send test email");
+  }
+  return data.data || {};
+}
+
 function buildAuditQueryString(filters) {
   var f = (filters && typeof filters === "object") ? filters : {};
   var p = new URLSearchParams();
@@ -592,6 +636,32 @@ async function rejectVerifiedExperience(id) {
   return res.json().catch(() => ({}));
 }
 
+async function moderationApprove(id) {
+  const res = await adminFetch("/api/admin/experiences/" + encodeURIComponent(id) + "/moderation/approve", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+  const data = await __safeJsonForAdmin(res);
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to approve experience");
+  }
+  return data.data || {};
+}
+
+async function moderationReject(id, reason) {
+  const res = await adminFetch("/api/admin/experiences/" + encodeURIComponent(id) + "/moderation/reject", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason: String(reason || "") })
+  });
+  const data = await __safeJsonForAdmin(res);
+  if (!res.ok || !data || data.ok !== true) {
+    throw new Error((data && data.message) ? data.message : "Failed to reject experience");
+  }
+  return data.data || {};
+}
+
 async function deleteExperience(id, otpToken) {
   var fetchOpts = { method: "DELETE" };
   if (otpToken) {
@@ -892,6 +962,22 @@ function renderExperiences(exps) {
     if (window.tstsSafeImg) { window.tstsSafeImg(imgEl, imgUrl, "/assets/experience-default.jpg"); } else { imgEl.src = imgUrl; }
 
     var actions = [];
+
+    // Lifecycle moderation: Approve / Reject for events in PENDING_REVIEW.
+    if (statusValue === "PENDING_REVIEW") {
+      var modApproveBtn = El("button", {
+        className: "px-3 py-1 text-xs font-bold rounded border border-emerald-200 text-emerald-700 hover:bg-emerald-50",
+        textContent: "Approve"
+      });
+      modApproveBtn.addEventListener("click", function() { handleModerationApprove(id, title); });
+      var modRejectBtn = El("button", {
+        className: "px-3 py-1 text-xs font-bold rounded border border-amber-200 text-amber-700 hover:bg-amber-50",
+        textContent: "Reject"
+      });
+      modRejectBtn.addEventListener("click", function() { handleModerationReject(id, title); });
+      if (actions.length > 0) actions.push(El("span", { textContent: " " }));
+      actions.push(modApproveBtn, El("span", { textContent: " " }), modRejectBtn);
+    }
 
     // Pause (ACTIVE → PAUSED) via lifecycle API (requires reason, writes audit)
     // Resume (PAUSED → ACTIVE) via legacy toggle (non-destructive, no reason required)
@@ -2098,6 +2184,44 @@ async function handleRejectVerifiedExperience(id) {
   if (!confirmed) return;
   try { await rejectVerifiedExperience(id); await boot(); } catch (e) { window.tstsNotify(e.message || "Failed", "error"); }
 }
+
+async function handleModerationApprove(id, title) {
+  var titleStr = String(title || "this experience");
+  var confirmed = await window.tstsConfirm(
+    "Approve \"" + titleStr + "\"?\n\nThe host will be emailed and the listing will go live on Explore immediately.",
+    { confirmText: "Approve and publish" }
+  );
+  if (!confirmed) return;
+  try {
+    await moderationApprove(id);
+    window.tstsNotify("Approved. The host has been notified and the listing is live.", "success");
+    await loadExperiences().then(renderExperiences).catch(function () { return null; });
+  } catch (e) {
+    window.tstsNotify((e && e.message) || "Failed to approve.", "error");
+  }
+}
+
+async function handleModerationReject(id, title) {
+  var titleStr = String(title || "this experience");
+  var reason = await window.tstsPrompt(
+    "Tell the host what to fix on \"" + titleStr + "\". Be specific — they'll see this exact message.",
+    "",
+    { minLength: 10, maxLength: 1000, placeholder: "e.g. Photo doesn't match the listing description. Please use a clearer cover photo of your venue." }
+  );
+  reason = String(reason || "").trim();
+  if (!reason) return;
+  if (reason.length < 10) {
+    window.tstsNotify("Please give the host at least a sentence about what to fix.", "error");
+    return;
+  }
+  try {
+    await moderationReject(id, reason);
+    window.tstsNotify("Returned to host as Draft. The host has been emailed with your note.", "success");
+    await loadExperiences().then(renderExperiences).catch(function () { return null; });
+  } catch (e) {
+    window.tstsNotify((e && e.message) || "Failed to reject.", "error");
+  }
+}
 async function handleDeleteUser(id) {
   var confirmed = await window.tstsConfirm("Delete this user?", { destructive: true, confirmText: "Delete" });
   if (!confirmed) return;
@@ -2400,13 +2524,24 @@ function _adminTabLoadData(tabName, token) {
       loadVerificationFeePolicy().catch(function () { return null; }),
       loadMarketingEmailStatus().catch(function () { return null; }),
       loadTierPolicy().catch(function () { return null; }),
-      loadRefundWindowPolicy().catch(function () { return null; })
+      loadRefundWindowPolicy().catch(function () { return null; }),
+      loadApprovalThreshold().catch(function () { return null; })
     ]).then(function (results) {
       if (isStale()) return;
       if (results[0]) renderVerificationPolicy(results[0]);
       if (results[1]) renderMarketingEmailStatus(results[1]);
       if (results[2]) renderTierPolicy(results[2]);
       if (results[3]) renderRefundWindowPolicy(results[3]);
+      if (results[4]) {
+        var ti = document.getElementById("experience-approval-threshold");
+        if (ti && Number.isFinite(Number(results[4].thresholdDollars))) ti.value = String(results[4].thresholdDollars);
+        var meta = document.getElementById("approval-threshold-meta");
+        if (meta) {
+          var when = results[4].updatedAt ? new Date(results[4].updatedAt).toLocaleString() : "";
+          var by = results[4].updatedByAdminId ? (" · by " + String(results[4].updatedByAdminId).slice(0, 6) + "…") : "";
+          meta.textContent = when ? ("Last updated " + when + by) : "";
+        }
+      }
     }).catch(function () { safeNotify("Some pricing data failed to load."); });
   }
   if (tabName === 'verification') {
@@ -3110,6 +3245,89 @@ function wireAdminEvents() {
   if (btnMarketingEnable) btnMarketingEnable.addEventListener("click", () => setMarketingEmailEnabled(true));
   if (btnMarketingPause) btnMarketingPause.addEventListener("click", () => setMarketingEmailEnabled(false));
   if (saveVerificationPolicyBtn) saveVerificationPolicyBtn.addEventListener("click", () => handleSaveVerificationPolicy());
+
+  // Approval Threshold (Pricing & Policies tab)
+  var approvalThresholdInput = $("experience-approval-threshold");
+  var approvalThresholdMeta = $("approval-threshold-meta");
+  var refreshApprovalThresholdBtn = $("btn-refresh-approval-threshold");
+  var saveApprovalThresholdBtn = $("btn-save-approval-threshold");
+  function renderApprovalThresholdMeta(d) {
+    if (!approvalThresholdMeta) return;
+    var when = d && d.updatedAt ? new Date(d.updatedAt).toLocaleString() : "";
+    var by = d && d.updatedByAdminId ? (" · by " + String(d.updatedByAdminId).slice(0, 6) + "…") : "";
+    approvalThresholdMeta.textContent = when ? ("Last updated " + when + by) : "";
+  }
+  function refreshApprovalThreshold() {
+    return loadApprovalThreshold().then(function (d) {
+      if (approvalThresholdInput && d && Number.isFinite(Number(d.thresholdDollars))) {
+        approvalThresholdInput.value = String(d.thresholdDollars);
+      }
+      renderApprovalThresholdMeta(d);
+    });
+  }
+  if (refreshApprovalThresholdBtn) {
+    refreshApprovalThresholdBtn.addEventListener("click", function () {
+      refreshApprovalThreshold().catch(function (e) { window.tstsNotify((e && e.message) || "Failed to load approval threshold.", "error"); });
+    });
+  }
+  if (saveApprovalThresholdBtn) {
+    saveApprovalThresholdBtn.addEventListener("click", function () {
+      var v = Number(approvalThresholdInput && approvalThresholdInput.value);
+      if (!Number.isFinite(v) || v < 0 || v > 1000) {
+        window.tstsNotify("Threshold must be a whole or decimal number between 0 and 1000.", "error");
+        return;
+      }
+      saveApprovalThreshold(v).then(function (d) {
+        renderApprovalThresholdMeta(d);
+        window.tstsNotify("Approval threshold saved.", "success");
+      }).catch(function (e) {
+        window.tstsNotify((e && e.message) || "Failed to save approval threshold.", "error");
+      });
+    });
+  }
+
+  // Email Diagnostics
+  var diagToInput = $("diagnostic-test-email-to");
+  var sendTestEmailBtn = $("btn-send-test-email");
+  var diagResultEl = $("diagnostic-test-email-result");
+  function renderDiagnosticResult(payload, isError) {
+    if (!diagResultEl) return;
+    diagResultEl.classList.remove("hidden", "border-red-200", "bg-red-50", "text-red-700", "border-emerald-200", "bg-emerald-50", "text-emerald-700");
+    if (isError) {
+      diagResultEl.classList.add("border-red-200", "bg-red-50", "text-red-700");
+    } else {
+      diagResultEl.classList.add("border-emerald-200", "bg-emerald-50", "text-emerald-700");
+    }
+    diagResultEl.textContent = "";
+    var lines = [];
+    if (payload && typeof payload === "object") {
+      if (payload.delivered === true) lines.push("✓ Delivered to " + String(payload.to || ""));
+      else if (payload.delivered === false) lines.push("✗ Not delivered to " + String(payload.to || ""));
+      if (payload.providerMessageId) lines.push("Provider message ID: " + String(payload.providerMessageId));
+      if (payload.error) lines.push("Error: " + String(payload.error));
+      if (payload.sentAt) lines.push("Server time: " + new Date(payload.sentAt).toLocaleString());
+    } else if (typeof payload === "string") {
+      lines.push(payload);
+    }
+    diagResultEl.textContent = lines.join("  ·  ");
+  }
+  if (sendTestEmailBtn) {
+    sendTestEmailBtn.addEventListener("click", function () {
+      var to = String((diagToInput && diagToInput.value) || "").trim();
+      if (!to || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) {
+        window.tstsNotify("Enter a valid email address to test.", "error");
+        return;
+      }
+      sendTestEmailBtn.disabled = true;
+      sendDiagnosticTestEmail(to).then(function (d) {
+        renderDiagnosticResult(d, !d.delivered);
+      }).catch(function (e) {
+        renderDiagnosticResult((e && e.message) || "Send failed", true);
+      }).finally(function () {
+        sendTestEmailBtn.disabled = false;
+      });
+    });
+  }
   if (refreshHostVerifications) refreshHostVerifications.addEventListener("click", () => loadHostVerifications("all").then(renderHostVerifications).catch(function () { window.tstsNotify("Failed to refresh host verifications.", "error"); renderHostVerifications({ data: { items: [] } }); }));
   if (refreshEventVerifications) refreshEventVerifications.addEventListener("click", () => loadEventVerifications("all").then(renderEventVerifications).catch(function () { window.tstsNotify("Failed to refresh event verifications.", "error"); renderEventVerifications({ data: { items: [] } }); }));
   if (refreshShortfallMonitor) refreshShortfallMonitor.addEventListener("click", () => refreshShortfallViews().catch(function () { window.tstsNotify("Failed to refresh shortfall monitor.", "error"); }));
