@@ -1301,34 +1301,104 @@
     return data;
   }
 
+  // Client-side compression for files > 2 MB. Resizes longest side to 1920px and
+  // re-encodes to JPEG q80 — drops a 6 MB iPhone HEIC down to ~400 KB while
+  // staying sharp on mobile + desktop. Returns the original file if compression
+  // is unsupported or if the file is already small enough.
+  function compressImageIfNeeded(file) {
+    return new Promise(function (resolve) {
+      var twoMB = 2 * 1024 * 1024;
+      if (!file || file.size <= twoMB) return resolve(file);
+      if (typeof FileReader !== "function" || typeof Image !== "function" || !document.createElement("canvas").toBlob) {
+        return resolve(file);
+      }
+      var reader = new FileReader();
+      reader.onerror = function () { resolve(file); };
+      reader.onload = function (e) {
+        var img = new Image();
+        img.onerror = function () { resolve(file); };
+        img.onload = function () {
+          var maxSide = 1920;
+          var w = img.width || maxSide;
+          var h = img.height || maxSide;
+          var scale = Math.min(1, maxSide / Math.max(w, h));
+          var cw = Math.max(1, Math.round(w * scale));
+          var ch = Math.max(1, Math.round(h * scale));
+          var canvas = document.createElement("canvas");
+          canvas.width = cw; canvas.height = ch;
+          var ctx = canvas.getContext("2d");
+          if (!ctx) return resolve(file);
+          ctx.drawImage(img, 0, 0, cw, ch);
+          canvas.toBlob(function (blob) {
+            if (!blob || blob.size >= file.size) return resolve(file);
+            var renamed = new File([blob], (file.name || "photo").replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+            resolve(renamed);
+          }, "image/jpeg", 0.8);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function setUploadProgress(percent, text) {
+    var wrap = document.getElementById("upload-progress-wrap");
+    var bar = document.getElementById("upload-progress-bar");
+    var label = document.getElementById("upload-progress-text");
+    if (!wrap) return;
+    if (percent === null) { wrap.classList.add("hidden"); return; }
+    wrap.classList.remove("hidden");
+    if (bar) bar.style.width = Math.max(0, Math.min(100, Math.round(percent))) + "%";
+    if (label) label.textContent = text || "Uploading…";
+  }
+
   async function uploadImage(file) {
     if (!CLOUDINARY_URL) throw new Error("upload_not_configured");
 
-    const sig = await getSignature();
+    var compressed = await compressImageIfNeeded(file);
 
-    return await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
+    var sig = await getSignature();
+
+    return await new Promise(function (resolve, reject) {
+      var xhr = new XMLHttpRequest();
       xhr.open("POST", CLOUDINARY_URL, true);
-      xhr.onload = () => {
+      if (xhr.upload && typeof xhr.upload.addEventListener === "function") {
+        xhr.upload.addEventListener("progress", function (ev) {
+          if (ev && ev.lengthComputable && ev.total > 0) {
+            setUploadProgress((ev.loaded / ev.total) * 100, "Uploading photo…");
+          }
+        });
+      }
+      xhr.onload = function () {
+        setUploadProgress(null);
         try {
-          const r = JSON.parse(xhr.responseText || "{}");
-          const url = r.secure_url || r.url || "";
+          var r = JSON.parse(xhr.responseText || "{}");
+          var url = r.secure_url || r.url || "";
           if (!url) return reject(new Error("upload_no_url"));
           resolve(url);
         } catch (e) {
           reject(new Error("upload_parse_error"));
         }
       };
-      xhr.onerror = () => reject(new Error("upload_network_error"));
+      xhr.onerror = function () { setUploadProgress(null); reject(new Error("upload_network_error")); };
+      xhr.onabort = function () { setUploadProgress(null); reject(new Error("upload_aborted")); };
 
-      const fd = new FormData();
-      fd.append("file", file);
+      var fd = new FormData();
+      fd.append("file", compressed);
       fd.append("timestamp", String(sig.timestamp));
       fd.append("signature", String(sig.signature));
       fd.append("api_key", String(sig.apiKey));
       fd.append("folder", String(sig.folder));
+      setUploadProgress(0, "Uploading photo…");
       xhr.send(fd);
     });
+  }
+
+  function formatFileSize(bytes) {
+    if (!Number.isFinite(bytes) || bytes <= 0) return "";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   }
 
   async function loadEditMode() {
@@ -1410,22 +1480,51 @@
     } catch (_) {}
   }
 
+  function clearImageInput() {
+    if (!imageInput) return;
+    if (typeof imageInput.value === "string") {
+      try { imageInput.value = ""; }
+      catch (e) { /* IE-era fallback: replace the node */
+        var clone = imageInput.cloneNode(true);
+        imageInput.parentNode && imageInput.parentNode.replaceChild(clone, imageInput);
+      }
+    }
+  }
+
   if (imageInput) {
     imageInput.addEventListener("change", function () {
       hideNotice();
+      const f = imageInput.files && imageInput.files[0];
+      if (!f) return;
+      var maxBytes = 10 * 1024 * 1024;
+      if (f.size > maxBytes) {
+        showNotice("error", "That photo is over 10 MB. Please choose a smaller file.");
+        clearImageInput();
+        return;
+      }
+      if (f.type && f.type.indexOf("image/") !== 0) {
+        showNotice("error", "That doesn't look like an image file. Try a JPG, PNG, or WebP.");
+        clearImageInput();
+        return;
+      }
       try {
-        const f = imageInput.files && imageInput.files[0];
-        if (!f) return;
         const localUrl = URL.createObjectURL(f);
         setPreview(localUrl);
-        // Show a local file preview via FileReader
-        var reader = new FileReader();
-        reader.onload = function (e) {
-          var previewImg = document.getElementById("upload-preview-img");
-          if (previewImg) previewImg.src = e.target.result;
-        };
-        reader.readAsDataURL(f);
-      } catch (_) {}
+      } catch (e) {
+        // setPreview is best-effort; the FileReader fallback below still populates the thumbnail
+      }
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var previewImg = document.getElementById("upload-preview-img");
+        if (previewImg) previewImg.src = e.target.result;
+      };
+      reader.onerror = function () { /* thumbnail is best-effort, submit-time validation still gates */ };
+      reader.readAsDataURL(f);
+      var meta = document.getElementById("upload-preview-meta");
+      if (meta) {
+        var sizeStr = formatFileSize(f.size);
+        meta.textContent = String(f.name || "photo") + (sizeStr ? " · " + sizeStr : "");
+      }
     });
   }
 
@@ -1625,34 +1724,39 @@
           }
         }
 
-        // ISS-018: nudge when publishing without a cover photo
+        // Cover photo is mandatory. Real hosts (3 of 3 of one host's events) ended up
+        // with empty images because the previous "Publish Anyway" bypass let them
+        // proceed silently. Gate the publish hard.
         const hasImage = (imageInput && imageInput.files && imageInput.files.length > 0) || !!existingImageUrl;
         if (!hasImage) {
-          const proceed = await window.tstsConfirm(
-            "No cover photo added. Experiences with a photo get significantly more attention — would you still like to publish?",
-            { confirmText: "Publish Anyway", cancelText: "Add a Photo" }
-          );
-          if (!proceed) {
-            if (submitBtn) submitBtn.disabled = false;
-            if (imageInput) imageInput.click();
-            return;
-          }
+          showNotice("error", "Please add a cover photo before publishing — it's required so guests can see what your experience looks like.");
+          if (submitBtn) submitBtn.disabled = false;
+          if (imageInput) imageInput.click();
+          return;
         }
 
         let imageUrl = existingImageUrl || "";
 
-        // If user selected a new image, try upload. If upload fails, do NOT break the entire flow.
+        // If user selected a new image, upload it. Hard-fail the publish on upload error
+        // so we never persist an experience with empty images. The previous fallback
+        // saved the experience with imageUrl="" and showed only an error toast.
         if (imageInput && imageInput.files && imageInput.files.length > 0) {
           const file = imageInput.files[0];
           try {
-            showNotice("info", "Uploading image…");
+            showNotice("info", "Uploading photo…");
             imageUrl = await uploadImage(file);
-            showNotice("success", "Image uploaded.");
+            showNotice("success", "Photo uploaded.");
           } catch (err) {
-            // Accept-and-move-on behavior: keep existing image, allow save to proceed.
-            showNotice("error", "We couldn't upload your image right now, but your experience has been saved. Try uploading the image again in a moment.");
-            imageUrl = existingImageUrl || "";
+            showNotice("error", "Photo upload failed. Please check your connection and try again — your experience has not been published yet.");
+            if (submitBtn) submitBtn.disabled = false;
+            return;
           }
+        }
+        if (!imageUrl) {
+          showNotice("error", "Please add a cover photo before publishing.");
+          if (submitBtn) submitBtn.disabled = false;
+          if (imageInput) imageInput.click();
+          return;
         }
 
         const body = {

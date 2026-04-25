@@ -330,10 +330,18 @@
                     </div>
                     <div id="upload-preview" class="hidden">
                         <img id="upload-preview-img" class="mx-auto max-h-32 rounded-lg object-cover" alt="Upload preview">
-                        <p class="text-sm text-green-600 font-bold mt-2"><i class="fas fa-check"></i> Image Selected</p>
+                        <p class="text-sm text-green-600 font-bold mt-2"><i class="fas fa-check"></i> Photo attached</p>
+                        <p id="upload-preview-meta" class="text-xs text-gray-600 mt-1"></p>
+                        <p class="text-xs text-gray-500 mt-2">Click anywhere on this box to choose a different photo.</p>
+                    </div>
+                    <div id="upload-progress-wrap" class="hidden mt-3">
+                        <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                            <div id="upload-progress-bar" class="h-full w-0 rounded-full bg-orange-500 transition-all duration-200"></div>
+                        </div>
+                        <p id="upload-progress-text" class="text-xs text-gray-500 mt-1">Uploading…</p>
                     </div>
                 </div>
-                <p class="text-xs text-gray-500 mt-1">Max 5 MB. JPG, PNG, or WebP recommended.</p>
+                <p class="text-xs text-gray-500 mt-1">A cover photo is required. Max 10 MB. JPG, PNG, or WebP. Photos larger than 2 MB are auto-compressed before upload to save your data.</p>
             </fieldset>
 
             <section class="rounded-3xl border border-gray-200 bg-gray-50 p-4 space-y-4">
@@ -467,6 +475,6 @@
     <script src="js/faq-contextual.js?v=20260303a"></script>
     <script src="js/faq-init.js?v=20260224a"></script>
     <script src="https://js.stripe.com/v3"></script>
-    <script src="js/host.js?v=20260425b"></script>
+    <script src="js/host.js?v=20260425c"></script>
 </body>
 </html>
