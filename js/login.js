@@ -435,6 +435,113 @@ async function redirectIfAlreadyAuthed() {
 }
 
 // --- 4. INIT ---
+// ── Apple Sign-In (App Store guideline 4.8 parity with mobile) ─────────
+// Uses Apple JS SDK if loaded (https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js)
+// Backend: POST /api/auth/apple { idToken, code, name, email, termsAccepted? }
+// If the SDK is not loaded yet (Apple Developer not configured), the button
+// shows a friendly message rather than breaking the page.
+
+var __appleSignInBusy = false;
+
+function __initAppleSignIn() {
+  var btnLogin  = document.getElementById("btn-apple-login");
+  var btnSignup = document.getElementById("btn-apple-signup");
+  if (btnLogin)  btnLogin.addEventListener("click",  function () { __triggerAppleSignIn(false); });
+  if (btnSignup) btnSignup.addEventListener("click", function () { __triggerAppleSignIn(true); });
+}
+
+function __triggerAppleSignIn(isSignup) {
+  if (__appleSignInBusy) return;
+
+  if (isSignup) {
+    var termsEl = document.getElementById("signup-terms");
+    if (termsEl && !termsEl.checked) {
+      showModal("Terms Required", "Please accept the Terms of Service before continuing with Apple.", "error");
+      return;
+    }
+  }
+
+  // Apple Sign-In requires the Apple Developer subscription + a Service ID + an
+  // authorised redirect URI. The mobile app already supports it via expo-apple-authentication.
+  // On the website, until the Service ID is configured, surface a clear note
+  // instead of failing silently.
+  if (typeof AppleID === "undefined" || !AppleID.auth) {
+    showModal(
+      "Sign in with Apple",
+      "Apple Sign-In on the web is being set up. For now, please continue with Google or your email — both connect to the same account.",
+      "info"
+    );
+    return;
+  }
+
+  __appleSignInBusy = true;
+  var btnLogin  = document.getElementById("btn-apple-login");
+  var btnSignup = document.getElementById("btn-apple-signup");
+  if (btnLogin)  { btnLogin.disabled = true;  window.tstsText(btnLogin, "Signing in\u2026"); }
+  if (btnSignup) { btnSignup.disabled = true; window.tstsText(btnSignup, "Signing in\u2026"); }
+
+  AppleID.auth.signIn().then(function (response) {
+    return __handleAppleCredential(response, isSignup);
+  }).catch(function () {
+    showModal("Apple Sign-In", "Apple sign-in was cancelled or failed. Please try again.", "error");
+    __appleSignInBusy = false;
+    if (btnLogin)  { btnLogin.disabled = false;  window.tstsText(btnLogin, "Continue with Apple"); }
+    if (btnSignup) { btnSignup.disabled = false; window.tstsText(btnSignup, "Continue with Apple"); }
+  });
+}
+
+async function __handleAppleCredential(response, isSignup) {
+  var idToken = response && response.authorization && response.authorization.id_token;
+  var code    = response && response.authorization && response.authorization.code;
+  var name    = (response && response.user && response.user.name) || null;
+  var email   = (response && response.user && response.user.email) || null;
+  if (!idToken || !code) {
+    showModal("Apple Sign-In", "Apple sign-in failed. Please try again.", "error");
+    __appleSignInBusy = false;
+    return;
+  }
+
+  var termsAccepted = false;
+  if (isSignup) {
+    var termsEl = document.getElementById("signup-terms");
+    termsAccepted = !!(termsEl && termsEl.checked);
+  }
+
+  try {
+    var res = await window.authFetch("/api/auth/apple", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken: idToken, code: code, name: name, email: email, termsAccepted: termsAccepted }),
+    });
+    var data = null;
+    try { data = await res.json(); } catch (e) {
+      showModal("Apple Sign-In", "Invalid server response. Please try again.", "error");
+      return;
+    }
+    if (!res.ok) {
+      var errCode = (data && data.error) ? String(data.error) : "";
+      var errMsg = "Apple sign-in failed. Please try again.";
+      if (errCode === "APPLE_ACCOUNT_CONFLICT") errMsg = "This email is linked to a different Apple account.";
+      else if (errCode === "TERMS_REQUIRED")    errMsg = "Please accept the Terms of Service to continue.";
+      else if (errCode === "ACCOUNT_DISABLED")  errMsg = "This account has been disabled. Please contact support.";
+      else if (data && data.message)            errMsg = String(data.message);
+      showModal("Apple Sign-In", errMsg, "error");
+      return;
+    }
+    var payload = (window.tstsUnwrap && typeof window.tstsUnwrap === "function") ? window.tstsUnwrap(data) : (data && data.data !== undefined ? data.data : data);
+    var user = (payload && payload.user) ? payload.user : null;
+    var csrfToken = (payload && (payload.csrfToken || payload.token)) ? String(payload.csrfToken || payload.token) : "";
+    if (window.setAuth) window.setAuth(csrfToken, user);
+    try { if (window.tstsMarkLoginOk) window.tstsMarkLoginOk(); else if (window.sessionStorage) window.sessionStorage.setItem("tsts_login_ok_ts", String(Date.now())); } catch (e) {}
+    var isAdmin = !!(user && (user.isAdmin === true || String(user.role || "").toLowerCase() === "admin"));
+    window.location.href = isAdmin ? "/admin.html" : "/index.html";
+  } catch (err) {
+    showModal("Apple Sign-In", "Network error. Please try again.", "error");
+  } finally {
+    __appleSignInBusy = false;
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
     const redirected = await redirectIfAlreadyAuthed();
     if (redirected) return;
@@ -472,8 +579,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         toggleAuth("login");
     }
 
-    // Initialize Google Sign-In
+    // Initialize Google + Apple Sign-In
     __initGoogleSignIn();
+    __initAppleSignIn();
 
     const urlReason = new URLSearchParams(window.location.search).get("reason");
     if (urlReason === "session_expired") {
