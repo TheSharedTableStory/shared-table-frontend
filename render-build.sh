@@ -44,6 +44,7 @@ PUBLIC_FILES=(
   "about.html"
   "admin.html"
   "bookmarks.html"
+  "check-in.html"
   "connections.html"
   "cookie-policy.html"
   "experience.html"
