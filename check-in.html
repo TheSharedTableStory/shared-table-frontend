@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.thesharedtablestory.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <title>Check-In — The Shared Table Story</title>
+  <link rel="icon" type="image/png" href="assets/icon.png">
+  <link rel="stylesheet" href="css/tailwind.css?v=20260428a">
+  <link rel="stylesheet" href="css/design-system.css?v=20260428a">
+  <link rel="stylesheet" href="css/fonts.css?v=20260428a">
+</head>
+<body class="bg-tsts-cream text-tsts-ink min-h-screen">
+  <nav id="navbar-placeholder" role="navigation"></nav>
+
+  <main class="max-w-xl mx-auto px-4 py-12">
+    <div class="bg-white rounded-3xl shadow-soft-card border border-gray-100 p-8 space-y-6">
+      <header>
+        <h1 class="text-3xl font-bold heading-serif text-tsts-ink">Check in your guest</h1>
+        <p class="text-sm text-gray-500 mt-2">
+          Ask your guest for the 6-digit entry code from their booking confirmation. Enter it below to mark them as checked in.
+        </p>
+      </header>
+
+      <section id="cin-experience-picker" class="space-y-3 hidden">
+        <label for="cin-experience" class="block text-sm font-semibold text-tsts-ink">Experience</label>
+        <select id="cin-experience" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition">
+          <option value="">Select an experience…</option>
+        </select>
+
+        <label for="cin-date" class="block text-sm font-semibold text-tsts-ink">Date</label>
+        <input id="cin-date" type="date" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" />
+      </section>
+
+      <section id="cin-otp-section" class="space-y-3">
+        <label for="cin-otp" class="block text-sm font-semibold text-tsts-ink">Entry code</label>
+        <input id="cin-otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition text-2xl font-mono tracking-widest text-center" placeholder="••••••" autocomplete="one-time-code" />
+        <p id="cin-error" class="text-sm text-red-600 hidden" role="alert"></p>
+      </section>
+
+      <button id="cin-submit" type="button" class="w-full py-3 tsts-btn-primary font-bold rounded-xl transition transform active:scale-95 shadow-lg disabled:opacity-50">
+        Check in
+      </button>
+
+      <div id="cin-success" class="hidden bg-green-50 border border-green-200 rounded-xl p-4">
+        <p class="text-sm font-semibold text-green-800">Checked in</p>
+        <p id="cin-success-detail" class="text-sm text-green-700 mt-1"></p>
+      </div>
+
+      <a href="/host.html" class="block text-center text-sm text-orange-600 hover:underline font-bold">Back to hosting</a>
+    </div>
+  </main>
+
+  <script src="js/runtime-config.js?v=20260428a"></script>
+  <script src="js/common.js?v=20260428a"></script>
+  <script src="js/check-in.js?v=20260428a"></script>
+</body>
+</html>
