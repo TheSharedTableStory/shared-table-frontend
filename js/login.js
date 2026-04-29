@@ -348,6 +348,42 @@ async function handleLogin(e) {
 }
 
 // --- 3. SIGNUP LOGIC ---
+// Live password checklist — flips each rule's dot to a green check as the
+// user types. Rules mirror backend __passwordPolicyOk exactly.
+function tstsPasswordRulesEval(pw) {
+    return {
+        length: pw.length >= 8 && pw.length <= 24,
+        lower:  /[a-z]/.test(pw),
+        upper:  /[A-Z]/.test(pw),
+        number: /[0-9]/.test(pw),
+    };
+}
+function tstsBindSignupPasswordRules() {
+    var input = document.getElementById("signup-password");
+    var list = document.getElementById("signup-password-rules");
+    if (!input || !list) return;
+    function paint() {
+        var s = tstsPasswordRulesEval(String(input.value || ""));
+        var rows = list.querySelectorAll("li[data-rule]");
+        rows.forEach(function (li) {
+            var rule = li.getAttribute("data-rule");
+            var ok = !!s[rule];
+            li.classList.toggle("text-emerald-600", ok);
+            li.classList.toggle("text-slate-500", !ok);
+            var dot = li.querySelector(".rule-dot");
+            if (dot) {
+                dot.classList.toggle("bg-emerald-500", ok);
+                dot.classList.toggle("border-emerald-500", ok);
+                dot.classList.toggle("border-slate-300", !ok);
+            }
+        });
+    }
+    input.addEventListener("input", paint);
+    paint();
+}
+// Bind once DOM is ready (login.html already loads this script with defer).
+document.addEventListener("DOMContentLoaded", tstsBindSignupPasswordRules);
+
 async function handleSignup(e) {
     e.preventDefault();
     const name = document.getElementById("signup-name").value;
@@ -361,8 +397,23 @@ async function handleSignup(e) {
         return;
     }
 
-    if (password.length < 8) {
-        showModal("Password Too Short", "Password must be at least 8 characters long.", "error");
+    // Mirror backend rules client-side so the user can't get rejected by the
+    // server after completing the form.
+    var pwRules = tstsPasswordRulesEval(password);
+    if (!pwRules.length) {
+        showModal("Password requirements", "Password must be 8–24 characters.", "error");
+        return;
+    }
+    if (!pwRules.lower) {
+        showModal("Password requirements", "Password must include a lowercase letter.", "error");
+        return;
+    }
+    if (!pwRules.upper) {
+        showModal("Password requirements", "Password must include an uppercase letter.", "error");
+        return;
+    }
+    if (!pwRules.number) {
+        showModal("Password requirements", "Password must include a number.", "error");
         return;
     }
 

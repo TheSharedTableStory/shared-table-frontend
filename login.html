@@ -91,7 +91,24 @@
         <label for="signup-password" class="sr-only">Create Password</label>
         <div>
           <input id="signup-password" type="password" maxlength="24" autocomplete="new-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Create Password" minlength="8" required />
-          <p class="text-xs text-slate-500 mt-1 ml-1">Minimum 8 characters</p>
+          <ul id="signup-password-rules" class="mt-2 ml-1 space-y-1 text-xs" aria-label="Password requirements">
+            <li data-rule="length" class="flex items-center gap-2 text-slate-500">
+              <span class="rule-dot inline-block w-3 h-3 rounded-full border border-slate-300"></span>
+              <span>8–24 characters</span>
+            </li>
+            <li data-rule="lower" class="flex items-center gap-2 text-slate-500">
+              <span class="rule-dot inline-block w-3 h-3 rounded-full border border-slate-300"></span>
+              <span>One lowercase letter</span>
+            </li>
+            <li data-rule="upper" class="flex items-center gap-2 text-slate-500">
+              <span class="rule-dot inline-block w-3 h-3 rounded-full border border-slate-300"></span>
+              <span>One uppercase letter</span>
+            </li>
+            <li data-rule="number" class="flex items-center gap-2 text-slate-500">
+              <span class="rule-dot inline-block w-3 h-3 rounded-full border border-slate-300"></span>
+              <span>One number</span>
+            </li>
+          </ul>
         </div>
         <label for="signup-confirm-password" class="sr-only">Confirm Password</label>
         <input id="signup-confirm-password" type="password" maxlength="24" autocomplete="new-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Confirm Password" minlength="8" required />
@@ -132,6 +149,6 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="js/runtime-config.js?v=20260429a" defer></script>
   <script src="js/common.js?v=20260316c" defer></script>
-  <script src="js/login.js?v=20260412a" defer></script>
+  <script src="js/login.js?v=20260429b" defer></script>
 </body>
 </html>
