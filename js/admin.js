@@ -2476,7 +2476,7 @@ function switchTab(tabName) {
   _adminTabToken++;
   var myToken = _adminTabToken;
   _currentAdminTab = tabName;
-  const views = ['dashboard', 'listings', 'pricing', 'verification', 'action-items', 'users', 'coupons', 'moderation', 'private-requests', 'incidents', 'fees-charges', 'audit'];
+  const views = ['dashboard', 'listings', 'pricing', 'verification', 'action-items', 'users', 'coupons', 'moderation', 'private-requests', 'incidents', 'fees-charges', 'audit', 'legal'];
   const activeClass = "admin-sidebar-btn w-full text-left px-4 py-2.5 font-bold text-tsts-ink bg-orange-50 border-l-2 border-tsts-clay";
   const inactiveClass = "admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent";
 
@@ -2579,6 +2579,11 @@ function _adminTabLoadData(tabName, token) {
   }
   if (tabName === 'private-requests') {
     loadPrivateBookingRequests().then(function (d) { if (!isStale()) renderPrivateRequests(d); }).catch(function () { safeNotify("Failed to load private requests."); if (!isStale()) renderPrivateRequests([]); });
+  }
+  if (tabName === 'legal') {
+    wireLegalAdminEvents();
+    __legalSetType(__legalCurrentType || "privacy");
+    loadPublishedIntoEditor();
   }
   if (tabName === 'dashboard') {
     Promise.all([
@@ -3173,6 +3178,281 @@ async function handlePublishRefund() {
 
 let __adminWired = false;
 
+// ─── LEGAL POLICIES ADMIN ──────────────────────────────────────────────────
+let __legalCurrentType = "privacy";
+
+function __legalEscapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, function (c) {
+    return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
+  });
+}
+
+// Tiny safe Markdown renderer — supports headings, bold, italic, lists, links, paragraphs, hr.
+function __legalMarkdownToHtml(md) {
+  if (!md) return "";
+  const lines = String(md).split(/\r?\n/);
+  const out = [];
+  let para = [];
+  let inList = false;
+  let listType = null;
+
+  function flushPara() {
+    if (para.length === 0) return;
+    let html = para.join(" ").trim();
+    html = __legalEscapeHtml(html);
+    html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    html = html.replace(/\*(.+?)\*/g, "<em>$1</em>");
+    html = html.replace(/`([^`]+?)`/g, "<code>$1</code>");
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(m, text, href) {
+      const safeHref = /^https?:\/\//i.test(href) ? href : "#";
+      return '<a href="' + __legalEscapeHtml(safeHref) + '" target="_blank" rel="noopener">' + text + "</a>";
+    });
+    out.push("<p>" + html + "</p>");
+    para = [];
+  }
+
+  function closeList() {
+    if (inList) {
+      out.push(listType === "ol" ? "</ol>" : "</ul>");
+      inList = false;
+      listType = null;
+    }
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const line = raw.trim();
+    if (line === "") { flushPara(); closeList(); continue; }
+    if (line === "---") { flushPara(); closeList(); out.push("<hr>"); continue; }
+    let m;
+    if ((m = line.match(/^(#{1,6})\s+(.+)$/))) {
+      flushPara(); closeList();
+      const lvl = m[1].length;
+      const text = __legalEscapeHtml(m[2]).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      out.push("<h" + lvl + ">" + text + "</h" + lvl + ">");
+      continue;
+    }
+    if ((m = line.match(/^[-*]\s+(.+)$/))) {
+      flushPara();
+      if (!inList || listType !== "ul") { closeList(); out.push("<ul>"); inList = true; listType = "ul"; }
+      let item = __legalEscapeHtml(m[1]);
+      item = item.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      item = item.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(m2, t, h){ const sh=/^https?:\/\//i.test(h)?h:"#"; return '<a href="'+__legalEscapeHtml(sh)+'" target="_blank" rel="noopener">'+t+"</a>"; });
+      out.push("<li>" + item + "</li>");
+      continue;
+    }
+    if ((m = line.match(/^\d+\.\s+(.+)$/))) {
+      flushPara();
+      if (!inList || listType !== "ol") { closeList(); out.push("<ol>"); inList = true; listType = "ol"; }
+      let item = __legalEscapeHtml(m[1]);
+      item = item.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      out.push("<li>" + item + "</li>");
+      continue;
+    }
+    para.push(line);
+  }
+  flushPara();
+  closeList();
+  return out.join("\n");
+}
+window.__tstsRenderLegalMarkdown = __legalMarkdownToHtml;
+
+function __legalSetType(type) {
+  __legalCurrentType = (type === "terms") ? "terms" : "privacy";
+  const pBtn = document.getElementById("legal-type-privacy");
+  const tBtn = document.getElementById("legal-type-terms");
+  const active = "legal-type-btn px-5 py-2 rounded-2xl bg-tsts-ink text-white font-semibold text-sm";
+  const idle = "legal-type-btn px-5 py-2 rounded-2xl bg-white border border-slate-200 text-slate-600 font-semibold text-sm";
+  if (pBtn) pBtn.className = (__legalCurrentType === "privacy") ? active : idle;
+  if (tBtn) tBtn.className = (__legalCurrentType === "terms") ? active : idle;
+  loadLegalCurrent();
+  loadLegalHistory();
+  const note = document.getElementById("legal-change-note");
+  if (note) note.value = "";
+  const status = document.getElementById("legal-status-msg");
+  if (status) { status.textContent = ""; status.className = "mt-3 text-sm"; }
+}
+
+async function loadLegalCurrent() {
+  try {
+    const path = "/api/legal/" + __legalCurrentType;
+    const res = await fetch((window.__TSTS_RUNTIME__ ? window.__TSTS_RUNTIME__.apiBase : "") + path);
+    const json = await res.json();
+    const data = (json && json.data) || {};
+    const meta = document.getElementById("legal-current-meta");
+    if (meta) {
+      const v = data.version || "—";
+      const pub = data.publishedAt ? new Date(data.publishedAt).toLocaleString("en-AU") : "—";
+      meta.textContent = "Version " + v + " • Published " + pub;
+    }
+  } catch (e) {
+    const meta = document.getElementById("legal-current-meta");
+    if (meta) meta.textContent = "Could not load currently published version.";
+  }
+}
+
+async function loadPublishedIntoEditor() {
+  try {
+    const path = "/api/legal/" + __legalCurrentType;
+    const res = await fetch((window.__TSTS_RUNTIME__ ? window.__TSTS_RUNTIME__.apiBase : "") + path);
+    const json = await res.json();
+    const data = (json && json.data) || {};
+    const editor = document.getElementById("legal-editor");
+    if (editor) {
+      editor.value = data.content || "";
+      __legalRenderPreview();
+    }
+  } catch (e) {
+    window.tstsNotify("Could not load currently published version.", "error");
+  }
+}
+
+function __legalRenderPreview() {
+  const editor = document.getElementById("legal-editor");
+  const preview = document.getElementById("legal-preview");
+  if (!editor || !preview) return;
+  preview.innerHTML = __legalMarkdownToHtml(editor.value);
+}
+
+async function loadLegalHistory() {
+  const list = document.getElementById("legal-history-list");
+  if (!list) return;
+  list.innerHTML = "Loading…";
+  try {
+    const res = await adminFetch("/api/admin/legal/" + __legalCurrentType + "/versions", { method: "GET" });
+    if (!res.ok) throw new Error("versions http " + res.status);
+    const raw = await res.json();
+    const versions = (raw && raw.data && raw.data.versions) || [];
+    if (versions.length === 0) {
+      list.innerHTML = '<p class="text-slate-500">No versions yet.</p>';
+      return;
+    }
+    list.innerHTML = "";
+    versions.forEach((v) => {
+      const row = document.createElement("div");
+      row.className = "flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50";
+      const left = document.createElement("div");
+      const ver = document.createElement("p");
+      ver.className = "font-bold text-tsts-ink text-sm";
+      ver.textContent = v.version + (v.isPublished ? " · LIVE" : " · draft");
+      const created = document.createElement("p");
+      created.className = "text-xs text-slate-500 mt-1";
+      const cdate = v.createdAt ? new Date(v.createdAt).toLocaleString("en-AU") : "";
+      const pdate = v.publishedAt ? " · published " + new Date(v.publishedAt).toLocaleString("en-AU") : "";
+      created.textContent = "created " + cdate + pdate + (v.changeNote ? " · " + v.changeNote : "");
+      left.appendChild(ver); left.appendChild(created);
+      const right = document.createElement("div");
+      right.className = "flex gap-2";
+      const loadBtn = document.createElement("button");
+      loadBtn.type = "button";
+      loadBtn.className = "px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-xs font-semibold hover:bg-slate-100";
+      loadBtn.textContent = "Load into editor";
+      loadBtn.onclick = () => loadVersionIntoEditor(v.id);
+      right.appendChild(loadBtn);
+      if (!v.isPublished) {
+        const pubBtn = document.createElement("button");
+        pubBtn.type = "button";
+        pubBtn.className = "px-3 py-1.5 rounded-lg tsts-btn-primary text-xs font-semibold";
+        pubBtn.textContent = "Publish";
+        pubBtn.onclick = () => publishVersionById(v.id);
+        right.appendChild(pubBtn);
+      }
+      row.appendChild(left); row.appendChild(right);
+      list.appendChild(row);
+    });
+  } catch (e) {
+    list.innerHTML = '<p class="text-rose-600">Failed to load history.</p>';
+  }
+}
+
+async function loadVersionIntoEditor(id) {
+  try {
+    const res = await adminFetch("/api/admin/legal/" + __legalCurrentType + "/version/" + encodeURIComponent(id), { method: "GET" });
+    if (!res.ok) throw new Error("version http " + res.status);
+    const raw = await res.json();
+    const data = (raw && raw.data) || {};
+    const editor = document.getElementById("legal-editor");
+    if (editor) { editor.value = data.contentMarkdown || ""; __legalRenderPreview(); }
+    window.tstsNotify("Loaded version " + (data.version || ""), "success");
+  } catch (e) {
+    window.tstsNotify("Could not load that version.", "error");
+  }
+}
+
+async function saveLegalDraft() {
+  const editor = document.getElementById("legal-editor");
+  const note = document.getElementById("legal-change-note");
+  const status = document.getElementById("legal-status-msg");
+  if (!editor) return;
+  const content = editor.value || "";
+  if (content.trim().length < 50) {
+    if (status) { status.textContent = "Draft must be at least 50 characters."; status.className = "mt-3 text-sm text-rose-600"; }
+    return;
+  }
+  try {
+    const res = await adminFetch("/api/admin/legal/" + __legalCurrentType, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contentMarkdown: content, changeNote: (note && note.value) || "" })
+    });
+    if (!res.ok) throw new Error("save http " + res.status);
+    const raw = await res.json();
+    const data = (raw && raw.data) || {};
+    if (status) { status.textContent = "Draft " + (data.version || "") + " saved. Use 'Publish' on the history row when ready."; status.className = "mt-3 text-sm text-emerald-700"; }
+    loadLegalHistory();
+    return data;
+  } catch (e) {
+    if (status) { status.textContent = "Save failed: " + (e && e.message ? e.message : "unknown"); status.className = "mt-3 text-sm text-rose-600"; }
+  }
+}
+
+async function publishVersionById(id) {
+  const ok = await window.tstsConfirm("Publish this version live? It replaces the current published policy on website + mobile.");
+  if (!ok) return;
+  try {
+    await adminFetch("/api/admin/legal/" + __legalCurrentType + "/publish/" + encodeURIComponent(id), { method: "POST" });
+    window.tstsNotify("Published.", "success");
+    loadLegalCurrent();
+    loadLegalHistory();
+  } catch (e) {
+    window.tstsNotify("Publish failed.", "error");
+  }
+}
+
+async function saveAndPublishLegal() {
+  const ok = await window.tstsConfirm("This will save the current text as a new version AND publish it live on the website and mobile app. Continue?");
+  if (!ok) return;
+  const draft = await saveLegalDraft();
+  if (draft && draft.id) {
+    try {
+      await adminFetch("/api/admin/legal/" + __legalCurrentType + "/publish/" + encodeURIComponent(draft.id), { method: "POST" });
+      const status = document.getElementById("legal-status-msg");
+      if (status) { status.textContent = "Published version " + draft.version + " live on website + mobile."; status.className = "mt-3 text-sm text-emerald-700"; }
+      loadLegalCurrent();
+      loadLegalHistory();
+    } catch (e) {
+      window.tstsNotify("Publish failed after draft save.", "error");
+    }
+  }
+}
+
+function wireLegalAdminEvents() {
+  const pBtn = document.getElementById("legal-type-privacy");
+  const tBtn = document.getElementById("legal-type-terms");
+  const editor = document.getElementById("legal-editor");
+  const loadPub = document.getElementById("legal-load-published");
+  const saveBtn = document.getElementById("legal-save-draft");
+  const pubBtn = document.getElementById("legal-publish");
+  const refreshHist = document.getElementById("legal-refresh-history");
+  if (pBtn) pBtn.addEventListener("click", () => __legalSetType("privacy"));
+  if (tBtn) tBtn.addEventListener("click", () => __legalSetType("terms"));
+  if (editor) editor.addEventListener("input", __legalRenderPreview);
+  if (loadPub) loadPub.addEventListener("click", () => loadPublishedIntoEditor());
+  if (saveBtn) saveBtn.addEventListener("click", () => saveLegalDraft());
+  if (pubBtn) pubBtn.addEventListener("click", () => saveAndPublishLegal());
+  if (refreshHist) refreshHist.addEventListener("click", () => loadLegalHistory());
+}
+
 function wireAdminEvents() {
   if (__adminWired) return;
   __adminWired = true;
@@ -3239,6 +3519,8 @@ function wireAdminEvents() {
   if (tabIncidents) tabIncidents.addEventListener("click", () => switchTab("incidents"));
   if (tabFeesCharges) tabFeesCharges.addEventListener("click", () => switchTab("fees-charges"));
   if (tabAudit) tabAudit.addEventListener("click", () => switchTab("audit"));
+  const tabLegal = document.getElementById("tab-legal");
+  if (tabLegal) tabLegal.addEventListener("click", () => switchTab("legal"));
   if (refreshListings) refreshListings.addEventListener("click", () => loadExperiences().then(renderExperiences).catch(function () { window.tstsNotify("Failed to refresh listings.", "error"); renderExperiences([]); }));
   if (refreshVerificationPolicy) refreshVerificationPolicy.addEventListener("click", () => refreshVerificationViews().catch(function () { window.tstsNotify("Failed to refresh verification policy.", "error"); }));
   if (refreshMarketingStatus) refreshMarketingStatus.addEventListener("click", () => loadMarketingEmailStatus().then(renderMarketingEmailStatus).catch(function () { window.tstsNotify("Failed to refresh marketing email status.", "error"); }));

@@ -40,6 +40,15 @@
   // Safety: never allow relative apiBase; relative implies same-origin, which is not valid for our static frontend.
   if (!apiBase || apiBase.charAt(0) === "/") apiBase = "";
 
+  // Local dev fallback: if served from localhost or 127.0.0.1, route API to localhost:4000.
+  // This only triggers when no explicit apiBase has been set via meta tag or runtime config.
+  if (!apiBase) {
+    var __h = (window.location && window.location.hostname) || "";
+    if (__h === "localhost" || __h === "127.0.0.1" || __h === "0.0.0.0") {
+      apiBase = "http://localhost:4000";
+    }
+  }
+
   var cloudinaryUrl = cleanUrl(cfg.CLOUDINARY_URL || cfg.cloudinaryUrl || readMeta("tsts-cloudinary-url"));
   if ((!cloudinaryUrl || cloudinaryUrl.charAt(0) === "/") && BUILD_CLOUDINARY_URL && BUILD_CLOUDINARY_URL !== "__TSTS_CLOUDINARY_URL__") {
     cloudinaryUrl = cleanUrl(BUILD_CLOUDINARY_URL);
