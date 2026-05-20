@@ -15,8 +15,18 @@
   function $id(x) { return document.getElementById(x); }
 
   async function ensureAuth() {
-    var ses = (window.tstsGetSession && window.tstsGetSession()) || null;
-    if (!ses) {
+    // BUG-164 (2026-05-17): `window.tstsGetSession()` returns a PROMISE. The
+    // prior code used it WITHOUT `await`, so `ses` was the (always-truthy)
+    // Promise → `if (!ses)` never fired → an UNAUTHENTICATED visitor was
+    // NEVER redirected to /login (the auth-gate was dead). Fix: await it
+    // (with force:true for a fresh check, matching the other auth gates in
+    // common.js) and gate on the REAL resolved shape `{ ok, user }`. NOTE:
+    // the audit's snippet `ses?.ok?.user` is itself incorrect — `ok` is a
+    // boolean (every common.js call site uses `sess && sess.ok &&
+    // sess.user`), so the codebase-canonical `!ses || !ses.ok || !ses.user`
+    // guard is used (faithful correction of the audit typo).
+    var ses = (window.tstsGetSession && await window.tstsGetSession({ force: true })) || null;
+    if (!ses || !ses.ok || !ses.user) {
       window.location.href = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
       return null;
     }
@@ -28,10 +38,10 @@
     if (!el) return;
     if (!msg) {
       el.classList.add("hidden");
-      window.tstsText(el, "");
+      window.tstsSetText(el, "");
     } else {
       el.classList.remove("hidden");
-      window.tstsText(el, msg);
+      window.tstsSetText(el, msg);
     }
   }
 
@@ -39,7 +49,7 @@
     var box = $id("cin-success");
     var d   = $id("cin-success-detail");
     if (box && d) {
-      window.tstsText(d, detail);
+      window.tstsSetText(d, detail);
       box.classList.remove("hidden");
     }
   }
@@ -53,7 +63,7 @@
       var unwrapped = (window.unwrapApiPayload && typeof window.unwrapApiPayload === "function")
         ? window.unwrapApiPayload(data) : (data && data.data !== undefined ? data.data : data);
       var list = (unwrapped && Array.isArray(unwrapped.experiences)) ? unwrapped.experiences : [];
-      // Only show ACTIVE experiences — drafts/paused can't have bookings
+      // Only show ACTIVE experiences, drafts/paused can't have bookings
       list = list.filter(function (e) { return String(e.status || "").toUpperCase() === "ACTIVE"; });
       if (list.length === 0) return;
       $id("cin-experience-picker").classList.remove("hidden");
@@ -67,7 +77,7 @@
       var dateEl = $id("cin-date");
       if (dateEl) dateEl.value = iso;
     } catch (e) {
-      // Quiet — host can still type the OTP if they know it
+      // Quiet, host can still type the OTP if they know it
     }
   }
 
@@ -92,61 +102,39 @@
     }
 
     btn.disabled = true;
-    window.tstsText(btn, "Checking in…");
+    window.tstsSetText(btn, "Checking in…");
 
     try {
-      // Resolve the booking via the check-in-list endpoint, then post check-in.
-      var listUrl = "/api/host/experiences/" + encodeURIComponent(experienceId) + "/check-in-list" + (dateStr ? ("?date=" + encodeURIComponent(dateStr)) : "");
-      var listRes = await window.authFetch(listUrl, { method: "GET" });
-      var listData = await listRes.json();
-      var listUnwrap = (window.unwrapApiPayload && typeof window.unwrapApiPayload === "function")
-        ? window.unwrapApiPayload(listData) : (listData && listData.data !== undefined ? listData.data : listData);
-      var bookings = (listUnwrap && Array.isArray(listUnwrap.bookings)) ? listUnwrap.bookings : [];
-      if (bookings.length === 0) {
-        setError("No bookings found for this experience on the chosen date.");
-        return;
-      }
-
-      // Try check-in for each booking until one matches the OTP. Backend
-      // returns OTP_INVALID if it doesn't match — quiet on misses.
-      var matchedName = null;
-      for (var i = 0; i < bookings.length; i++) {
-        var bk = bookings[i];
-        var bkId = String(bk.id || bk._id || "");
-        if (!bkId) continue;
-        if (bk.checkedInAt) continue; // already checked in
-        try {
-          var resp = await window.authFetch("/api/host/bookings/" + encodeURIComponent(bkId) + "/check-in", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ otp: otp }),
-          });
-          var json = await resp.json();
-          if (resp.ok) {
-            matchedName = String(bk.guestName || bk.guest && bk.guest.name || "Guest");
-            break;
-          }
-          // OTP_INVALID for this booking — try next
-          if (json && json.error && json.error !== "OTP_INVALID") {
-            setError(String(json.message || "Couldn't check in. Please try again."));
-            return;
-          }
-        } catch (innerErr) {
-          // network error mid-loop — abort
-          setError("Network error. Please try again.");
-          return;
+      // BUG-165 (2026-05-17): SINGLE resolve-by-OTP call. The server resolves
+      // the ONE matching booking by OTP + experience + date and checks it in
+      // atomically. The prior flow fetched the booking list then looped
+      // `POST /api/host/bookings/:id/check-in` for EVERY booking until one
+      // matched — N HTTP requests per OTP entry, N consumptions of the
+      // per-request limiter, and the OTP attempt fanned across other guests'
+      // bookings. Now: exactly one request, server-side resolution.
+      var resp = await window.authFetch(
+        "/api/host/experiences/" + encodeURIComponent(experienceId) + "/check-in-by-otp",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ otp: otp, date: dateStr }),
         }
-      }
-
-      if (matchedName) {
+      );
+      var json = await resp.json();
+      if (resp.ok) {
+        var data = (window.unwrapApiPayload && typeof window.unwrapApiPayload === "function")
+          ? window.unwrapApiPayload(json) : (json && json.data !== undefined ? json.data : json);
+        var matchedName = String((data && data.guestName) || "Guest");
         showSuccess(matchedName + " is checked in. Have a great evening at the table.");
         otpEl.value = "";
       } else {
-        setError("Entry code didn't match any booking on this date. Double-check with your guest.");
+        setError(String((json && json.message) || "Entry code didn't match any booking on this date. Double-check with your guest."));
       }
+    } catch (netErr) {
+      setError("Network error. Please try again.");
     } finally {
       btn.disabled = false;
-      window.tstsText(btn, "Check in");
+      window.tstsSetText(btn, "Check in");
     }
   }
 
