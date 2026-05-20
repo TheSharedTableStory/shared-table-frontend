@@ -1,0 +1,11 @@
+/* Tailwind input file. Compiled to css/tailwind.css via:
+ *   npm run build:css   (or: npx tailwindcss -i tailwind-input.css -o css/tailwind.css --minify)
+ *
+ * Owner-approved 2026-05-02. The project's hand-written brand utilities
+ * (heading-serif, tsts-btn-primary, shadow-soft-card overrides, glass
+ * variants, etc.) continue to live in css/fonts.css and are loaded after
+ * tailwind.css so they win specificity ties.
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

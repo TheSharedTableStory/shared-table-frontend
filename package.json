@@ -1,0 +1,17 @@
+{
+  "name": "tsts-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "description": "The Shared Table Story — static frontend (HTML + JS). Tailwind CSS is compiled from tailwind-input.css to css/tailwind.css.",
+  "scripts": {
+    "build:css": "tailwindcss -i ./tailwind-input.css -o ./css/tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./tailwind-input.css -o ./css/tailwind.css --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "tailwindcss": "^3.4.0",
+    "vitest": "^4.1.5"
+  }
+}
