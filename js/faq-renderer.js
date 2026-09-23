@@ -7,7 +7,9 @@
   const SECTION_LABELS = Object.freeze({
     "before-attending": "Before Attending",
     "booking-management": "Booking Management",
-    "booking-lifecycle": "Booking Lifecycle",
+    "booking-lifecycle": "How Bookings Work",   // 2026-08-25: label only. A guest does not think their
+    // booking has a "lifecycle" — that is the schema's word (DRAFT/PENDING_REVIEW/ACTIVE/PAUSED)
+    // surfacing under a new name. The KEY is an identifier and is deliberately unchanged.
     "cancellation-refunds": "Cancellation & Refunds",
     "host-cancellation": "Host Cancellation",
     "location-privacy": "Location Privacy",
@@ -231,7 +233,16 @@
       },
       [
         createEl("h3", { className: "heading-serif text-lg font-semibold text-tsts-ink mb-1" }, "Still Need Help?"),
-        createEl("p", { className: "text-sm text-slate-600 mb-4" }, "Use one of these actions and we will route you to the right support flow."),
+        // Rule 16 (zero jargon on any user-visible surface). Was: "Use one of these actions and we
+        // will route you to the right support flow." — "support flow" is a word from inside this
+        // codebase, and "actions" describes buttons as the system sees them, not as a person does.
+        // It sat directly under "Still Need Help?", the exact moment someone is stuck and needs
+        // plain words. Found on screen 2026-08-22 on the About page.
+        // FIXED HERE ONLY, deliberately: faq-contextual.js delegates to this function when the
+        // renderer is present (see its createEscalation), and both scripts load on all eight FAQ
+        // pages — so this block is the one that actually renders everywhere. Its own copy is a
+        // fallback that never runs in practice, and it sits on a file tied to locked work.
+        createEl("p", { className: "text-sm text-slate-600 mb-4" }, "Pick whichever is closest to what you need, and we will take you straight there."),
         createEl("div", { className: "flex flex-wrap gap-2" }, [manageLink, reportLink, contactLink]),
         emailNote
       ]

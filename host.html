@@ -2,16 +2,54 @@
 <html lang="en" data-auth-pending="1">
 <head>
     <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com https://maps.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com https://maps.gstatic.com https://maps.googleapis.com data: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://localhost:4000 https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com https://maps.googleapis.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="/assets/logo-mark.png">
     <meta name="theme-color" content="#ea580c">
     <meta name="description" content="Host your own dining experience on The Shared Table Story. Share your passion for food and culture with guests in Melbourne.">
     <title>Become a Host - The Shared Table Story</title>
-	    <link rel="stylesheet" href="css/tailwind.css?v=20260317b">
-	    <link rel="stylesheet" href="css/fonts.css?v=20260310d">
+	    <link rel="stylesheet" href="css/tailwind.css?v=20260914a">
+	    <link rel="stylesheet" href="css/fonts.css?v=20260810a">
       <link rel="stylesheet" href="css/help-center.css?v=20260224a">
+
+  <!-- Owner 2026-05-30 (date-picker rollout, R3 follow-on): self-hosted Flatpickr 4.6.13 + brand
+       overrides byte-identical to the R3-approved block on experience.html. Same look every
+       page — "no different styles in different places". TODO future cleanup: consolidate to
+       a shared CSS file once the design-approval hook policy allows new CSS files with prior
+       AskUserQuestion sign-off. -->
+  <link rel="stylesheet" href="vendor/flatpickr/flatpickr.min.css?v=4.6.13" />
+  <style>
+    .flatpickr-calendar { box-shadow: 0 12px 36px rgba(15, 23, 42, 0.10); border-radius: 16px; border: 1px solid rgba(15, 23, 42, 0.06); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    .flatpickr-months { padding-top: 4px; }
+    .flatpickr-months .flatpickr-month, .flatpickr-current-month, .flatpickr-current-month .cur-month, .flatpickr-current-month input.cur-year { color: rgb(31, 41, 55); font-weight: 600; }
+    .flatpickr-prev-month, .flatpickr-next-month { padding: 8px 12px; cursor: pointer; }
+    .flatpickr-prev-month svg, .flatpickr-next-month svg { fill: rgb(31, 41, 55); width: 14px; height: 14px; }
+    .flatpickr-prev-month:hover svg, .flatpickr-next-month:hover svg { fill: rgb(234, 88, 12); }
+    .flatpickr-weekday { color: rgb(100, 116, 139); font-weight: 600; }
+    .flatpickr-day { color: rgb(31, 41, 55); border-radius: 9999px; }
+    .flatpickr-day.today { border-color: rgb(194, 141, 107); }
+    .flatpickr-day.today:hover { background: rgb(254, 215, 170); border-color: rgb(194, 141, 107); color: rgb(154, 52, 18); }
+    .flatpickr-day:hover { background: rgb(254, 237, 213); color: rgb(154, 52, 18); }
+    .flatpickr-day.selected, .flatpickr-day.selected:hover, .flatpickr-day.selected:focus { background: rgb(234, 88, 12); border-color: rgb(234, 88, 12); color: #fff; }
+    .flatpickr-day.flatpickr-disabled, .flatpickr-day.flatpickr-disabled:hover { color: rgba(15, 23, 42, 0.22); background: transparent; cursor: not-allowed; }
+    .flatpickr-day.prevMonthDay, .flatpickr-day.nextMonthDay { color: rgba(15, 23, 42, 0.30); }
+    /* Time-picker brand overrides (host startTime / endTime use noCalendar:true). */
+    .flatpickr-time { border-top: 1px solid rgba(15, 23, 42, 0.06); }
+    .flatpickr-time input { color: rgb(31, 41, 55); font-weight: 600; }
+    .flatpickr-time input:hover, .flatpickr-time input:focus { background: rgb(254, 237, 213); }
+    .flatpickr-time .flatpickr-time-separator { color: rgb(31, 41, 55); font-weight: 600; }
+    .flatpickr-time .flatpickr-am-pm { color: rgb(31, 41, 55); font-weight: 600; }
+    .flatpickr-time .flatpickr-am-pm:hover, .flatpickr-time .flatpickr-am-pm:focus { background: rgb(254, 237, 213); }
+    .flatpickr-time .numInputWrapper:hover { background: rgb(254, 237, 213); }
+    .flatpickr-time .arrowUp:after { border-bottom-color: rgb(234, 88, 12); }
+    .flatpickr-time .arrowDown:after { border-top-color: rgb(234, 88, 12); }
+    /* Audit alignment 2026-08-19: the #state input's `uppercase` class (typed codes render as
+       caps) also transformed the PLACEHOLDER to "E.G. VIC" — off this page's own "e.g." voice.
+       Placeholder keeps sentence case; typed values still uppercase. */
+    #state::placeholder { text-transform: none; }
+  </style>
+
 	<link rel="manifest" href="manifest.json">
 
 	</head>
@@ -20,13 +58,68 @@
     <nav id="navbar-placeholder" role="navigation"></nav>
 
     <main class="flex-grow" role="main">
-	        <div class="container mx-auto px-4 py-12 max-w-3xl flex-grow">
+	        <!-- sir 2026-08-16 typed "widen it": the wizard joins the nav-container width standard -->
+	        <div class="container mx-auto px-4 py-12 flex-grow">
+
+        <!-- Owner-spec 2026-05-04 (D-10 chunk 7): evidence-submission section.
+             Surfaces only when the URL contains ?evidence=<reportId>. The host
+             arrives here from the HOST_EVIDENCE_REQUESTED email link. Renders
+             the report context (read-only), a textarea for their account, and
+             optional file attachments. Submit posts to /api/host/reports/:id/evidence. -->
+        <section id="evidence-section" class="hidden bg-white p-8 rounded-3xl shadow-soft-card border border-gray-100 mb-8">
+          <div class="mb-6">
+            <h1 class="text-2xl font-bold heading-serif text-tsts-ink mb-2">Share your side</h1>
+            <p class="text-sm text-gray-600">Our trust and safety team has asked for your account before deciding on a report. Adding context helps us make a fair decision.</p>
+          </div>
+
+          <div id="evidence-context" class="space-y-3 mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm">
+            <div><span class="font-semibold text-amber-900">Report ID:</span> <span id="evidence-report-id" class="text-amber-800"></span></div>
+            <div><span class="font-semibold text-amber-900">Reviewer note:</span> <span id="evidence-reviewer-note" class="text-amber-800"></span></div>
+            <div><span class="font-semibold text-amber-900">Respond by:</span> <span id="evidence-deadline" class="text-amber-800"></span></div>
+          </div>
+
+          <div id="evidence-already-submitted" class="hidden mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-900">
+            You have already submitted your response. Our team will review it and contact you with the outcome. If you have anything to add, you can reply to the original email and the team will receive it.
+          </div>
+
+          <form id="evidence-form" class="space-y-5">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1" for="evidence-text">Your account of what happened</label>
+              <p class="text-xs text-gray-500 mb-2">Up to 4000 characters. Add dates, names of guests involved, or anything else you want our team to consider.</p>
+              <textarea id="evidence-text" rows="8" maxlength="4000" required
+                        class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none"
+                        placeholder="Share what happened from your perspective..."></textarea>
+              <p class="text-xs text-gray-400 mt-1"><span id="evidence-text-counter">0</span> / 4000</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">Supporting documents (optional)</label>
+              <p class="text-xs text-gray-500 mb-2">Add up to 8 photos, screenshots, or PDFs. Or reply to the original email and attach them there. Your call.</p>
+              <input type="file" id="evidence-files" multiple accept="image/*,.pdf"
+                     class="text-sm text-gray-700 file:mr-3 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-slate-100 file:text-slate-700 file:cursor-pointer">
+              <p id="evidence-files-status" class="text-xs text-gray-500 mt-1"></p>
+            </div>
+
+            <div id="evidence-error" class="hidden p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700"></div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+              <button type="button" id="evidence-cancel" class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition">Cancel</button>
+              <button type="submit" id="evidence-submit" class="px-5 py-2.5 rounded-xl bg-tsts-clay text-white text-sm font-bold hover:bg-tsts-ink transition disabled:opacity-50">Submit response</button>
+            </div>
+          </form>
+
+          <div id="evidence-success" class="hidden mt-4 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-900">
+            <p class="font-bold mb-1">Thanks for sharing your side.</p>
+            <p>Our team will review your response and let you know the outcome by email.</p>
+          </div>
+        </section>
+
 	        <h1 class="text-3xl font-bold mb-2 heading-serif text-tsts-ink">Host an Experience</h1>
 	        <p class="text-gray-600 mb-8">Share what you love with travellers.</p>
 
         <!-- Wizard Progress Bar -->
         <div id="wizard-progress" class="mb-8">
-          <div class="flex items-center justify-between text-xs mb-3 gap-1">
+          <div class="grid grid-cols-3 gap-x-3 gap-y-1 text-xs mb-3 sm:flex sm:items-center sm:justify-between sm:gap-1">
             <span data-step-label="1" class="font-bold text-tsts-ink">1. Your experience</span>
             <span data-step-label="2" class="text-slate-400">2. Where &amp; when</span>
             <span data-step-label="3" class="text-slate-400">3. Pricing &amp; capacity</span>
@@ -48,7 +141,7 @@
             <fieldset class="space-y-4 border-0 p-0 m-0">
                 <legend class="text-lg font-bold heading-serif text-tsts-ink mb-3 flex items-center gap-2"><i class="fas fa-pen text-orange-600"></i> Basic Details</legend>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="title">Experience Title</label>
+                    <label class="block text-xs font-medium text-gray-700 mb-1" for="title">Experience Title</label>
                     <input type="text" id="title" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="e.g., Sunday Roast in Fitzroy" required>
                 </div>
             </fieldset>
@@ -62,35 +155,35 @@
                     <span class="block text-sm font-bold text-gray-700 mb-2">Categories (Select up to 2)</span>
                     <div class="space-y-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
                         <label class="flex items-center space-x-2">
-                            <input type="checkbox" name="tags" value="food-gatherings" class="form-checkbox text-orange-600 h-4 w-4">
+                            <input type="checkbox" name="tags" value="food-gatherings" class="h-4 w-4 rounded border-gray-300 accent-orange-600">
                             <span>Food & Gatherings</span>
                         </label>
                         <label class="flex items-center space-x-2">
-                            <input type="checkbox" name="tags" value="explore-outdoors" class="form-checkbox text-orange-600 h-4 w-4">
+                            <input type="checkbox" name="tags" value="explore-outdoors" class="h-4 w-4 rounded border-gray-300 accent-orange-600">
                             <span>Explore & Outdoors</span>
                         </label>
                         <label class="flex items-center space-x-2">
-                            <input type="checkbox" name="tags" value="culture-stories" class="form-checkbox text-orange-600 h-4 w-4">
+                            <input type="checkbox" name="tags" value="culture-stories" class="h-4 w-4 rounded border-gray-300 accent-orange-600">
                             <span>Culture & Stories</span>
                         </label>
                         <label class="flex items-center space-x-2">
-                            <input type="checkbox" name="tags" value="social-nights" class="form-checkbox text-orange-600 h-4 w-4">
+                            <input type="checkbox" name="tags" value="social-nights" class="h-4 w-4 rounded border-gray-300 accent-orange-600">
                             <span>Social & Nights</span>
                         </label>
                         <label class="flex items-center space-x-2">
-                            <input type="checkbox" name="tags" value="move-wellness" class="form-checkbox text-orange-600 h-4 w-4">
+                            <input type="checkbox" name="tags" value="move-wellness" class="h-4 w-4 rounded border-gray-300 accent-orange-600">
                             <span>Move & Wellness</span>
                         </label>
                         <label class="flex items-center space-x-2">
-                            <input type="checkbox" name="tags" value="create-express" class="form-checkbox text-orange-600 h-4 w-4">
+                            <input type="checkbox" name="tags" value="create-express" class="h-4 w-4 rounded border-gray-300 accent-orange-600">
                             <span>Create & Express</span>
                         </label>
                         <label class="flex items-center space-x-2">
-                            <input type="checkbox" name="tags" value="learn-passion" class="form-checkbox text-orange-600 h-4 w-4">
+                            <input type="checkbox" name="tags" value="learn-passion" class="h-4 w-4 rounded border-gray-300 accent-orange-600">
                             <span>Learn & Passion</span>
                         </label>
                         <label class="flex items-center space-x-2">
-                            <input type="checkbox" name="tags" value="games-play" class="form-checkbox text-orange-600 h-4 w-4">
+                            <input type="checkbox" name="tags" value="games-play" class="h-4 w-4 rounded border-gray-300 accent-orange-600">
                             <span>Games & Play</span>
                         </label>
                     </div>
@@ -100,17 +193,57 @@
 
             <div class="border-t border-slate-200 my-6"></div>
 
+            <!-- Section: Discoverability tags (drives Explore filter modal). Values pulled live from /api/taxonomies (admin-editable). -->
+            <fieldset class="space-y-5 border-0 p-0 m-0">
+                <legend class="text-lg font-bold heading-serif text-tsts-ink mb-1 flex items-center gap-2"><i class="fas fa-sliders-h text-orange-600"></i> Discoverability</legend>
+                <p class="text-xs text-slate-500 -mt-1 mb-2">Help guests find your experience. Tap any chip to apply or remove it. The more accurate your tags, the better the matches.</p>
+
+                <div data-host-tax="vibe">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Vibe</label>
+                    <div class="flex flex-wrap gap-2" data-host-tax-chips="vibe"><p class="text-xs text-slate-400">Loading…</p></div>
+                </div>
+                <div data-host-tax="dietary">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Dietary options</label>
+                    <div class="flex flex-wrap gap-2" data-host-tax-chips="dietary"><p class="text-xs text-slate-400">Loading…</p></div>
+                </div>
+                <div data-host-tax="accessibility">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Accessibility</label>
+                    <div class="flex flex-wrap gap-2" data-host-tax-chips="accessibility"><p class="text-xs text-slate-400">Loading…</p></div>
+                </div>
+                <div data-host-tax="cuisine">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Cuisine</label>
+                    <div class="flex flex-wrap gap-2" data-host-tax-chips="cuisine"><p class="text-xs text-slate-400">Loading…</p></div>
+                </div>
+                <div data-host-tax="languages">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Languages you speak</label>
+                    <div class="flex flex-wrap gap-2" data-host-tax-chips="languages"><p class="text-xs text-slate-400">Loading…</p></div>
+                </div>
+                <div data-host-tax="occasion">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Best for these occasions</label>
+                    <div class="flex flex-wrap gap-2" data-host-tax-chips="occasion"><p class="text-xs text-slate-400">Loading…</p></div>
+                </div>
+                <label for="host-instant-book" class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-gray-700 cursor-pointer">
+                    <input id="host-instant-book" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                    <span class="leading-snug">
+                        <span class="font-semibold text-gray-900">Instant book</span>
+                        <span class="block text-xs text-gray-500">Auto-confirm guest bookings without waiting for your approval. You can change this any time.</span>
+                    </span>
+                </label>
+            </fieldset>
+
+            <div class="border-t border-slate-200 my-6"></div>
+
             <!-- Section: Description & Requirements -->
             <fieldset class="space-y-4 border-0 p-0 m-0">
                 <legend class="text-lg font-bold heading-serif text-tsts-ink mb-3 flex items-center gap-2"><i class="fas fa-align-left text-orange-600"></i> Description</legend>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="description">The Story (Description)</label>
+                    <label class="block text-xs font-medium text-gray-700 mb-1" for="description">The Story (Description)</label>
                     <textarea id="description" rows="5" maxlength="1500" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="What will guests do? What makes this special?" required></textarea>
                     <p class="text-xs text-slate-500 mt-1">Paint a picture for your guests. Share what they'll do, the vibe you're creating, what to expect, and any details that help them arrive prepared. The more they know, the more confident they'll be to book.</p>
                     <p id="desc-counter" class="text-xs text-slate-400 mt-1 text-right">0 / 1500</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="requirements">About This Experience — What to Know Before You Come</label>
+                    <label class="block text-xs font-medium text-gray-700 mb-1" for="requirements">About This Experience, What to Know Before You Come</label>
                     <textarea id="requirements" rows="3" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="What guests should bring, allergy cautions, and any event-specific requirements." required></textarea>
                 </div>
             </fieldset>
@@ -130,30 +263,49 @@
             <!-- Section: Location -->
             <fieldset class="space-y-4 border-0 p-0 m-0">
                 <legend class="text-lg font-bold heading-serif text-tsts-ink mb-3 flex items-center gap-2"><i class="fas fa-map-marker-alt text-orange-600"></i> Location</legend>
+                <!-- Owner-approved 2026-05-02 (Gareth feedback): single combined Address search that fills City, Suburb, Postcode, Street. Manual override still available below. -->
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="city">City</label>
+                    <label class="block text-xs font-medium text-gray-700 mb-1" for="address-search">Search address</label>
+                    <input type="text" id="address-search" autocomplete="off" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="Start typing your venue address...">
+                    <p class="text-xs text-gray-500 mt-1">Pick a Google suggestion to auto-fill City, Suburb, Postcode, and Street. You can edit each field below if needed.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1" for="city">City</label>
                     <input type="text" id="city" list="city-suggestions" autocomplete="address-level2" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="e.g. Melbourne" required>
                     <datalist id="city-suggestions"></datalist>
                     <p class="text-xs text-gray-500 mt-1">Choose a verified city suggestion so listings map correctly in Explore filters.</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1" for="suburb">Suburb / Area</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="suburb">Suburb / Area</label>
                         <input type="text" id="suburb" autocomplete="address-level2" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="e.g. Carlton" required>
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1" for="postcode">Postcode</label>
-                        <input type="text" id="postcode" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="postal-code" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="e.g. 3053" required>
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="postcode">Postcode</label>
+                        <input type="text" id="postcode" maxlength="12" autocomplete="postal-code" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="e.g. 3053 (or your local postcode)">
                         <p id="postcode-warning" class="text-xs text-amber-600 mt-1 hidden"></p>
                     </div>
                 </div>
+                <!-- Owner-spec 2026-05-03: state + country fields auto-filled from Google Places.
+                     Editable so host can correct, but should remain accurate post-autofill. -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="state">State / Territory</label>
+                        <input type="text" id="state" autocomplete="address-level1" maxlength="3" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none uppercase" placeholder="e.g. VIC" required>
+                        <p class="text-xs text-gray-500 mt-1">Auto-fills when you pick an address above. NSW / VIC / QLD / SA / WA / TAS / NT / ACT.</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="country">Country</label>
+                        <input type="text" id="country" autocomplete="country-name" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="Australia" value="Australia" required>
+                    </div>
+                </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="addressLine">Street Address</label>
+                    <label class="block text-xs font-medium text-gray-700 mb-1" for="addressLine">Street Address</label>
                     <input type="text" id="addressLine" autocomplete="street-address" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="e.g. 12 Lygon St" required>
                     <p class="text-xs text-gray-500 mt-1">Exact address is shared after booking confirmation.</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="addressNotes">Address Notes (Optional)</label>
+                    <label class="block text-xs font-medium text-gray-700 mb-1" for="addressNotes">Address Notes (Optional)</label>
                     <input type="text" id="addressNotes" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="e.g. Ring the left bell, enter via courtyard">
                 </div>
             </fieldset>
@@ -165,34 +317,46 @@
                 <legend class="text-lg font-bold heading-serif text-tsts-ink mb-3 flex items-center gap-2"><i class="fas fa-calendar text-orange-600"></i> Schedule</legend>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1" for="startDate">Start Date</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="startDate">Start Date</label>
                         <input type="date" id="startDate" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" required>
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1" for="endDate">End Date</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="endDate">End Date</label>
                         <input type="date" id="endDate" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" required>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1" for="startTime">Start Time</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="startTime">Start Time</label>
                         <input type="time" id="startTime" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" required>
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1" for="endTime">End Time</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="endTime">End Time</label>
                         <input type="time" id="endTime" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" required>
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1" for="eventDurationMinutes">Duration of Each Experience</label>
-                    <input type="number" id="eventDurationMinutes" min="15" step="15" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" placeholder="e.g. 60" required>
-                    <p class="text-xs text-gray-500 mt-1">Use this for each event instance. Start/end date and time above define the recurring schedule window.</p>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Duration of Each Experience</label>
+                    <p class="text-xs text-gray-500 mb-2">How long does each event run? Enter hours and minutes.</p>
+                    <div class="flex items-end gap-3">
+                        <div class="flex-1">
+                            <label for="eventDurationHours" class="block text-xs font-medium text-slate-600 mb-1">Hours</label>
+                            <input type="number" id="eventDurationHours" min="0" max="24" step="1" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" placeholder="e.g. 2">
+                        </div>
+                        <div class="flex-1">
+                            <label for="eventDurationMins" class="block text-xs font-medium text-slate-600 mb-1">Minutes</label>
+                            <input type="number" id="eventDurationMins" min="0" max="59" step="5" class="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent" placeholder="e.g. 30">
+                        </div>
+                    </div>
+                    <!-- Hidden field that host.js reads/writes; computed from hours + minutes inputs above. -->
+                    <input type="hidden" id="eventDurationMinutes" required>
+                    <p id="duration-summary" class="text-xs text-gray-500 mt-2">Use this for each event instance. Start/end date and time above define the recurring schedule window.</p>
                 </div>
             </fieldset>
 
             <!-- Timezone (from Booking Controls) -->
             <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1" for="experienceTimezone">Event timezone</label>
+                <label class="block text-xs font-medium text-gray-700 mb-1" for="experienceTimezone">Event timezone</label>
                 <select id="experienceTimezone" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none bg-white text-sm">
                     <option value="Australia/Melbourne">Australia/Melbourne</option>
                     <option value="Australia/Sydney">Australia/Sydney</option>
@@ -232,18 +396,30 @@
                 <legend class="text-lg font-bold heading-serif text-tsts-ink mb-3 flex items-center gap-2"><i class="fas fa-dollar-sign text-orange-600"></i> Pricing & Capacity</legend>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1" for="price">Price (AUD)</label>
-                        <input type="number" id="price" min="1" step="1" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="85" required>
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="price">Price</label>
+                        <div class="flex gap-2">
+                            <input type="number" id="price" min="0" step="1" class="flex-1 min-w-0 px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="85" required>
+                            <select id="currency" aria-label="Currency" title="Defaults from the event's country; change if needed" class="w-28 px-3 py-2 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none">
+                                <option value="AUD">A$ AUD</option>
+                                <option value="NZD">NZ$ NZD</option>
+                                <option value="USD">$ USD</option>
+                                <option value="GBP">£ GBP</option>
+                                <option value="EUR">€ EUR</option>
+                                <option value="CAD">CA$ CAD</option>
+                                <option value="INR">₹ INR</option>
+                                <option value="JPY">¥ JPY</option>
+                            </select>
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1" for="maxGuests">Max Guests</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="maxGuests">Max Guests</label>
                         <input type="number" id="maxGuests" min="1" step="1" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="6" required>
                     </div>
                 </div>
                 <!-- Group Discounts (optional) -->
                 <div class="mt-4">
                     <div class="flex items-center justify-between mb-2">
-                        <label class="block text-sm font-bold text-gray-700">Group Discounts <span class="font-normal text-gray-500">(optional)</span></label>
+                        <label class="block text-xs font-medium text-gray-700">Group Discounts <span class="font-normal text-gray-500">(optional)</span></label>
                         <label class="inline-flex items-center gap-2 cursor-pointer text-sm">
                             <input type="checkbox" id="discountEnabled" class="accent-orange-600"> Enable
                         </label>
@@ -253,7 +429,7 @@
                         <button type="button" id="add-discount-tier" class="text-xs text-orange-600 hover:text-orange-800 font-medium">
                             <i class="fas fa-plus mr-1"></i> Add discount tier
                         </button>
-                        <p class="text-xs text-slate-500">Each tier: minimum guest count (2+) and discount % (1–50). Discount reduces the guest price — platform fee is unaffected.</p>
+                        <p class="text-xs text-slate-500">Each tier: minimum guest count (2+) and discount % (1–50). Discount reduces the guest price, platform fee is unaffected.</p>
                     </div>
                 </div>
                 <div>
@@ -284,7 +460,7 @@
                 </div>
             </fieldset>
 
-            <!-- Booking Controls (cutoff only — timezone moved to Step 2) -->
+            <!-- Booking Controls (cutoff only, timezone moved to Step 2) -->
             <fieldset class="space-y-4 border border-slate-200 rounded-3xl p-4 bg-slate-50/70">
                 <legend class="text-sm font-bold text-gray-700 px-1">Booking Controls</legend>
                 <div class="flex items-center gap-3">
@@ -300,7 +476,7 @@
                 </div>
                 <p id="cutoff-preview" class="text-xs text-gray-500">Bookings close 24h before each time slot.</p>
                 <div id="cutoff-locked-banner" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700 font-medium">
-                    Cannot change cutoff settings — a confirmed booking starts within 30 minutes.
+                    Cannot change cutoff settings, a confirmed booking starts within 30 minutes.
                 </div>
             </fieldset>
 
@@ -319,38 +495,96 @@
             <!-- ═══ STEP 4: Photo & optional settings ═══ -->
             <div id="wizard-step-4" class="hidden space-y-6">
 
-            <!-- Section: Cover Photo -->
+            <!-- Section: Photos — owner 2026-05-30 (multi-image P3): up to 3 photos,
+                 first = cover. Drag-and-drop reorder + up/down arrow backup. Delete per tile.
+                 The hidden #imageInput keeps its original ID + multiple attribute so existing
+                 host.js validation + edit-mode hydration can be extended without renaming. -->
             <fieldset class="space-y-4 border-0 p-0 m-0">
-                <legend class="text-lg font-bold heading-serif text-tsts-ink mb-3 flex items-center gap-2"><i class="fas fa-image text-orange-600"></i> Cover Photo</legend>
-                <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 transition cursor-pointer relative">
-                    <input type="file" id="imageInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*">
-                    <div id="upload-placeholder">
-                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                        <p class="text-sm text-gray-500">Click to upload image</p>
-                    </div>
-                    <div id="upload-preview" class="hidden">
-                        <img id="upload-preview-img" class="mx-auto max-h-32 rounded-lg object-cover" alt="Upload preview">
-                        <p class="text-sm text-green-600 font-bold mt-2"><i class="fas fa-check"></i> Photo attached</p>
-                        <p id="upload-preview-meta" class="text-xs text-gray-600 mt-1"></p>
-                        <p class="text-xs text-gray-500 mt-2">Click anywhere on this box to choose a different photo.</p>
-                    </div>
-                    <div id="upload-progress-wrap" class="hidden mt-3">
-                        <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-                            <div id="upload-progress-bar" class="h-full w-0 rounded-full bg-orange-500 transition-all duration-200"></div>
-                        </div>
-                        <p id="upload-progress-text" class="text-xs text-gray-500 mt-1">Uploading…</p>
-                    </div>
+                <legend class="text-lg font-bold heading-serif text-tsts-ink mb-3 flex items-center gap-2"><i class="fas fa-image text-orange-600"></i> Photos</legend>
+                <!-- 3-tile grid; each tile rendered by host.js renderPhotosGrid() as either filled
+                     (thumb + cover badge if first + ↑↓ arrows + × delete) or empty (Add tile).
+                     Owner 2026-05-30 (P3): grid-cols-3 + aspect-square are both purged from the
+                     compiled Tailwind, so use inline grid-template-columns + aspect-ratio. -->
+                <div id="photos-grid" class="grid gap-3" style="grid-template-columns: repeat(3, minmax(0, 1fr));"></div>
+                <!-- Hidden file input — multiple. Clicking an "Add" tile triggers it. -->
+                <input type="file" id="imageInput" class="hidden" accept="image/jpeg,image/png,image/webp" multiple>
+                <!-- Per-file upload progress list, rendered by host.js as uploads run. -->
+                <div id="upload-progress-list" class="space-y-2"></div>
+                <p class="text-xs text-gray-500 mt-1">Add 1 to 6 photos. Tap <strong>Make cover</strong> on any photo to choose your cover (shown on Explore + your booking confirmation). Drag to reorder, or use the arrows. Max 10 MB each. JPG, PNG, or WebP. Photos larger than 2 MB are auto-compressed to save your data.</p>
+                <!-- Legacy single-photo preview / progress containers retained as hidden no-ops
+                     so any other JS that still references them won't throw. They are not visible
+                     and not used by the multi-photo flow. -->
+                <div id="upload-placeholder" class="hidden"></div>
+                <div id="upload-preview" class="hidden">
+                    <img id="upload-preview-img" alt="">
+                    <p id="upload-preview-meta"></p>
                 </div>
-                <p class="text-xs text-gray-500 mt-1">A cover photo is required. Max 10 MB. JPG, PNG, or WebP. Photos larger than 2 MB are auto-compressed before upload to save your data.</p>
+                <div id="upload-progress-wrap" class="hidden">
+                    <div id="upload-progress-bar"></div>
+                    <p id="upload-progress-text"></p>
+                </div>
             </fieldset>
+
+            <!-- Owner-spec 2026-05-03 (D-9 step 7): booking-type picker.
+                 Three explicit options with plain-language helpers. Sets bookingMode
+                 on the listing, drives the detail-page render and the booking-flow
+                 conflict guard. NO em-dashes per owner. -->
+            <section class="rounded-3xl border border-gray-200 bg-white p-5 space-y-4">
+                <div>
+                    <h3 class="text-sm font-bold text-gray-800">Booking type</h3>
+                    <p class="text-xs text-gray-500 mt-1">How do you want guests to book this experience?</p>
+                </div>
+                <!-- Owner-spec 2026-05-03 (D-9 sub #5 expand-on-select): each card has
+                     a SHORT default helper + a LONG helper that surfaces only when
+                     the card is selected. The long helper includes a trade-off line
+                     for Shared and Private so host knows the audience they would miss.
+                     Wired by host.js initBookingModeExpand() (CSS arbitrary-variant approach
+                     was unreliable across Tailwind compile states). -->
+                <div class="space-y-3" data-booking-mode-picker>
+                    <label data-bm-card="shared" class="flex items-start gap-3 cursor-pointer rounded-2xl border border-slate-200 bg-slate-50/50 p-3 hover:bg-slate-50 transition">
+                        <input type="radio" name="bookingMode" id="bookingMode-shared" value="shared" class="mt-0.5 h-4 w-4 border-gray-300 text-orange-600" checked>
+                        <span class="block">
+                            <span class="block text-sm font-bold text-gray-800">Shared seats</span>
+                            <span data-bm-short class="block text-xs text-gray-600 mt-0.5 leading-relaxed">Anyone can book a seat. Instant booking, no approval needed.</span>
+                            <span data-bm-long class="hidden text-xs text-gray-600 mt-0.5 leading-relaxed">
+                                <span class="block">Anyone can book a seat. The table fills with new guests over the meal. Each guest pays per seat. Instant booking, no approval needed.</span>
+                                <span class="block mt-2 text-amber-700"><b>Trade-off:</b> guests looking to book the whole table for an anniversary, a birthday, or a private group will skip your listing for hosts who offer private booking.</span>
+                            </span>
+                        </span>
+                    </label>
+                    <label data-bm-card="private" class="flex items-start gap-3 cursor-pointer rounded-2xl border border-slate-200 bg-slate-50/50 p-3 hover:bg-slate-50 transition">
+                        <input type="radio" name="bookingMode" id="bookingMode-private" value="private" class="mt-0.5 h-4 w-4 border-gray-300 text-orange-600">
+                        <span class="block">
+                            <span class="block text-sm font-bold text-gray-800">Private only</span>
+                            <span data-bm-short class="block text-xs text-gray-600 mt-0.5 leading-relaxed">One group books the whole experience. Instant booking, no approval needed.</span>
+                            <span data-bm-long class="hidden text-xs text-gray-600 mt-0.5 leading-relaxed">
+                                <span class="block">Each booking is exclusive. One group books the whole experience. Instant booking, no approval needed. Best when you only want to host private events.</span>
+                                <span class="block mt-2 text-amber-700"><b>Trade-off:</b> solo travellers and casual bookers looking to share a table with new people will skip your listing. You will reach a smaller audience.</span>
+                            </span>
+                        </span>
+                    </label>
+                    <label data-bm-card="both" class="flex items-start gap-3 cursor-pointer rounded-2xl border border-slate-200 bg-slate-50/50 p-3 hover:bg-slate-50 transition">
+                        <input type="radio" name="bookingMode" id="bookingMode-both" value="both" class="mt-0.5 h-4 w-4 border-gray-300 text-orange-600">
+                        <span class="block">
+                            <span class="block text-sm font-bold text-gray-800">Both</span>
+                            <span data-bm-short class="block text-xs text-gray-600 mt-0.5 leading-relaxed">Guests can book a single seat or request the whole table.</span>
+                            <span data-bm-long class="hidden text-xs text-gray-600 mt-0.5 leading-relaxed">
+                                <span class="block">Both options open. Guests book a single seat or request the whole table privately. Maximum reach for both audiences.</span>
+                                <span class="block mt-2">Private bookings need your approval, and only when no shared seat is already booked for that slot. If a slot already has a shared guest, private bookings on that slot are blocked until the slot ends.</span>
+                            </span>
+                        </span>
+                    </label>
+                </div>
+                <p class="text-[11px] text-gray-500 italic">You can change this anytime. Bookings already confirmed will not be affected.</p>
+            </section>
 
             <section class="rounded-3xl border border-gray-200 bg-gray-50 p-4 space-y-4">
                 <div class="flex items-center justify-between gap-3">
                     <div>
-                        <h3 class="text-sm font-bold text-gray-800">Private booking settings</h3>
-                        <p class="text-xs text-gray-500 mt-1">Set a base private rate and extra per guest beyond an included threshold.</p>
+                        <h3 class="text-sm font-bold text-gray-800">Private booking pricing</h3>
+                        <p class="text-xs text-gray-500 mt-1">Set a base private rate and extra per guest beyond an included threshold. Used when booking type is Private only or Both.</p>
                     </div>
-                    <label class="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700">
                         <input type="checkbox" id="privateEnabled" class="h-4 w-4 rounded border-gray-300 text-orange-600">
                         Enable
                     </label>
@@ -358,19 +592,19 @@
 
                 <div id="private-config-fields" class="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-60 pointer-events-none">
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1" for="privatePrice">Base private price (AUD)</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="privatePrice">Base private price (AUD)</label>
                         <input type="number" id="privatePrice" min="0" step="1" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="240">
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1" for="privateCapacity">Max private guests</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="privateCapacity">Max private guests</label>
                         <input type="number" id="privateCapacity" min="1" step="1" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="10">
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1" for="privateIncludedGuests">Included guests at base price</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="privateIncludedGuests">Included guests at base price</label>
                         <input type="number" id="privateIncludedGuests" min="1" step="1" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="6">
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1" for="privateExtraGuestPrice">Extra guest price (AUD)</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1" for="privateExtraGuestPrice">Extra guest price (AUD)</label>
                         <input type="number" id="privateExtraGuestPrice" min="0" step="1" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="35">
                     </div>
                 </div>
@@ -423,7 +657,9 @@
                         <p id="pricing-public-per-guest" class="text-sm font-bold text-slate-800">—</p>
                     </div>
                     <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                        <p class="text-[11px] uppercase tracking-wide text-slate-500">Platform fee (tier formula)</p>
+                        <!-- sir 2026-08-16 ("Fix it", walk gap W3): "(tier formula)" was the fee
+                             engine's vocabulary on a host-facing label. -->
+                        <p class="text-[11px] uppercase tracking-wide text-slate-500">Platform fee</p>
                         <p id="pricing-platform-fee-per-guest" class="text-sm font-bold text-slate-800">—</p>
                     </div>
                     <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
@@ -439,7 +675,17 @@
                         <p id="pricing-private-summary" class="text-sm font-bold text-slate-800">Private booking disabled</p>
                     </div>
                 </div>
-                <p id="pricing-host-charge-note" class="text-xs text-slate-600">Estimated payout shown above is after platform fee, before host-funded discounts or recovery offsets. No upfront host charge is applied when publishing.</p>
+                <!-- Owner-approved 2026-05-02: collapsible 'How event verification works' explainer. -->
+                <details id="event-verification-steps" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+                    <summary class="cursor-pointer font-bold text-slate-800 select-none">How event verification works</summary>
+                    <ol class="mt-2 ml-5 list-decimal space-y-1.5">
+                        <li>Publish your listing and complete your host profile.</li>
+                        <li>Request the Verified Host badge from your My Listings page (free, ID + identity check, 3 to 5 business days).</li>
+                        <li>Once you have the host badge, email <span class="font-mono text-slate-900">admin@thesharedtablestory.com</span> with your event title, photos and any quality notes you want considered.</li>
+                        <li>Admin reviews the event, sets the verification fee at approval, and the fee is folded into the platform fee shown above. Guests never pay extra; the deduction comes from your payout.</li>
+                    </ol>
+                </details>
+                <p id="pricing-host-charge-note" class="text-xs text-slate-600">Estimated payout shown above is after platform fee. If your event becomes verified, the verified-event fee is added to the platform fee at that point and reflected in your payout.</p>
                 <p id="pricing-policy-reference" class="hidden text-xs text-slate-600"></p>
             </section>
 
@@ -506,14 +752,77 @@
     </main>
 
     <footer id="footer-placeholder" role="contentinfo"></footer>
+    <!-- Owner-approved 2026-05-02 (Gareth): Google Places Autocomplete on Address. -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBxFIeROPTRgYYpg_dw0WUNrPJBGIh0iX4&libraries=places" async defer></script>
     <script src="js/runtime-config.js?v=20260224a"></script>
-  <script src="js/common.js?v=20260316c"></script>
-    <script src="data/faq-catalog.js?v=20260224a"></script>
+  <!-- Event verification submission modal, owner-spec 2026-05-02. -->
+  <div id="event-verification-modal-backdrop" class="hidden fixed inset-0 z-40 bg-black/50"></div>
+  <div id="event-verification-modal" class="hidden fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-6">
+    <div class="bg-white w-full md:max-w-2xl md:rounded-3xl rounded-t-3xl shadow-2xl flex flex-col max-h-[92vh]">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+        <h2 class="text-lg font-bold heading-serif text-tsts-ink">Request event verification</h2>
+        <button id="event-verification-modal-close" type="button" class="px-3 py-1.5 text-sm font-semibold text-tsts-ink hover:text-orange-600 hover:underline transition" aria-label="Close">Close</button>
+      </div>
+      <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+        <p class="text-sm text-slate-600">Tell us how this event runs, how you keep guests safe, and what you promise to deliver. Each section needs at least a short paragraph (about a minute of writing).</p>
+
+        <label class="block">
+          <span class="block text-sm font-bold text-slate-800 mb-1">Event plan <span class="text-red-600">*</span></span>
+          <span class="block text-xs text-slate-500 mb-2">Run-of-show: arrival, what happens through the evening, how guests interact with you and each other.</span>
+          <textarea id="ev-plan" rows="4" maxlength="4000" class="w-full p-3 bg-gray-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 text-sm transition" placeholder="On arrival I greet guests, pour drinks, and walk them through the menu. Cooking starts at 6:30, dinner is served at 7..."></textarea>
+        </label>
+
+        <label class="block">
+          <span class="block text-sm font-bold text-slate-800 mb-1">Safety measures <span class="text-red-600">*</span></span>
+          <span class="block text-xs text-slate-500 mb-2">Food handling, allergens you accommodate, fire/exit safety, first-aid supplies, neighbour considerations.</span>
+          <textarea id="ev-safety" rows="3" maxlength="2500" class="w-full p-3 bg-gray-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 text-sm transition" placeholder="I store ingredients at correct temperatures, separate raw and cooked, and confirm allergens with each guest 48 hours before. First-aid kit is in the kitchen drawer..."></textarea>
+        </label>
+
+        <label class="block">
+          <span class="block text-sm font-bold text-slate-800 mb-1">Promise to your guests <span class="text-red-600">*</span></span>
+          <span class="block text-xs text-slate-500 mb-2">What you commit to: minimum dishes served, atmosphere, what guests can expect to leave with.</span>
+          <textarea id="ev-promise" rows="3" maxlength="2000" class="w-full p-3 bg-gray-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 text-sm transition" placeholder="Three courses minimum, all dietary needs met, two hours at the table, a recipe card to take home..."></textarea>
+        </label>
+
+        <label class="block">
+          <span class="block text-sm font-bold text-slate-800 mb-1">Capacity rationale <span class="text-red-600">*</span></span>
+          <span class="block text-xs text-slate-500 mb-2">Why your seat count fits the space and the experience comfortably.</span>
+          <textarea id="ev-capacity" rows="2" maxlength="1000" class="w-full p-3 bg-gray-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 text-sm transition" placeholder="My dining table seats 8 with room to move; the kitchen lets me serve all 8 plates within 4 minutes of each other."></textarea>
+        </label>
+
+        <details class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <summary class="cursor-pointer text-sm font-bold text-slate-800 select-none">Optional: insurance &amp; food-safety certificate</summary>
+          <div class="mt-3 space-y-3">
+            <label class="block">
+              <span class="block text-xs font-bold text-slate-700 mb-1">Public-liability policy number</span>
+              <input id="ev-insurance" type="text" maxlength="100" class="w-full p-2.5 bg-white border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-500 text-sm" placeholder="e.g. POL-1234567">
+            </label>
+            <label class="block">
+              <span class="block text-xs font-bold text-slate-700 mb-1">Food-safety certificate URL</span>
+              <input id="ev-food-cert" type="url" maxlength="500" class="w-full p-2.5 bg-white border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-500 text-sm" placeholder="https://...">
+            </label>
+          </div>
+        </details>
+
+        <p id="ev-error" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></p>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 shrink-0">
+        <button id="ev-cancel" type="button" class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition">Cancel</button>
+        <button id="ev-submit" type="button" class="tsts-btn-primary px-5 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed">Submit for review</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Owner 2026-05-30 (date-picker rollout): Flatpickr loaded before common.js so the
+       window.tstsDatePicker wrapper (defined in common.js) sees the global at init time. -->
+  <script src="vendor/flatpickr/flatpickr.min.js?v=4.6.13"></script>
+  <script src="js/common.js?v=20260907a"></script>
+    <script src="data/faq-catalog.js?v=20260825a"></script>
     <script src="data/faq-trust.js?v=20260303a"></script>
-    <script src="js/faq-renderer.js?v=20260303a"></script>
-    <script src="js/faq-contextual.js?v=20260303a"></script>
+    <script src="js/faq-renderer.js?v=20260825a"></script>
+    <script src="js/faq-contextual.js?v=20260825a"></script>
     <script src="js/faq-init.js?v=20260224a"></script>
     <script src="https://js.stripe.com/v3"></script>
-    <script src="js/host.js?v=20260425d"></script>
+    <script src="js/host.js?v=20260907a"></script>
 </body>
 </html>

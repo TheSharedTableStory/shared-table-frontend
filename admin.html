@@ -7,10 +7,102 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/assets/logo-mark.png">
   <meta name="theme-color" content="#ea580c">
-  <title>Admin Dashboard — The Shared Table Story</title>
-  <link rel="stylesheet" href="css/tailwind.css?v=20260317b">
-  <link rel="stylesheet" href="css/fonts.css?v=20260310d" />
+  <title>Admin Dashboard, The Shared Table Story</title>
+  <link rel="stylesheet" href="css/tailwind.css?v=20260914a">
+  <link rel="stylesheet" href="css/fonts.css?v=20260810a" />
   <link rel="stylesheet" href="css/help-center.css?v=20260224a">
+
+  <!-- Owner 2026-05-30 (date-picker rollout): self-hosted Flatpickr 4.6.13 + brand
+       overrides byte-identical to the R3-approved block on experience.html. Same look
+       every page. TODO future cleanup: consolidate to a shared CSS file. -->
+  <link rel="stylesheet" href="vendor/flatpickr/flatpickr.min.css?v=4.6.13" />
+  <style>
+    .flatpickr-calendar { box-shadow: 0 12px 36px rgba(15, 23, 42, 0.10); border-radius: 16px; border: 1px solid rgba(15, 23, 42, 0.06); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    .flatpickr-months { padding-top: 4px; }
+    .flatpickr-months .flatpickr-month, .flatpickr-current-month, .flatpickr-current-month .cur-month, .flatpickr-current-month input.cur-year { color: rgb(31, 41, 55); font-weight: 600; }
+    .flatpickr-prev-month, .flatpickr-next-month { padding: 8px 12px; cursor: pointer; }
+    .flatpickr-prev-month svg, .flatpickr-next-month svg { fill: rgb(31, 41, 55); width: 14px; height: 14px; }
+    .flatpickr-prev-month:hover svg, .flatpickr-next-month:hover svg { fill: rgb(234, 88, 12); }
+    .flatpickr-weekday { color: rgb(100, 116, 139); font-weight: 600; }
+    .flatpickr-day { color: rgb(31, 41, 55); border-radius: 9999px; }
+    .flatpickr-day.today { border-color: rgb(194, 141, 107); }
+    .flatpickr-day.today:hover { background: rgb(254, 215, 170); border-color: rgb(194, 141, 107); color: rgb(154, 52, 18); }
+    .flatpickr-day:hover { background: rgb(254, 237, 213); color: rgb(154, 52, 18); }
+    .flatpickr-day.selected, .flatpickr-day.selected:hover, .flatpickr-day.selected:focus { background: rgb(234, 88, 12); border-color: rgb(234, 88, 12); color: #fff; }
+    .flatpickr-day.flatpickr-disabled, .flatpickr-day.flatpickr-disabled:hover { color: rgba(15, 23, 42, 0.22); background: transparent; cursor: not-allowed; }
+    .flatpickr-day.prevMonthDay, .flatpickr-day.nextMonthDay { color: rgba(15, 23, 42, 0.30); }
+
+    /* Owner 2026-08-05 ("fix all 12"): the legal preview used `prose prose-sm` from the
+       Tailwind typography PLUGIN, which is not installed — injected policy HTML rendered as
+       an unstyled wall of text. Scoped rules style the preview's nested elements to the
+       design system without pulling a plugin whose base styles would touch every page. */
+    #legal-preview h1, #legal-preview h2, #legal-preview h3 { font-weight: 700; color: rgb(31, 41, 51); line-height: 1.3; margin: 1.1em 0 0.45em; }
+    #legal-preview h1 { font-size: 1.15rem; }
+    #legal-preview h2 { font-size: 1.05rem; }
+    #legal-preview h3 { font-size: 0.95rem; }
+    #legal-preview p { margin: 0.55em 0; line-height: 1.65; font-size: 0.875rem; }
+    #legal-preview ul, #legal-preview ol { margin: 0.55em 0 0.55em 1.25em; font-size: 0.875rem; line-height: 1.6; }
+    #legal-preview ul { list-style: disc; }
+    #legal-preview ol { list-style: decimal; }
+    #legal-preview li { margin: 0.25em 0; }
+    #legal-preview a { color: rgb(234, 88, 12); text-decoration: underline; }
+    #legal-preview strong { font-weight: 700; color: rgb(31, 41, 51); }
+    #legal-preview hr { border-color: rgba(15, 23, 42, 0.08); margin: 1em 0; }
+
+    /* sir 2026-09-13 ("fix it using agent"): while the phone-width menu panel is open the round
+       menu button steps just past the panel's right edge (panel 192px + the same 16px margin)
+       so it never sits on top of a menu item. Closed, `left-4` puts it back where it was. */
+    #admin-sidebar-toggle-wrap.admin-menu-open { left: 208px; }
+
+    /* sir's order O-103, 2026-09-13: "fix all phone view for the website pages using agent without
+       losing anything on desktop website". Phone findings PHONE-admin-1, PHONE-admin-2 and
+       PHONE-admin-3 for this page. Every declaration below sits inside a max-width query, so at
+       1024 and above this block contributes nothing at all and the page keeps the exact width,
+       padding and spacing it has today.
+       These are written here rather than as utility classes because the compiled css/tailwind.css
+       carries no lg:min-w-full, no min-w-[760px] and no lg:px-6. In utility form the phone half of
+       the fix would have rendered nothing and the desktop cell padding would have gone with it. */
+
+    /* PHONE-admin-3, the identity strip. Below 1024 the label keeps a real gap from the signed in
+       address and never gives up its own width, so the two read as a label and an account instead
+       of one run of text. */
+    @media (max-width: 1023px) {
+      .admin-identity-bar { gap: 1rem; }
+      .admin-identity-bar .admin-panel-label { flex-shrink: 0; }
+    }
+
+    /* PHONE-admin-2, the fifteen data tables. Below 1024 each table keeps a real width instead of
+       squeezing six columns into 343 pixels, and its own frame scrolls sideways. The soft shading
+       at an edge appears only while there are still columns behind that edge, so it shows there is
+       more to reach and clears itself once that end is reached. Cell padding drops to 12 pixels so
+       the width is spent on the data rather than on air. */
+    @media (max-width: 1023px) {
+      .admin-table-scroll {
+        background-image:
+          linear-gradient(to right, rgb(255, 255, 255) 45%, rgba(255, 255, 255, 0)),
+          linear-gradient(to left, rgb(255, 255, 255) 45%, rgba(255, 255, 255, 0)),
+          radial-gradient(farthest-side at 0 50%, rgba(15, 23, 42, 0.16), rgba(15, 23, 42, 0)),
+          radial-gradient(farthest-side at 100% 50%, rgba(15, 23, 42, 0.16), rgba(15, 23, 42, 0));
+        background-position: left center, right center, left center, right center;
+        background-repeat: no-repeat;
+        background-size: 32px 100%, 32px 100%, 13px 100%, 13px 100%;
+        background-attachment: local, local, scroll, scroll;
+      }
+      .admin-table-scroll > table { min-width: 760px; }
+      .admin-table-scroll th, .admin-table-scroll td { padding-left: 0.75rem; padding-right: 0.75rem; }
+    }
+
+    /* PHONE-admin-1, the four headline tiles. grid-cols-2 in the markup puts them two to a row from
+       zero width. Below 640 the tile takes the same 16 pixel padding the status tiles further down
+       the page already use, and the figure is sized against the screen so the longest of them, the
+       revenue amount, stays on one line: it measures 192 pixels at the full size and a half width
+       tile on a 375 pixel screen holds 129. From 600 pixels up the figure is back at its full size,
+       so the join into the tablet band at 640 has no step in it. */
+    @media (max-width: 639px) {
+      #stats-tiles > article { padding: 1rem; }
+      #stats-tiles > article > p { font-size: clamp(0.9375rem, 5vw, 1.875rem); line-height: 1.2; overflow-wrap: anywhere; }
+    }
+  </style>
 
   <link rel="manifest" href="manifest.json">
 </head>
@@ -19,8 +111,13 @@
   <nav id="navbar-placeholder" role="navigation"></nav>
 
   <main class="flex-grow" role="main">
-    <div class="bg-white border-b border-slate-100 px-4 py-2 flex items-center justify-between">
-      <p class="text-xs uppercase tracking-[0.2em] text-slate-400 font-bold">Admin Panel</p>
+    <!-- Owner 2026-07-24 (sir: pages "in line with locked ones"): admin.html had NO <h1> at all (26 <h2>
+         section panels, no page-level heading) = an accessibility gap. Each panel legitimately keeps its own
+         <h2>, so promoting one would create multiple h1s; instead a single visually-hidden page-level h1.
+         `sr-only` is already compiled and used on the LOCKED pages (experience/explore/login). Zero visual change. -->
+    <h1 class="sr-only">Admin Dashboard</h1>
+    <div class="admin-identity-bar bg-white border-b border-slate-100 px-4 py-2 flex items-center justify-between">
+      <p class="admin-panel-label text-xs uppercase tracking-[0.2em] text-slate-400 font-bold">Admin Panel</p>
       <p id="admin-identity-label" class="text-xs text-slate-500 truncate">Admin</p>
     </div>
     <div class="flex min-h-[calc(100vh-4rem)]">
@@ -31,45 +128,64 @@
         <nav class="flex-1 overflow-y-auto py-3 text-sm" aria-label="Admin navigation">
           <!-- Overview -->
           <p class="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest text-slate-400 font-bold">Overview</p>
-          <button id="tab-dashboard" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 font-bold text-tsts-ink bg-orange-50 border-l-2 border-tsts-clay">Dashboard</button>
+          <button id="tab-dashboard" type="button" class="w-full text-left px-4 py-2.5 font-bold text-tsts-ink bg-orange-50 border-l-2 border-tsts-clay">Dashboard</button>
 
           <!-- Operations -->
           <p class="px-4 pt-4 pb-1 text-[10px] uppercase tracking-widest text-slate-400 font-bold">Operations</p>
-          <button id="tab-listings" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Experiences</button>
-          <button id="tab-private-requests" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Bookings &amp; Requests</button>
-          <button id="tab-users" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Users</button>
+          <!-- sir's order O-146, 2026-09-16, verbatim: "the Admin needs to have proper panel to see all
+               listing pending for his revuew". First in Operations because it is the only item in this
+               group that has a host waiting on the other end of it. The count rides on the button so it
+               is visible from every other screen in the panel; it is hidden entirely at zero, so an empty
+               queue shows nothing rather than a "0". -->
+          <button id="tab-review-queue" type="button" class="w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent flex items-center justify-between gap-2">
+            <span>Review queue</span>
+            <!-- No min-width: `min-w-[1.25rem]` is NOT in the compiled stylesheet and would have rendered
+                 nothing. px-1.5 carries the width on its own, and the badge is at most three characters. -->
+            <span id="review-queue-badge" class="hidden shrink-0 inline-flex items-center justify-center px-1.5 py-0.5 rounded-full bg-tsts-clay text-white text-[10px] font-bold leading-none"></span>
+          </button>
+          <button id="tab-listings" type="button" class="w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Experiences</button>
+          <button id="tab-private-requests" type="button" class="w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Bookings &amp; Requests</button>
+          <button id="tab-users" type="button" class="w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Users</button>
 
           <!-- Moderation -->
           <p class="px-4 pt-4 pb-1 text-[10px] uppercase tracking-widest text-slate-400 font-bold">Moderation</p>
-          <button id="tab-moderation" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Reports</button>
-          <button id="tab-verification" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Verification</button>
-          <button id="tab-action-items" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Action Items</button>
-          <button id="tab-incidents" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Attendance Issues</button>
+          <button id="tab-moderation" type="button" class="w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Reports</button>
+          <button id="tab-verification" type="button" class="w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Verification</button>
+          <button id="tab-action-items" type="button" class="w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Action Items</button>
+          <button id="tab-incidents" type="button" class="w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Attendance Issues</button>
 
           <!-- Configuration -->
           <p class="px-4 pt-4 pb-1 text-[10px] uppercase tracking-widest text-slate-400 font-bold">Configuration</p>
-          <button id="tab-pricing" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Pricing &amp; Policies</button>
-          <button id="tab-legal" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Legal Policies</button>
-          <button id="tab-coupons" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Promo Codes</button>
-          <button id="tab-fees-charges" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Fees &amp; Charges</button>
-          <button id="tab-audit" type="button" class="admin-sidebar-btn w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Audit Logs</button>
+          <button id="tab-pricing" type="button" class="w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Pricing &amp; Policies</button>
+          <button id="tab-legal" type="button" class="w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Legal Policies</button>
+          <button id="tab-taxonomies" type="button" class="w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Filter Taxonomies</button>
+          <button id="tab-coupons" type="button" class="w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Promo Codes</button>
+          <button id="tab-fees-charges" type="button" class="w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Fees &amp; Charges</button>
+          <button id="tab-audit" type="button" class="w-full text-left px-4 py-2.5 text-slate-600 hover:bg-slate-50 border-l-2 border-transparent">Audit Logs</button>
         </nav>
       </aside>
 
       <!-- MOBILE SIDEBAR TOGGLE -->
-      <div class="lg:hidden fixed bottom-4 left-4 z-50">
-        <button id="admin-sidebar-toggle" type="button" class="flex items-center justify-center w-12 h-12 rounded-full bg-tsts-ink text-white shadow-lg hover:opacity-90 transition" aria-label="Toggle admin menu">
+      <div id="admin-sidebar-toggle-wrap" class="lg:hidden fixed bottom-4 left-4 z-50">
+        <button id="admin-sidebar-toggle" type="button" class="flex items-center justify-center w-12 h-12 rounded-full bg-tsts-ink text-white shadow-lg hover:opacity-90 transition" aria-label="Open menu">
           <i class="fas fa-bars text-lg"></i>
         </button>
       </div>
 
       <!-- CONTENT -->
       <div class="flex-1 overflow-y-auto">
-        <div class="max-w-6xl mx-auto px-4 lg:px-8 py-8">
+        <!-- sir 2026-08-16: nav-container width standard for all pages ("make it like explore") -->
+        <div class="container mx-auto px-4 lg:px-8 py-8">
 
       <div id="view-dashboard" class="space-y-8">
           <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Dashboard</h2>
-          <section id="stats-tiles" class="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <!-- Owner-approved 2026-05-02: compact grey link tile for today's bookings. -->
+          <a id="bookings-today-link" href="#view-bookings-today" class="inline-flex items-center gap-2 text-sm text-slate-700 hover:text-slate-900 transition group">
+            <i class="fas fa-calendar-day text-slate-400"></i>
+            <span id="bookings-today-summary">Today’s bookings and revenue</span>
+            <i class="fas fa-arrow-right text-slate-400 group-hover:translate-x-0.5 transition"></i>
+          </a>
+          <section id="stats-tiles" class="grid gap-5 grid-cols-2 lg:grid-cols-4">
             <article data-nav-tab="users" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 cursor-pointer hover:border-tsts-clay hover:shadow-md transition" role="button" tabindex="0" aria-label="View all users">
               <span class="text-xs uppercase tracking-widest text-slate-500">Total Users</span>
               <p id="stats-total-users" class="text-3xl font-bold text-tsts-ink mt-2">—</p>
@@ -89,23 +205,23 @@
           </section>
 
           <section id="lifecycle-summary-section" class="hidden">
-            <h2 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">Listings by Status</h2>
+            <h2 class="font-bold text-lg text-tsts-ink mb-3">Listings by Status</h2>
             <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 mb-5" id="exp-status-cards"></div>
-            <h2 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">Bookings by Status</h2>
+            <h2 class="font-bold text-lg text-tsts-ink mb-3">Bookings by Status</h2>
             <div class="grid gap-3 grid-cols-2 sm:grid-cols-4" id="booking-status-cards"></div>
           </section>
 
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 font-bold text-lg">Latest Bookings</div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto admin-table-scroll">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
                   <tr><th class="px-6 py-3">Date</th><th class="px-6 py-3">Guest</th><th class="px-6 py-3">Experience</th><th class="px-6 py-3">Financial</th><th class="px-6 py-3">Lifecycle</th><th class="px-6 py-3">Actions</th></tr>
                 </thead>
-                <tbody id="bookings-table-body" class="divide-y divide-slate-100"></tbody>
+                <tbody id="bookings-table-body" class="divide-y divide-slate-100"><tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Loading…</td></tr></tbody>
               </table>
             </div>
-            <div id="bookings-loading" class="p-6 text-center text-slate-400">Loading...</div>
+            <div id="bookings-loading" class="p-6 text-center text-slate-400">Loading…</div>
             <div id="bookings-pagination" class="hidden flex items-center justify-between px-6 py-3 border-t border-slate-100 text-sm text-slate-600">
               <span id="bookings-page-info"></span>
               <div class="flex gap-2">
@@ -116,12 +232,84 @@
           </section>
       </div>
 
+      <!-- Owner-approved 2026-05-02: dedicated Today's Bookings page. -->
+      <div id="view-bookings-today" class="hidden space-y-6">
+          <div class="flex items-baseline gap-3">
+            <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Today's Bookings</h2>
+            <span id="bookings-today-date" class="text-sm text-slate-500">—</span>
+          </div>
+          <div class="flex flex-wrap gap-3 text-sm">
+            <span id="bookings-today-stat-count"   class="px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 font-semibold">Bookings today</span>
+            <span id="bookings-today-stat-revenue" class="px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-800 font-semibold">Revenue today</span>
+          </div>
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-sm">
+                <thead class="bg-slate-50 border-b border-slate-100">
+                  <tr class="text-left text-xs uppercase tracking-wide text-slate-500">
+                    <th class="px-4 py-3">Time</th>
+                    <th class="px-4 py-3">Guest</th>
+                    <th class="px-4 py-3">Experience</th>
+                    <th class="px-4 py-3">Host</th>
+                    <th class="px-4 py-3">Seats</th>
+                    <th class="px-4 py-3">Amount</th>
+                    <th class="px-4 py-3">Status</th>
+                    <th class="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="bookings-today-tbody" class="divide-y divide-slate-100">
+                  <tr><td colspan="8" class="px-4 py-8 text-center text-slate-500" id="bookings-today-empty">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+      </div>
+
+      <!-- REVIEW QUEUE (sir's order O-146, 2026-09-16). Every listing waiting for a person to read it,
+           oldest first, one card each. Colour is functional only: amber says why this listing is here,
+           emerald is the single positive action, everything else is the panel's slate. -->
+      <div id="view-review-queue" class="hidden space-y-6">
+          <div>
+            <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Review queue</h2>
+            <p id="review-queue-intro" class="text-sm text-slate-600 mt-1">Every listing waiting for one of us to read it, oldest first.</p>
+          </div>
+
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <p id="review-queue-count" class="text-xs text-slate-500"></p>
+            <button id="btn-refresh-review-queue" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
+          </div>
+
+          <div id="review-queue-list" class="space-y-5"></div>
+
+          <!-- Designed empty state: an icon, a headline, a body, and one thing to do. -->
+          <!-- py-12, not py-14: `py-14` is NOT in the compiled stylesheet and would have rendered no
+               padding at all, collapsing the empty state into a thin strip. -->
+          <section id="review-queue-empty" class="hidden bg-white rounded-3xl border border-slate-100 shadow-sm px-6 py-12 text-center">
+            <div class="mx-auto w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center">
+              <i class="fa-regular fa-circle-check text-emerald-600 text-2xl" aria-hidden="true"></i>
+            </div>
+            <h3 class="heading-serif text-xl font-bold text-tsts-ink mt-5">Nothing is waiting</h3>
+            <p class="text-sm text-slate-600 mt-2 max-w-md mx-auto">Every listing that needed a person to read it has been read. A new one appears here the moment a host sends it.</p>
+            <button id="review-queue-empty-cta" type="button" class="mt-6 inline-flex items-center px-5 py-2.5 rounded-xl bg-tsts-ink text-white text-sm font-bold hover:bg-slate-800 transition">Go to Experiences</button>
+          </section>
+
+          <!-- Shown only when the queue itself could not be read. Says what happened and what to do. -->
+          <section id="review-queue-error" class="hidden bg-white rounded-3xl border border-rose-100 shadow-sm px-6 py-10 text-center">
+            <div class="mx-auto w-14 h-14 rounded-full bg-rose-50 flex items-center justify-center">
+              <i class="fa-solid fa-triangle-exclamation text-rose-600 text-2xl" aria-hidden="true"></i>
+            </div>
+            <h3 class="heading-serif text-xl font-bold text-tsts-ink mt-5">We couldn't load the queue</h3>
+            <p id="review-queue-error-msg" class="text-sm text-slate-600 mt-2 max-w-md mx-auto"></p>
+            <button id="review-queue-error-cta" type="button" class="mt-6 inline-flex items-center px-5 py-2.5 rounded-xl bg-tsts-ink text-white text-sm font-bold hover:bg-slate-800 transition">Try again</button>
+          </section>
+      </div>
+
       <div id="view-listings" class="hidden space-y-8">
           <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Experiences</h2>
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100">
               <div class="flex justify-between items-center mb-3">
-                <div class="font-bold text-lg">All Listings</div>
+                <div id="listings-card-heading" class="font-bold text-lg">All Listings</div>
                 <button id="btn-refresh-listings" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
               </div>
               <div class="flex gap-2 flex-wrap" id="listings-filter-tabs">
@@ -133,12 +321,12 @@
                 <button data-filter="DELETED_SOFT" class="listing-filter-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-500 hover:bg-gray-50">Deleted</button>
               </div>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto admin-table-scroll">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
                   <tr><th class="px-6 py-3">Image</th><th class="px-6 py-3">Title</th><th class="px-6 py-3">Host</th><th class="px-6 py-3">Price</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Actions</th></tr>
                 </thead>
-                <tbody id="listings-table-body" class="divide-y divide-slate-100"></tbody>
+                <tbody id="listings-table-body" class="divide-y divide-slate-100"><tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Loading…</td></tr></tbody>
               </table>
             </div>
             <div class="mt-4 flex items-center justify-between px-6 pb-4">
@@ -172,10 +360,10 @@
               <h2 class="font-bold text-lg text-tsts-ink">Experience Approval Threshold</h2>
               <button id="btn-refresh-approval-threshold" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
             </div>
-            <p class="text-sm text-slate-600 mb-4">Free events ($0) always go to the moderation queue. Paid events priced below this threshold also queue for review. Paid events priced at or above this threshold publish straight to Explore.</p>
+            <p class="text-sm text-slate-600 mb-4">Free events (A$0) always go to the moderation queue. Paid events priced below this threshold also queue for review. Paid events priced at or above this threshold publish straight to Explore.</p>
             <div class="grid gap-4 md:grid-cols-[240px_auto] items-end">
               <div>
-                <label for="experience-approval-threshold" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Threshold ($AUD, 0 to 1000)</label>
+                <label for="experience-approval-threshold" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Threshold (A$, 0 to 1000)</label>
                 <input id="experience-approval-threshold" type="number" min="0" max="1000" step="1" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
               </div>
               <div class="flex flex-wrap items-center gap-2">
@@ -187,9 +375,51 @@
 
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
             <div class="flex items-center justify-between gap-4 mb-4">
-              <h2 class="font-bold text-lg text-tsts-ink">Email Diagnostics</h2>
+              <h2 class="font-bold text-lg text-tsts-ink">Host Settlement &amp; Recovery</h2>
+              <button id="btn-refresh-host-settlement" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
             </div>
-            <p class="text-sm text-slate-600 mb-4">Send a test email to verify Resend deliverability. Useful when a host reports they didn't receive a publish or approval confirmation.</p>
+            <p class="text-sm text-slate-600 mb-4">Money policy for host payouts and cancellations. <strong>Payout hold</strong> is how long a host's earnings are held after an event before release (it also governs shortfall and cancellation settlement timing). <strong>Host-cancel recovery</strong> is the anti-abuse penalty charged when a host cancels. <strong>Shortfall processing fee</strong> is retained when refunding unused-seat pre-funding. <strong>Stuck-debt collection window</strong> is how long a payout-deduction debt sits with no held payout to collect it from before the platform tries to charge the host's saved card directly.</p>
+            <div class="grid gap-4 md:grid-cols-4">
+              <div>
+                <label for="payout-hold-hours" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Payout hold (hours, 1 to 168)</label>
+                <input id="payout-hold-hours" type="number" min="1" max="168" step="1" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                <div class="mt-2 flex items-center gap-2">
+                  <button id="btn-save-payout-hold" type="button" class="inline-flex items-center justify-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90">Save</button>
+                  <span id="payout-hold-meta" class="text-xs text-slate-500"></span>
+                </div>
+              </div>
+              <div>
+                <label for="host-cancel-recovery-percent" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Host-cancel recovery (%, 0 to 100)</label>
+                <input id="host-cancel-recovery-percent" type="number" min="0" max="100" step="1" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                <div class="mt-2 flex items-center gap-2">
+                  <button id="btn-save-cancel-recovery" type="button" class="inline-flex items-center justify-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90">Save</button>
+                  <span id="cancel-recovery-meta" class="text-xs text-slate-500"></span>
+                </div>
+              </div>
+              <div>
+                <label for="shortfall-fee-percent" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Shortfall processing fee (%, 0 to 100)</label>
+                <input id="shortfall-fee-percent" type="number" min="0" max="100" step="1" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                <div class="mt-2 flex items-center gap-2">
+                  <button id="btn-save-shortfall-fee" type="button" class="inline-flex items-center justify-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90">Save</button>
+                  <span id="shortfall-fee-meta" class="text-xs text-slate-500"></span>
+                </div>
+              </div>
+              <div>
+                <label for="shortfall-stuck-debt-window-days" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Stuck-debt collection window (days, 1 to 365)</label>
+                <input id="shortfall-stuck-debt-window-days" type="number" min="1" max="365" step="1" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                <div class="mt-2 flex items-center gap-2">
+                  <button id="btn-save-shortfall-stuck-debt-window" type="button" class="inline-flex items-center justify-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90">Save</button>
+                  <span id="shortfall-stuck-debt-window-meta" class="text-xs text-slate-500"></span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+            <div class="flex items-center justify-between gap-4 mb-4">
+              <h2 class="font-bold text-lg text-tsts-ink">Check email delivery</h2>
+            </div>
+            <p class="text-sm text-slate-600 mb-4">Send yourself a test email to check that our emails are going out. Useful when a host says they never received a confirmation.</p>
             <div class="grid gap-4 md:grid-cols-[320px_auto] items-end">
               <div>
                 <label for="diagnostic-test-email-to" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Recipient email</label>
@@ -210,7 +440,7 @@
             <div class="flex flex-wrap items-center gap-3">
               <div id="marketing-email-status-badge" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold bg-slate-100 text-slate-500">
                 <span id="marketing-email-status-dot" class="w-2 h-2 rounded-full bg-slate-400"></span>
-                <span id="marketing-email-status-label">Loading...</span>
+                <span id="marketing-email-status-label">Loading…</span>
               </div>
               <span id="marketing-email-source-label" class="hidden text-xs text-slate-400"></span>
               <button id="btn-marketing-enable" type="button" class="hidden px-4 py-2 rounded-xl bg-tsts-ink text-white text-sm font-semibold hover:opacity-90 transition-opacity">Enable Marketing Emails</button>
@@ -220,57 +450,70 @@
 
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
             <div class="flex items-center justify-between gap-4 mb-4">
-              <h2 class="font-bold text-lg text-tsts-ink">Pricing Tier Policy</h2>
-              <button id="btn-refresh-tier-policy" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
+              <h2 class="font-bold text-lg text-tsts-ink">Per-Currency Platform Fees</h2>
+              <button id="btn-refresh-currency-fees" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
             </div>
-            <div id="tier-policy-version-meta" class="text-xs text-slate-400 mb-3">Loading...</div>
-            <div class="overflow-x-auto mb-4">
-              <table class="min-w-full text-left text-sm">
-                <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
-                  <tr><th class="px-4 py-3">Tier</th><th class="px-4 py-3">Min Value</th><th class="px-4 py-3">Max Value</th><th class="px-4 py-3">Fixed Fee</th><th class="px-4 py-3">% Fee (bps)</th></tr>
-                </thead>
-                <tbody id="tier-policy-table-body" class="divide-y divide-slate-100"></tbody>
-              </table>
-            </div>
-            <div id="tier-policy-edit-form" class="hidden border-t border-slate-100 pt-4 space-y-3">
-              <div class="text-sm font-semibold text-slate-700">New Tier Configuration</div>
-              <div class="text-xs text-slate-400">Define tiers in ascending min value order. Leave Max blank on the last row for open-ended. Fixed fee in cents (100 = $1.00). % fee as percentage integer (e.g. 10 for 10%).</div>
-              <div id="tier-rows-editor" class="space-y-2"></div>
-              <button id="btn-add-tier-row" type="button" class="text-sm text-orange-600 font-bold hover:underline">+ Add tier row</button>
-              <div id="tier-validation-result" class="hidden text-xs rounded-xl px-3 py-2"></div>
-              <div class="flex flex-wrap gap-2 pt-1">
-                <button id="btn-validate-tiers" type="button" class="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100">Validate</button>
-                <button id="btn-publish-tiers" type="button" class="inline-flex items-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90">Publish New Version</button>
-                <button id="btn-cancel-tier-edit" type="button" class="text-sm text-slate-500 hover:text-slate-700 px-2 py-2">Cancel</button>
+            <p class="text-xs text-slate-400 mb-4 leading-relaxed">The platform fee is the <span class="font-semibold text-slate-600">greater of (tier % × booking value) and the tier's local minimum</span>, set per currency. It is host-absorbed (deducted from the host payout). Minimums are in each currency's own units and are never FX-converted. Hosts can only list in enabled currencies. AUD ships with the production values as the default. Edit any currency freely.</p>
+
+            <div class="flex flex-wrap items-end gap-3 mb-5">
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-bold text-slate-500" for="currency-fee-select">Currency</label>
+                <select id="currency-fee-select" class="w-44 rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none"></select>
+              </div>
+              <label class="flex items-center gap-2 text-sm text-slate-700 pb-2.5">
+                <input id="currency-fee-enabled" type="checkbox" class="rounded border-slate-300 text-tsts-clay focus:ring-tsts-clay"> Enabled for listing
+              </label>
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-bold text-slate-500" for="currency-fee-fx">FX → AUD <span class="text-slate-300">(display only)</span></label>
+                <input id="currency-fee-fx" type="number" min="0" step="0.0001" class="w-36 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="1.0">
+              </div>
+              <div class="flex items-end gap-2 ml-auto">
+                <div class="flex flex-col gap-1">
+                  <label class="text-xs font-bold text-slate-500" for="currency-fee-add-code">Add currency (ISO code)</label>
+                  <input id="currency-fee-add-code" type="text" maxlength="3" class="w-28 rounded-xl border border-slate-200 px-3 py-2 text-sm uppercase focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="THB">
+                </div>
+                <button id="btn-currency-fee-add" type="button" class="text-sm text-orange-600 font-bold hover:underline pb-2.5">+ Add</button>
               </div>
             </div>
-            <button id="btn-edit-tier-policy" type="button" class="inline-flex items-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90">Edit Tier Pricing</button>
+
+            <div class="text-xs text-slate-400 mb-2">Bands for <span id="currency-fee-active-label" class="font-bold text-slate-600">AUD</span>, values in <span id="currency-fee-unit-label" class="font-bold text-slate-600">major units (e.g. 50 = $50)</span>. Start at 0, contiguous, last band open-ended (leave Max blank). % as a percentage (e.g. 10 = 10%). Min is the local floor.</div>
+            <div id="currency-fee-rows-editor" class="space-y-2 mb-3"></div>
+            <button id="btn-currency-fee-add-row" type="button" class="text-sm text-orange-600 font-bold hover:underline">+ Add band</button>
+            <div id="currency-fee-validation-result" class="hidden text-xs rounded-xl px-3 py-2 mt-3"></div>
+            <div class="flex flex-wrap gap-2 pt-3">
+              <button id="btn-currency-fee-validate" type="button" class="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100">Validate</button>
+              <button id="btn-currency-fee-publish" type="button" class="inline-flex items-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90">Publish</button>
+            </div>
+            <div id="currency-fee-meta" class="text-xs text-slate-400 mt-3"></div>
           </section>
+
+          <!-- (Legacy single-currency "Pricing Tier Policy" section removed — superseded by the
+               Per-Currency Platform Fees card above. Owner: no dead code.) -->
 
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
             <div class="flex items-center justify-between gap-4 mb-4">
               <h2 class="font-bold text-lg text-tsts-ink">Refund Window Policy</h2>
               <button id="btn-refresh-refund-policy" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
             </div>
-            <div id="refund-policy-version-meta" class="text-xs text-slate-400 mb-3">Loading...</div>
-            <div class="overflow-x-auto mb-4">
+            <div id="refund-policy-version-meta" class="text-xs text-slate-400 mb-3">Loading…</div>
+            <div class="overflow-x-auto admin-table-scroll mb-4">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
                   <tr><th class="px-4 py-3">Window</th><th class="px-4 py-3">Min Hours</th><th class="px-4 py-3">Max Hours</th><th class="px-4 py-3">Guest %</th><th class="px-4 py-3">Retained % (auto)</th><th class="px-4 py-3">Host &amp; Platform Split (Guest + Host + Platform = 100%)</th></tr>
                 </thead>
-                <tbody id="refund-policy-table-body" class="divide-y divide-slate-100"></tbody>
+                <tbody id="refund-policy-table-body" class="divide-y divide-slate-100"><tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Loading…</td></tr></tbody>
               </table>
             </div>
             <div id="refund-policy-edit-form" class="hidden border-t border-slate-100 pt-4 space-y-3">
               <div class="text-sm font-semibold text-slate-700">New Refund Window Configuration</div>
-              <div class="text-xs text-slate-400">Define windows in ascending min hours order. Leave Max blank on the last row for open-ended. Guest Refund % is 0–100. Host Allocation % applies to the retained amount only (retained = 100 − refund). Host compensation is paid at event settlement (event + 72h).</div>
+              <div class="text-xs text-slate-400">Define windows in ascending min hours order. Leave Max blank on the last row for open-ended. Guest Refund % is 0–100. Host Allocation % applies to the retained amount only (retained = 100 − refund). Host compensation is paid at event settlement (event + the configured payout-hold window, default 48h).</div>
               <div id="refund-rows-editor" class="space-y-2"></div>
               <button id="btn-add-refund-row" type="button" class="text-sm text-orange-600 font-bold hover:underline">+ Add window row</button>
               <div id="refund-validation-result" class="hidden text-xs rounded-xl px-3 py-2"></div>
               <div class="flex flex-wrap gap-2 pt-1">
                 <button id="btn-validate-refund" type="button" class="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100">Validate</button>
                 <button id="btn-publish-refund" type="button" class="inline-flex items-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90">Publish New Version</button>
-                <button id="btn-cancel-refund-edit" type="button" class="text-sm text-slate-500 hover:text-slate-700 px-2 py-2">Cancel</button>
+                <button id="btn-cancel-refund-edit" type="button" class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition">Cancel</button>
               </div>
             </div>
             <button id="btn-edit-refund-policy" type="button" class="inline-flex items-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90">Edit Refund Windows</button>
@@ -282,9 +525,9 @@
 
           <!-- Verification sub-tabs -->
           <div class="flex gap-2 flex-wrap" id="verification-sub-tabs">
-            <button data-verification-sub="hosts" class="verification-sub-tab text-xs px-4 py-2 rounded-full font-semibold bg-tsts-ink text-white">Host Approvals</button>
-            <button data-verification-sub="events" class="verification-sub-tab text-xs px-4 py-2 rounded-full font-semibold bg-white border border-slate-200 text-slate-500 hover:bg-gray-50">Event Approvals</button>
-            <button data-verification-sub="funding" class="verification-sub-tab text-xs px-4 py-2 rounded-full font-semibold bg-white border border-slate-200 text-slate-500 hover:bg-gray-50">Funding Reviews</button>
+            <button data-verification-sub="hosts" class="text-xs px-4 py-2 rounded-full font-semibold bg-tsts-ink text-white">Host Approvals</button>
+            <button data-verification-sub="events" class="text-xs px-4 py-2 rounded-full font-semibold bg-white border border-slate-200 text-slate-500 hover:bg-gray-50">Event Approvals</button>
+            <button data-verification-sub="funding" class="text-xs px-4 py-2 rounded-full font-semibold bg-white border border-slate-200 text-slate-500 hover:bg-gray-50">Funding Reviews</button>
           </div>
 
           <div id="verification-sub-hosts">
@@ -293,12 +536,12 @@
                 <div class="font-bold text-lg">Host Verification Queue</div>
                 <button id="btn-refresh-host-verifications" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh Hosts</button>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto admin-table-scroll">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
                   <tr><th class="px-6 py-3">Host</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Listings</th><th class="px-6 py-3">Actions</th></tr>
                 </thead>
-                <tbody id="host-verifications-table-body" class="divide-y divide-slate-100"></tbody>
+                <tbody id="host-verifications-table-body" class="divide-y divide-slate-100"><tr><td colspan="4" class="px-4 py-8 text-center text-slate-500">Loading…</td></tr></tbody>
               </table>
             </div>
           </section>
@@ -310,12 +553,12 @@
                 <div class="font-bold text-lg">Event Verification Queue</div>
                 <button id="btn-refresh-event-verifications" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh Events</button>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto admin-table-scroll">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
-                  <tr><th class="px-6 py-3">Experience</th><th class="px-6 py-3">Host</th><th class="px-6 py-3">Snapshot Fee</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Actions</th></tr>
+                  <tr><th class="px-6 py-3">Experience</th><th class="px-6 py-3">Host</th><th class="px-6 py-3">Fee at submission</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Actions</th></tr>
                 </thead>
-                <tbody id="event-verifications-table-body" class="divide-y divide-slate-100"></tbody>
+                <tbody id="event-verifications-table-body" class="divide-y divide-slate-100"><tr><td colspan="4" class="px-4 py-8 text-center text-slate-500">Loading…</td></tr></tbody>
               </table>
             </div>
           </section>
@@ -327,36 +570,36 @@
                 <div class="font-bold text-lg">Funding Review Queue</div>
                 <button id="btn-refresh-shortfall-monitor" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto admin-table-scroll">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
                   <tr><th class="px-6 py-3">Experience / Slot</th><th class="px-6 py-3">Approval</th><th class="px-6 py-3">Seats</th><th class="px-6 py-3">Funding</th><th class="px-6 py-3">Actions</th></tr>
                 </thead>
-                <tbody id="shortfall-review-table-body" class="divide-y divide-slate-100"></tbody>
+                <tbody id="shortfall-review-table-body" class="divide-y divide-slate-100"><tr><td colspan="4" class="px-4 py-8 text-center text-slate-500">Loading…</td></tr></tbody>
               </table>
             </div>
           </section>
 
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 font-bold text-lg">Reconciliation Grid</div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto admin-table-scroll">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
                   <tr><th class="px-6 py-3">Experience / Slot</th><th class="px-6 py-3">Approval / Decision</th><th class="px-6 py-3">Capacity / Threshold / Booked</th><th class="px-6 py-3">Stage A / Stage B</th><th class="px-6 py-3">Settlement Case</th><th class="px-6 py-3">Actions</th></tr>
                 </thead>
-                <tbody id="shortfall-recon-table-body" class="divide-y divide-slate-100"></tbody>
+                <tbody id="shortfall-recon-table-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">Loading…</td></tr></tbody>
               </table>
             </div>
           </section>
 
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 font-bold text-lg">Settlement Cases</div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto admin-table-scroll">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
-                  <tr><th class="px-6 py-3">Case ID</th><th class="px-6 py-3">Slot</th><th class="px-6 py-3">Amounts</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Actions</th></tr>
+                  <tr><th class="px-6 py-3">Event</th><th class="px-6 py-3">Amounts</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Reference</th><th class="px-6 py-3">Actions</th></tr>
                 </thead>
-                <tbody id="shortfall-settlement-table-body" class="divide-y divide-slate-100"></tbody>
+                <tbody id="shortfall-settlement-table-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">Loading…</td></tr></tbody>
               </table>
             </div>
           </section>
@@ -379,12 +622,12 @@
                   <button id="btn-refresh-action-items" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
                 </div>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto admin-table-scroll">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
                   <tr><th class="px-6 py-3">Action</th><th class="px-6 py-3">Owner</th><th class="px-6 py-3">Priority</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Reminder</th><th class="px-6 py-3">Actions</th></tr>
                 </thead>
-                <tbody id="action-items-table-body" class="divide-y divide-slate-100"></tbody>
+                <tbody id="action-items-table-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">Loading…</td></tr></tbody>
               </table>
             </div>
           </section>
@@ -406,12 +649,12 @@
                 <button type="submit" class="inline-flex items-center justify-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90">Send Invite</button>
               </div>
             </form>
-            <div class="mt-6 overflow-x-auto">
+            <div class="mt-6 overflow-x-auto admin-table-scroll">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
                   <tr><th class="px-6 py-3">Email</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Created</th><th class="px-6 py-3">Expires</th><th class="px-6 py-3">Invited By</th></tr>
                 </thead>
-                <tbody id="admin-invites-table-body" class="divide-y divide-slate-100"></tbody>
+                <tbody id="admin-invites-table-body" class="divide-y divide-slate-100"><tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Loading…</td></tr></tbody>
               </table>
             </div>
           </section>
@@ -421,12 +664,15 @@
                 <div class="font-bold text-lg">All Users</div>
                 <button id="btn-refresh-users" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
             </div>
-            <div class="overflow-x-auto">
+            <!-- What closing an account actually did: bookings cancelled, card holds released, and
+                 anything it could not cancel, which needs the administrator to finish by hand. -->
+            <div id="user-delete-result" class="hidden px-6 py-4 border-b text-sm" role="status" aria-live="polite"></div>
+            <div class="overflow-x-auto admin-table-scroll">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
                   <tr><th class="px-6 py-3">User</th><th class="px-6 py-3">Email</th><th class="px-6 py-3">Role</th><th class="px-6 py-3">Joined</th><th class="px-6 py-3">Actions</th></tr>
                 </thead>
-                <tbody id="users-table-body" class="divide-y divide-slate-100"></tbody>
+                <tbody id="users-table-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">Loading…</td></tr></tbody>
               </table>
             </div>
           </section>
@@ -434,12 +680,17 @@
 
       <div id="view-legal" class="hidden space-y-8">
           <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Legal Policies</h2>
-          <p class="text-sm text-slate-500">Privacy Policy and Terms of Service shown to users on the website and inside the mobile app. Edit, save as draft, then publish to make it live everywhere.</p>
+          <p class="text-sm text-slate-500">All binding policies shown to users on the website and inside the mobile apps. Edit, save as a draft, set an effective date if you need to schedule it, then publish to push it live everywhere.</p>
 
-          <!-- Type selector -->
-          <div class="flex gap-2" role="tablist">
-            <button id="legal-type-privacy" type="button" class="legal-type-btn px-5 py-2 rounded-2xl bg-tsts-ink text-white font-semibold text-sm">Privacy Policy</button>
-            <button id="legal-type-terms" type="button" class="legal-type-btn px-5 py-2 rounded-2xl bg-white border border-slate-200 text-slate-600 font-semibold text-sm">Terms of Service</button>
+          <!-- POLICY-005 (2026-05-15): 7-type selector (privacy, terms, cookies, refund, host_terms, community_guidelines, acceptable_use) -->
+          <div class="flex flex-wrap gap-2" role="tablist" aria-label="Choose a policy to edit">
+            <button id="legal-type-privacy"              type="button" data-legal-type="privacy"              class="px-5 py-2 rounded-2xl bg-tsts-ink text-white font-semibold text-sm">Privacy Policy</button>
+            <button id="legal-type-terms"                type="button" data-legal-type="terms"                class="px-5 py-2 rounded-2xl bg-white border border-slate-200 text-slate-600 font-semibold text-sm">Terms of Service</button>
+            <button id="legal-type-cookies"              type="button" data-legal-type="cookies"              class="px-5 py-2 rounded-2xl bg-white border border-slate-200 text-slate-600 font-semibold text-sm">Cookie Policy</button>
+            <button id="legal-type-refund"               type="button" data-legal-type="refund"               class="px-5 py-2 rounded-2xl bg-white border border-slate-200 text-slate-600 font-semibold text-sm">Refund &amp; Cancellation</button>
+            <button id="legal-type-host_terms"           type="button" data-legal-type="host_terms"           class="px-5 py-2 rounded-2xl bg-white border border-slate-200 text-slate-600 font-semibold text-sm">Host Terms</button>
+            <button id="legal-type-community_guidelines" type="button" data-legal-type="community_guidelines" class="px-5 py-2 rounded-2xl bg-white border border-slate-200 text-slate-600 font-semibold text-sm">Community Guidelines</button>
+            <button id="legal-type-acceptable_use"       type="button" data-legal-type="acceptable_use"       class="px-5 py-2 rounded-2xl bg-white border border-slate-200 text-slate-600 font-semibold text-sm">Acceptable Use</button>
           </div>
 
           <!-- Current published version banner -->
@@ -453,28 +704,47 @@
 
           <!-- Editor -->
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
-            <div class="flex items-center justify-between gap-4 mb-4">
+            <div class="flex items-center justify-between gap-4 mb-4 flex-wrap">
               <div>
                 <h3 class="font-bold text-lg text-tsts-ink">Edit policy text (Markdown)</h3>
                 <p class="text-xs text-slate-500 mt-1">Standard Markdown. Headings <code>##</code>, bold <code>**word**</code>, lists <code>-</code> or <code>1.</code>, links <code>[text](url)</code>.</p>
               </div>
-              <button id="legal-load-published" type="button" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50">Load Currently Published</button>
+              <div class="flex gap-2">
+                <button id="legal-load-published" type="button" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50"><i class="fas fa-download mr-1.5"></i>Load Currently Published</button>
+                <label class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 cursor-pointer">
+                  <i class="fas fa-upload mr-1.5"></i>Upload .md
+                  <input id="legal-upload-file" type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" class="hidden">
+                </label>
+              </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <textarea id="legal-editor" class="w-full h-96 px-4 py-3 border border-slate-300 rounded-xl text-sm font-mono text-slate-800 focus:ring-2 focus:ring-tsts-clay/60 outline-none" placeholder="Paste or type Markdown here…" spellcheck="true"></textarea>
               <div class="bg-tsts-cream rounded-xl border border-slate-200 p-4 h-96 overflow-y-auto">
                 <h4 class="text-xs uppercase tracking-widest text-slate-500 font-bold mb-3">Preview</h4>
-                <div id="legal-preview" class="prose prose-sm max-w-none text-slate-800"></div>
+                <div id="legal-preview" class="max-w-none text-slate-800"></div>
               </div>
             </div>
 
-            <div class="mt-5 flex flex-col sm:flex-row gap-3">
-              <input id="legal-change-note" type="text" maxlength="500" placeholder="Change note (optional, e.g. 'Updated address; clarified retention.')" class="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-tsts-clay/60 outline-none">
-              <button id="legal-save-draft" type="button" class="px-5 py-2 rounded-xl bg-slate-200 text-slate-800 font-semibold text-sm hover:bg-slate-300">Save as Draft</button>
-              <button id="legal-publish" type="button" class="px-5 py-2 rounded-xl tsts-btn-primary font-semibold text-sm">Publish Now</button>
+            <!-- POLICY-005 (2026-05-15): Effective-date scheduling + change note + actions -->
+            <div class="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <label class="text-xs font-semibold text-slate-600 flex flex-col gap-1">
+                Effective date
+                <input id="legal-effective-date" type="datetime-local" class="px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-tsts-clay/60 outline-none">
+                <span class="text-[11px] font-normal text-slate-500">Leave blank to publish immediately. Future dates schedule the policy to go live automatically.</span>
+              </label>
+              <label class="text-xs font-semibold text-slate-600 flex flex-col gap-1 sm:col-span-2">
+                Change note (shown in version history)
+                <input id="legal-change-note" type="text" maxlength="500" placeholder="e.g. Clarified data-retention period; updated registered office." class="px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-tsts-clay/60 outline-none">
+              </label>
+            </div>
+            <div class="mt-4 flex flex-wrap gap-3">
+              <button id="legal-save-draft" type="button" class="px-5 py-2 rounded-xl bg-slate-200 text-slate-800 font-semibold text-sm hover:bg-slate-300"><i class="fas fa-save mr-1.5"></i>Save as Draft</button>
+              <button id="legal-publish" type="button" class="px-5 py-2 rounded-xl tsts-btn-primary font-semibold text-sm"><i class="fas fa-rocket mr-1.5"></i>Publish Now</button>
+              <button id="legal-diff-toggle" type="button" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50" title="Compare your draft text with the currently published version"><i class="fas fa-code-compare mr-1.5"></i>Show diff vs published</button>
             </div>
             <p id="legal-status-msg" class="mt-3 text-sm" aria-live="polite"></p>
+            <div id="legal-diff-pane" class="hidden mt-4 bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs font-mono whitespace-pre-wrap text-slate-700"></div>
           </section>
 
           <!-- Version history -->
@@ -485,6 +755,22 @@
             </div>
             <div id="legal-history-list" class="space-y-2 text-sm">Loading…</div>
           </section>
+      </div>
+
+      <!-- ─── Filter Taxonomies (admin-editable values for Explore filter modal + Host listing form) ─── -->
+      <div id="view-taxonomies" class="hidden space-y-8">
+          <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+              <h2 class="heading-serif text-2xl font-bold text-tsts-ink">Filter Taxonomies</h2>
+              <p class="text-sm text-slate-500 mt-1">These values drive the Explore filter modal and the Host listing form. Changes apply instantly to the live website and apps. All edits are logged in Audit Logs.</p>
+            </div>
+            <button id="taxonomies-refresh" type="button" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50">
+              <i class="fas fa-sync-alt mr-1.5"></i> Refresh
+            </button>
+          </div>
+          <div id="taxonomies-list" class="space-y-6">
+            <p class="text-sm text-slate-500">Loading taxonomies…</p>
+          </div>
       </div>
 
       <div id="view-coupons" class="hidden space-y-8">
@@ -502,9 +788,10 @@
               <div>
                 <label for="coupon-scope" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Scope</label>
                 <select id="coupon-scope" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                  <option value="global">Global</option>
-                  <option value="category">Category</option>
-                  <option value="experience">Experience</option>
+                  <option value="global">Every experience</option>
+                  <option value="category">Chosen categories</option>
+                  <option value="host">Everything by chosen hosts</option>
+                  <option value="experience">Chosen experiences only</option>
                 </select>
               </div>
               <div>
@@ -512,8 +799,13 @@
                 <input id="coupon-percent" type="number" min="0" max="100" step="1" value="0" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
               </div>
               <div>
-                <label for="coupon-fixed" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Fixed Off (cents)</label>
-                <input id="coupon-fixed" type="number" min="0" step="1" value="0" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                <label for="coupon-currency" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Currency</label>
+                <select id="coupon-currency" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"></select>
+                <p class="text-xs text-slate-400 mt-1">A fixed amount off and a minimum spend only apply to bookings taken in this currency. A percentage works in any.</p>
+              </div>
+              <div>
+                <label for="coupon-fixed" id="coupon-fixed-label" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Fixed amount off (A$)</label>
+                <input id="coupon-fixed" type="number" min="0" step="0.01" value="0" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
               </div>
               <div>
                 <label for="coupon-max-total" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Max Uses Total</label>
@@ -524,8 +816,8 @@
                 <input id="coupon-max-user" type="number" min="1" step="1" value="1" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
               </div>
               <div>
-                <label for="coupon-min-subtotal" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Min Subtotal (cents)</label>
-                <input id="coupon-min-subtotal" type="number" min="0" step="1" value="0" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                <label for="coupon-min-subtotal" id="coupon-min-subtotal-label" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Minimum spend (A$)</label>
+                <input id="coupon-min-subtotal" type="number" min="0" step="0.01" value="0" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
               </div>
               <div>
                 <label for="coupon-min-guests" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Min Guests</label>
@@ -539,13 +831,30 @@
                 <label for="coupon-valid-to" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Valid To</label>
                 <input id="coupon-valid-to" type="datetime-local" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
               </div>
-              <div class="md:col-span-2">
-                <label for="coupon-categories" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Categories (comma-separated, for category scope)</label>
-                <input id="coupon-categories" type="text" placeholder="food-gatherings, explore-outdoors" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              <!-- Owner-approved 2026-08-03 (sir, Item 13 + scale rework): scoping is picked,
+                   never typed, and it scales. Categories stay a fixed checklist; experiences
+                   and hosts are SERVER-SEARCHED (type a name, pick from matches) with the
+                   picks collecting as removable chips. No ids, no slugs on screen, and the
+                   catalogue never loads into the browser. -->
+              <div id="coupon-scope-global-note" class="md:col-span-2 text-xs text-slate-500">This coupon applies to every experience on the platform.</div>
+              <div id="coupon-categories-picker" class="md:col-span-2 hidden">
+                <p class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Which categories does it apply to?</p>
+                <div id="coupon-categories-list" class="grid gap-1 sm:grid-cols-2 rounded-xl border border-slate-200 px-3 py-2"></div>
+                <p class="text-xs text-slate-400 mt-1">Tick at least one category.</p>
               </div>
-              <div class="md:col-span-2">
-                <label for="coupon-experience-ids" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Experience IDs (comma-separated, for experience scope)</label>
-                <input id="coupon-experience-ids" type="text" placeholder="6992...,6993..." class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              <div id="coupon-experiences-picker" class="md:col-span-2 hidden">
+                <p class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Which experiences does it apply to?</p>
+                <div id="coupon-exp-chips" class="flex flex-wrap gap-2 mb-2"></div>
+                <input id="coupon-exp-search" type="text" autocomplete="off" placeholder="Type an experience name and pick from the matches" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                <div id="coupon-exp-results" class="hidden rounded-xl border border-slate-200 mt-1 divide-y divide-slate-100" style="max-height: 230px; overflow-y: auto;"></div>
+                <p class="text-xs text-slate-400 mt-1">Search finds matches across the whole catalogue. Each pick becomes a chip you can remove.</p>
+              </div>
+              <div id="coupon-hosts-picker" class="md:col-span-2 hidden">
+                <p class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Which hosts does it apply to?</p>
+                <div id="coupon-host-chips" class="flex flex-wrap gap-2 mb-2"></div>
+                <input id="coupon-host-search" type="text" autocomplete="off" placeholder="Type a host's name or email and pick from the matches" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+                <div id="coupon-host-results" class="hidden rounded-xl border border-slate-200 mt-1 divide-y divide-slate-100" style="max-height: 230px; overflow-y: auto;"></div>
+                <p class="text-xs text-slate-400 mt-1">The coupon covers every listing by each host you pick, including ones they add later.</p>
               </div>
               <div class="md:col-span-2">
                 <button id="btn-create-coupon" type="submit" class="inline-flex items-center justify-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90">Create Coupon</button>
@@ -558,12 +867,12 @@
                 <div class="font-bold text-lg">Coupon Inventory</div>
                 <button id="btn-refresh-coupons" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto admin-table-scroll">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
                   <tr><th class="px-6 py-3">Code</th><th class="px-6 py-3">Discount</th><th class="px-6 py-3">Max Uses</th><th class="px-6 py-3">Used</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Actions</th></tr>
                 </thead>
-                <tbody id="coupons-table-body" class="divide-y divide-slate-100"></tbody>
+                <tbody id="coupons-table-body" class="divide-y divide-slate-100"><tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Loading…</td></tr></tbody>
               </table>
             </div>
           </section>
@@ -576,12 +885,12 @@
                 <div class="font-bold text-lg">Reports Triage</div>
                 <button id="btn-refresh-reports" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto admin-table-scroll">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
                   <tr><th class="px-6 py-3">Created</th><th class="px-6 py-3">Target</th><th class="px-6 py-3">Category</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Actions</th></tr>
                 </thead>
-                <tbody id="reports-table-body" class="divide-y divide-slate-100"></tbody>
+                <tbody id="reports-table-body" class="divide-y divide-slate-100"><tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Loading…</td></tr></tbody>
               </table>
             </div>
           </section>
@@ -592,14 +901,20 @@
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                 <div class="font-bold text-lg">Private Booking Requests</div>
-                <button id="btn-refresh-private-requests" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
+                <div class="flex items-center gap-3">
+                  <div class="flex rounded-lg border border-slate-200 overflow-hidden text-xs font-bold">
+                    <button id="btn-pr-filter-all" type="button" class="px-3 py-1.5 bg-slate-100 text-slate-800">All</button>
+                    <button id="btn-pr-filter-flagged" type="button" class="px-3 py-1.5 bg-white text-slate-500 hover:bg-slate-50">Flagged chats</button>
+                  </div>
+                  <button id="btn-refresh-private-requests" type="button" class="text-sm text-orange-600 font-bold hover:underline">Refresh</button>
+                </div>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto admin-table-scroll">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
                   <tr><th class="px-6 py-3">Created</th><th class="px-6 py-3">Experience</th><th class="px-6 py-3">Requester</th><th class="px-6 py-3">Schedule</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Actions</th></tr>
                 </thead>
-                <tbody id="private-requests-table-body" class="divide-y divide-slate-100"></tbody>
+                <tbody id="private-requests-table-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">Loading…</td></tr></tbody>
               </table>
             </div>
           </section>
@@ -610,7 +925,7 @@
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
             <p class="text-xs text-slate-500 mb-4">Attendance incidents reported by the system.</p>
             <div id="admin-incidents-body" class="overflow-x-auto">
-              <p class="text-sm text-slate-500 text-center py-8">Loading...</p>
+              <p class="text-sm text-slate-500 text-center py-8">Loading…</p>
             </div>
           </section>
       </div>
@@ -620,7 +935,7 @@
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
             <p class="text-xs text-slate-500 mb-4">Host cancellation charges across the platform.</p>
             <div id="admin-fees-charges-body" class="overflow-x-auto">
-              <p class="text-sm text-slate-500 text-center py-8">Loading...</p>
+              <p class="text-sm text-slate-500 text-center py-8">Loading…</p>
             </div>
           </section>
       </div>
@@ -630,52 +945,38 @@
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
             <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-5">
               <div>
-                <p class="text-xs text-slate-500 mt-1">Immutable request history for all admin API actions.</p>
+                <p class="text-xs text-slate-500 mt-1">A permanent record of everything done in this admin panel. Nothing here can be edited or deleted.</p>
               </div>
               <div class="flex items-center gap-2 text-xs text-slate-500">
-                <span>Total rows:</span>
+                <span>Total entries:</span>
                 <span id="audit-total-count" class="font-bold text-slate-700">0</span>
               </div>
             </div>
+            <!-- Owner-ordered 2026-08-03 (sir, Item 16 filter fix): no machine language in
+                 the filters either. Action is picked from phrases; the raw action-code,
+                 method, path and typed-user-id filters are gone (exports keep raw data). -->
             <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <div>
-                <label for="audit-filter-from" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">From (UTC)</label>
+                <label for="audit-filter-from" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">From</label>
                 <input id="audit-filter-from" type="datetime-local" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
               </div>
               <div>
-                <label for="audit-filter-to" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">To (UTC)</label>
+                <label for="audit-filter-to" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">To</label>
                 <input id="audit-filter-to" type="datetime-local" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
               </div>
               <div>
-                <label for="audit-filter-actor" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Actor ID</label>
-                <input id="audit-filter-actor" type="text" placeholder="user id" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-              </div>
-              <div>
                 <label for="audit-filter-action" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Action</label>
-                <input id="audit-filter-action" type="text" placeholder="admin_request" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-              </div>
-              <div>
-                <label for="audit-filter-method" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Method</label>
-                <select id="audit-filter-method" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                  <option value="">All</option>
-                  <option value="GET">GET</option>
-                  <option value="POST">POST</option>
-                  <option value="PATCH">PATCH</option>
-                  <option value="PUT">PUT</option>
-                  <option value="DELETE">DELETE</option>
+                <select id="audit-filter-action" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                  <option value="">All actions</option>
                 </select>
               </div>
               <div>
                 <label for="audit-filter-ok" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Outcome</label>
                 <select id="audit-filter-ok" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                   <option value="">All</option>
-                  <option value="true">OK</option>
-                  <option value="false">Fail</option>
+                  <option value="true">Done</option>
+                  <option value="false">Failed</option>
                 </select>
-              </div>
-              <div class="xl:col-span-2">
-                <label for="audit-filter-path" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Path Contains</label>
-                <input id="audit-filter-path" type="text" placeholder="/api/admin/users" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
               </div>
             </div>
             <div class="mt-4 flex flex-wrap gap-2">
@@ -687,12 +988,12 @@
           </section>
 
           <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto admin-table-scroll">
               <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
-                  <tr><th class="px-6 py-3">Timestamp</th><th class="px-6 py-3">Actor</th><th class="px-6 py-3">Action</th><th class="px-6 py-3">Method</th><th class="px-6 py-3">Path</th><th class="px-6 py-3">Target</th><th class="px-6 py-3">Outcome</th><th class="px-6 py-3">Reason</th></tr>
+                  <tr><th class="px-6 py-3">When</th><th class="px-6 py-3">Admin</th><th class="px-6 py-3">Action</th><th class="px-6 py-3">What it touched</th><th class="px-6 py-3">Outcome</th><th class="px-6 py-3">Reference</th><th class="px-6 py-3">Reason</th></tr>
                 </thead>
-                <tbody id="audit-table-body" class="divide-y divide-slate-100"></tbody>
+                <tbody id="audit-table-body" class="divide-y divide-slate-100"><tr><td colspan="7" class="px-4 py-8 text-center text-slate-500">Loading…</td></tr></tbody>
               </table>
             </div>
           </section>
@@ -706,12 +1007,15 @@
   <footer id="footer-placeholder" role="contentinfo"></footer>
 
   <script src="js/runtime-config.js?v=20260429a"></script>
-  <script src="js/common.js?v=20260316c"></script>
-  <script src="data/faq-catalog.js?v=20260224a"></script>
+  <!-- Owner 2026-05-30 (date-picker rollout): Flatpickr loaded before common.js so the
+       window.tstsDatePicker wrapper sees the global at init time. -->
+  <script src="vendor/flatpickr/flatpickr.min.js?v=4.6.13"></script>
+  <script src="js/common.js?v=20260907a"></script>
+  <script src="data/faq-catalog.js?v=20260825a"></script>
   <script src="data/faq-trust.js?v=20260303a"></script>
-  <script src="js/faq-renderer.js?v=20260303a"></script>
-  <script src="js/faq-contextual.js?v=20260303a"></script>
+  <script src="js/faq-renderer.js?v=20260825a"></script>
+  <script src="js/faq-contextual.js?v=20260825a"></script>
   <script src="js/faq-init.js?v=20260224a"></script>
-  <script src="js/admin.js?v=20260429a"></script>
+  <script src="js/admin.js?v=20260923a"></script>
 </body>
 </html>

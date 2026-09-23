@@ -317,8 +317,10 @@ describe("login — handleSignup validation", () => {
     input.dispatchEvent(new Event("input", { bubbles: true }));
     const lengthLi = document.querySelector('li[data-rule="length"]');
     const upperLi  = document.querySelector('li[data-rule="upper"]');
-    expect(lengthLi.classList.contains("text-emerald-600")).toBe(true);
-    expect(upperLi.classList.contains("text-emerald-600")).toBe(true);
+    // UPDATED 2026-08-05: the password meter was redesigned — met-state is now carried by
+    // the data-met attribute (CSS keys off it), not a text-emerald class swap.
+    expect(lengthLi.getAttribute("data-met")).toBe("1");
+    expect(upperLi.getAttribute("data-met")).toBe("1");
   });
 });
 

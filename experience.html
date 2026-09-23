@@ -2,22 +2,69 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' http://localhost:4000 https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/assets/logo-mark.png">
   <meta name="theme-color" content="#ea580c">
   <meta name="description" content="View experience details, read reviews, and reserve your seat at The Shared Table Story.">
-  <title>Experience — The Shared Table Story</title>
+  <title>Experience, The Shared Table Story</title>
 
-  <link rel="stylesheet" href="css/tailwind.css?v=20260317b">
+  <!-- Open Graph + Twitter Card meta — owner 2026-06-01 (B). Static fallbacks
+       below so non-JS crawlers (notably Facebook) get a clean default preview;
+       experience.js overrides og:title/description/image/url + twitter:* once
+       the listing JSON loads. Trade-off: FB doesn't run JS so FB previews use
+       the generic fallback; modern crawlers (Twitter, Slack, Discord,
+       WhatsApp) run JS and see the real listing data. -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="The Shared Table Story">
+  <meta property="og:title" content="An experience on The Shared Table Story">
+  <meta property="og:description" content="Find your table. Locals sharing food, stories, movement, and more.">
+  <meta property="og:image" content="https://thesharedtablestory.com/assets/hero-banner.jpg">
+  <meta property="og:url" content="https://thesharedtablestory.com/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="An experience on The Shared Table Story">
+  <meta name="twitter:description" content="Find your table. Locals sharing food, stories, movement, and more.">
+  <meta name="twitter:image" content="https://thesharedtablestory.com/assets/hero-banner.jpg">
+
+  <link rel="stylesheet" href="css/tailwind.css?v=20260914a">
   <script src="https://js.stripe.com/v3/"></script>
 
-  <link rel="stylesheet" href="css/fonts.css?v=20260310d" />
+  <link rel="stylesheet" href="css/fonts.css?v=20260810a" />
   <link rel="stylesheet" href="css/help-center.css?v=20260224a" />
+  <link rel="stylesheet" href="css/icon-font.css?v=20260503a" />
+
+  <!-- Owner 2026-05-30 (R3 Date pilot): self-hosted Flatpickr 4.6.13 — CSP strict
+       (script-src 'self'), so vendor JS + CSS are served from /vendor/flatpickr/, not
+       a CDN. The brand override <style> below maps Flatpickr internals to the TSTS
+       palette (warm cream / clay / orange) so the calendar matches the site, not the
+       library default. Same wrapper (window.tstsDatePicker in common.js) will be used
+       across explore/host/check-in/admin in the rollout. -->
+  <link rel="stylesheet" href="vendor/flatpickr/flatpickr.min.css?v=4.6.13" />
+  <style>
+    /* TSTS brand overrides for Flatpickr — keep all date pickers visually identical. */
+    .flatpickr-calendar { box-shadow: 0 12px 36px rgba(15, 23, 42, 0.10); border-radius: 16px; border: 1px solid rgba(15, 23, 42, 0.06); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    .flatpickr-months { padding-top: 4px; }
+    .flatpickr-months .flatpickr-month, .flatpickr-current-month, .flatpickr-current-month .cur-month, .flatpickr-current-month input.cur-year { color: rgb(31, 41, 55); font-weight: 600; }
+    /* Owner 2026-05-30: target the SVG children of the prev/next month controls (not
+       the parent) so the arrow glyphs are visibly coloured + clickable. The parent
+       `<span class="flatpickr-prev-month">` has no fill of its own; the arrow lives
+       inside it as `<svg>`. Brand ink resting, brand orange on hover. */
+    .flatpickr-prev-month, .flatpickr-next-month { padding: 8px 12px; cursor: pointer; }
+    .flatpickr-prev-month svg, .flatpickr-next-month svg { fill: rgb(31, 41, 55); width: 14px; height: 14px; }
+    .flatpickr-prev-month:hover svg, .flatpickr-next-month:hover svg { fill: rgb(234, 88, 12); }
+    .flatpickr-weekday { color: rgb(100, 116, 139); font-weight: 600; }
+    .flatpickr-day { color: rgb(31, 41, 55); border-radius: 9999px; }
+    .flatpickr-day.today { border-color: rgb(194, 141, 107); }
+    .flatpickr-day.today:hover { background: rgb(254, 215, 170); border-color: rgb(194, 141, 107); color: rgb(154, 52, 18); }
+    .flatpickr-day:hover { background: rgb(254, 237, 213); color: rgb(154, 52, 18); }
+    .flatpickr-day.selected, .flatpickr-day.selected:hover, .flatpickr-day.selected:focus { background: rgb(234, 88, 12); border-color: rgb(234, 88, 12); color: #fff; }
+    .flatpickr-day.flatpickr-disabled, .flatpickr-day.flatpickr-disabled:hover { color: rgba(15, 23, 42, 0.22); background: transparent; cursor: not-allowed; }
+    .flatpickr-day.prevMonthDay, .flatpickr-day.nextMonthDay { color: rgba(15, 23, 42, 0.30); }
+  </style>
 
 
-	
+
 <link rel="manifest" href="manifest.json">
 </head>
 
@@ -43,7 +90,9 @@
       </div>
     </div>
 
-    <div id="experience-content" class="hidden max-w-6xl mx-auto px-4 sm:px-6 lg:px-0 py-8 sm:py-10 lg:py-12">
+    <!-- sir 2026-08-16 "Widen it": frozen-page change on sir's word — the nav-container width
+         standard ("make it like explore"); padding matched to the nav's own px-4. -->
+    <div id="experience-content" class="hidden container mx-auto px-4 py-8 sm:py-10 lg:py-12">
       
       <div class="mb-6 text-sm text-slate-600">
         <a href="explore.html" class="inline-flex items-center gap-2 hover:text-tsts-ink">
@@ -59,27 +108,93 @@
         <a href="host.html" class="ml-auto text-xs font-bold text-amber-700 underline hover:text-amber-900 whitespace-nowrap">Manage Listings</a>
       </div>
 
+      <!-- COMING SOON BAND (sir's order O-146, 2026-09-16). A draft the host has turned into a preview
+           is visible here and bookable nowhere. The band is the first thing on the page so nobody reads
+           the story, decides to come, and only then finds out there is nothing to book. Amber is the
+           page's own "something to know" colour, the same one the host status banner above uses. -->
+      <div id="preview-band" class="hidden mb-6 rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 sm:px-6 sm:py-5 flex items-start gap-4">
+        <span class="shrink-0 mt-0.5 inline-flex items-center justify-center w-9 h-9 rounded-full bg-amber-100">
+          <i class="fa-regular fa-clock text-amber-700" aria-hidden="true"></i>
+        </span>
+        <div class="min-w-0">
+          <p class="text-xs uppercase tracking-[0.2em] text-amber-700 font-bold">Coming soon</p>
+          <!-- text-lg only: `sm:text-xl` is NOT in the compiled stylesheet, so it would have rendered
+               nothing while reading correctly here. Caught by the stale-stylesheet guard, not by eye. -->
+          <p id="preview-band-headline" class="heading-serif text-lg font-semibold text-tsts-ink mt-1">This table isn't open yet</p>
+          <p id="preview-band-body" class="text-sm text-amber-900 leading-relaxed mt-1"></p>
+        </div>
+      </div>
+
       <div class="lg:flex lg:items-start lg:gap-10">
         <section class="lg:w-2/3 space-y-8">
-          <div class="overflow-hidden rounded-3xl shadow-soft-card bg-slate-200">
+          <!-- Owner-spec 2026-05-03 (D-7 follow-up): heart overlays on top of hero
+               photo (top-left), exactly like explore-card. Click fills orange. -->
+          <!-- Owner 2026-05-30 (P4 multi-image): carousel chrome (prev/next arrows
+               + dot indicators) wraps the existing #main-image. When images.length
+               > 1, experience.js paints dots, wires prev/next/keyboard/swipe, and
+               swaps #main-image.src on navigation. When images.length === 1 the
+               arrows + dots stay hidden and the page renders exactly as before. -->
+          <div id="hero-carousel" class="relative overflow-hidden rounded-3xl shadow-soft-card bg-slate-200" tabindex="0">
+            <!-- sir 2026-08-16 ("the picture of the expeirence is ---- up with low height compared
+                 to width"): the fixed heights left the hero squat (2.1:1) after the page joined the
+                 width standard. aspect-video (16/9) is the platform's own locked carousel ratio —
+                 the height now scales with the width at every size. -->
             <img
               id="main-image"
               alt="Experience cover image"
-              class="w-full h-64 sm:h-80 lg:h-96 object-cover"
+              class="w-full aspect-video object-cover"
             />
+            <!-- Prev/Next arrows + dot indicators — hidden when only 1 image.
+                 Owner 2026-05-30 (P4): bg-white/85, h-11/w-11, left-1/2,
+                 -translate-x-1/2 are all purged from the compiled Tailwind.
+                 Set size + opacity + horizontal-centering inline so the chrome
+                 actually renders. h-10/w-10 ARE in the build. -->
+            <!-- Owner 2026-06-01: heavy left/right angle brackets U+276E / U+276F
+                 (HTML entities &#10094; / &#10095;) — these UI-designed glyphs
+                 center properly in flex, unlike the asymmetric &lsaquo;/&rsaquo;. -->
+            <button id="hero-carousel-prev" type="button"
+                    class="hidden absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center transition hover:scale-110 rounded-full tsts-glass-circle tsts-glass-faint p-0 z-20"
+                    aria-label="Previous photo" title="Previous photo">
+              <span class="text-sm leading-none text-white">&#10094;</span>
+            </button>
+            <button id="hero-carousel-next" type="button"
+                    class="hidden absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center transition hover:scale-110 rounded-full tsts-glass-circle tsts-glass-faint p-0 z-20"
+                    aria-label="Next photo" title="Next photo">
+              <span class="text-sm leading-none text-white">&#10095;</span>
+            </button>
+            <div id="hero-carousel-dots" class="hidden absolute bottom-4 flex items-center gap-2 z-20"
+                 style="left: 50%; transform: translateX(-50%);"></div>
+            <button id="bookmark-btn" type="button"
+                    class="absolute top-4 left-4 w-16 h-16 flex items-center justify-center transition hover:scale-110 rounded-full tsts-glass-circle tsts-glass-faint p-0 z-10"
+                    aria-label="Like" title="Like" data-tooltip="Like" data-tooltip-pos="below" aria-pressed="false">
+              <i id="bookmark-icon" class="fas fa-heart tsts-heart-photo text-4xl"></i>
+            </button>
+            <!-- Verified badge on the hero image (owner-approved 2026-05-26) — matches the
+                 Explore card's bottom-left blue shield "Verified" trust badge. Shown only
+                 when verifiedStatus === "verified". Replaces the old under-location pill. -->
+            <div id="hero-verified-badge" class="hidden absolute bottom-4 left-4 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold tracking-wide shadow-sm bg-blue-600/95 text-white z-10">
+              <i class="fas fa-shield-halved text-[10px]"></i>
+              <span>Verified</span>
+            </div>
+            <!-- Share moved to the hero bottom-right corner (owner 2026-05-26) — matches the
+                 Explore card's share treatment + the hero heart (same glass circle). Keeps the
+                 #share-experience-btn id so the existing JS share handler is unchanged. -->
+            <button id="share-experience-btn" type="button"
+                    class="absolute bottom-4 right-4 w-16 h-16 flex items-center justify-center transition hover:scale-110 rounded-full tsts-glass-circle tsts-glass-faint p-0 z-10"
+                    aria-label="Share this experience" title="Share" data-tooltip="Share" data-tooltip-pos="below">
+              <i class="fas fa-share-nodes tsts-icon-photo text-4xl"></i>
+            </button>
           </div>
 
           <header class="space-y-2">
             <h1 id="exp-title" class="heading-serif text-2xl sm:text-3xl lg:text-4xl font-semibold text-tsts-ink">
               </h1>
+            <!-- Owner 2026-06-08: real series average rating (stars + number + count). Filled by JS from
+                 exp.averageRating / exp.reviewCount; stays hidden when there are 0 reviews (no fake). -->
+            <div id="exp-rating" class="hidden items-center gap-2"></div>
             <a id="exp-city" href="#" target="_blank" rel="noopener noreferrer" class="text-sm sm:text-base text-slate-600 underline hover:text-tsts-ink inline-block">
               </a>
-            <div id="exp-verified-badge" class="hidden">
-              <span class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-100">
-                <i class="fa-solid fa-badge-check"></i>
-                Verified event
-              </span>
-            </div>
+            <!-- Verified "event" pill moved onto the hero image (2026-05-26, owner-approved) — see #hero-verified-badge. -->
             <div id="exp-verified-pending-badge" class="hidden">
               <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 border border-amber-100">
                 <i class="fa-regular fa-clock"></i>
@@ -88,28 +203,22 @@
             </div>
           </header>
 
-          <div class="flex flex-wrap items-center gap-2">
-            <button id="bookmark-btn" type="button" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-white transition">
-              <i id="bookmark-icon" class="fa-regular fa-bookmark"></i>
-              <span id="bookmark-label">Save</span>
-            </button>
-            <button id="like-btn" type="button" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-white transition">
-              <i id="like-icon" class="fa-regular fa-heart"></i>
-              <span id="like-count">0</span>
-            </button>
-            <span class="inline-flex items-center rounded-full bg-blue-100 text-blue-700 px-3 py-2 text-xs font-bold" title="This is a shared experience — open to anyone. Your booking details are private until confirmed.">
-              Shared experience
-            </span>
-            <a id="report-experience-btn" href="report.html" class="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white/80 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 transition">
-              <i class="fas fa-flag"></i>
-              Report this experience
-            </a>
-          </div>
+          <!-- Owner 2026-05-26: Share moved to the hero bottom-right corner (see
+               #share-experience-btn on the hero overlay). Owner 2026-05-27: "Report this
+               experience" now sits in line with the "About this experience" header (moved
+               out of the Comments header, since the comment composer is becoming
+               attendee-only / read-only for the public). -->
 
           <section class="bg-white/90 rounded-3xl shadow-soft-card border border-white px-5 sm:px-7 py-6 sm:py-7">
-            <h2 class="heading-serif text-xl sm:text-2xl font-semibold text-tsts-ink mb-3">
-              About this experience
-            </h2>
+            <div class="flex items-center justify-between gap-3 mb-3">
+              <h2 class="heading-serif text-xl sm:text-2xl font-semibold text-tsts-ink">
+                About this experience
+              </h2>
+              <a id="report-experience-btn" href="report.html" class="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 transition shrink-0">
+                <i class="fas fa-flag"></i>
+                Report this experience
+              </a>
+            </div>
             <p id="exp-description" class="text-sm sm:text-base leading-relaxed text-slate-800 whitespace-pre-line break-words">
               </p>
 
@@ -127,12 +236,25 @@
                 <h3 class="font-semibold text-tsts-ink mb-2">Duration</h3>
                 <p id="exp-duration" class="text-sm text-slate-700"></p>
             </div>
+
+            <!-- Owner-flagged 2026-05-02: When this happens, days of week + time slots + date window. -->
+            <div id="frequency-section" class="mt-6 pt-6 border-t border-slate-100 hidden">
+                <h3 class="font-semibold text-tsts-ink mb-2">When this happens</h3>
+                <p id="exp-frequency-line" class="text-sm text-slate-700"></p>
+                <div id="exp-upcoming-dates" class="mt-3 flex flex-wrap gap-2"></div>
+                <p id="exp-frequency-window" class="text-xs text-slate-500 mt-2"></p>
+            </div>
           </section>
 
           <section class="bg-tsts-soft rounded-3xl border border-white shadow-soft-card px-5 sm:px-7 py-6 sm:py-7">
+            <!-- Owner 2026-05-26: "Hosted by" promoted from a tiny uppercase eyebrow
+                 label to a serif section heading IDENTICAL to "About this experience"
+                 (same heading-serif/size/weight/alignment), and the avatar row set to
+                 items-center so the host photo is vertically centred to the name + bio. -->
+            <h2 class="heading-serif text-xl sm:text-2xl font-semibold text-tsts-ink mb-3">Hosted by</h2>
             <a
               id="host-profile-link"
-              class="group flex items-start gap-4 sm:gap-5 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 cursor-pointer hover:bg-white/50 transition p-2 -m-2"
+              class="group flex items-center gap-4 sm:gap-5 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 cursor-pointer hover:bg-white/50 transition p-2 -m-2"
             >
               <div class="flex-shrink-0">
                 <img
@@ -144,9 +266,6 @@
                 />
               </div>
               <div>
-                <p class="text-xs uppercase tracking-[0.16em] text-slate-500 mb-1">
-                  Hosted by
-                </p>
                 <p id="host-name" class="text-base sm:text-lg font-semibold text-tsts-ink mb-2 group-hover:text-orange-600 transition">
                 </p>
                 <p id="host-bio" class="text-sm text-slate-700">A local host ready to share their table and stories with you.</p>
@@ -155,37 +274,34 @@
             </a>
           </section>
 
+          <!-- Owner 2026-05-27: there is NO separate Comments section — ALL feedback is a
+               REVIEW (★ rating + written text). Reviews show the top 5, default HIGHEST-rated
+               first, with a sort control to flip to LOWEST-rated first so a guest can surface
+               any critical reviews. -->
           <section id="reviews-section" class="bg-white/90 rounded-3xl shadow-soft-card border border-white px-5 sm:px-7 py-6 sm:py-7 hidden">
-            <h2 class="heading-serif text-xl sm:text-2xl font-semibold text-tsts-ink mb-3">Reviews</h2>
+            <div class="flex items-center justify-between gap-3 mb-3">
+              <h2 class="heading-serif text-xl sm:text-2xl font-semibold text-tsts-ink">Reviews from fellow travellers</h2>
+              <label for="reviews-sort" class="sr-only">Sort reviews</label>
+              <select id="reviews-sort" class="rounded-xl border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-tsts-clay/60 cursor-pointer shrink-0">
+                <option value="highest">Highest rated first</option>
+                <option value="lowest">Lowest rated first</option>
+              </select>
+            </div>
             <div id="reviews-list" aria-live="polite" class="space-y-3"></div>
-          </section>
-
-          <section id="comments-section" class="bg-white/90 rounded-3xl shadow-soft-card border border-white px-5 sm:px-7 py-6 sm:py-7 hidden">
-            <h2 class="heading-serif text-xl sm:text-2xl font-semibold text-tsts-ink mb-3">Comments</h2>
-            <div id="comments-list" aria-live="polite" class="space-y-3"></div>
-
-            <form id="comment-form" class="mt-5 space-y-3">
-              <label for="comment-text" class="sr-only">Write a comment</label>
-              <textarea id="comment-text" rows="3" placeholder="Write a comment..." class="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent"></textarea>
-              <button id="comment-submit" type="submit" class="inline-flex items-center justify-center rounded-xl tsts-btn-primary px-4 py-2 text-sm font-semibold shadow-md transition">
-                Post comment
-              </button>
-              <p id="comment-hint" class="text-xs text-slate-500"></p>
-            </form>
+            <p id="reviews-more-note" class="hidden text-xs text-slate-500 mt-3"></p>
           </section>
         </section>
 
         <aside class="lg:w-1/3 mt-8 lg:mt-0 space-y-4">
-          <div
-            id="featured-review-container"
-            class="hidden bg-white/95 border border-white shadow-soft-card rounded-3xl px-5 py-5"
-          >
-             </div>
-
+          <!-- Owner 2026-05-27: featured-review card removed from the right column (reviews
+               still show in the left "Reviews from fellow travellers" section). -->
           <div class="lg:sticky lg:top-24">
             <div class="bg-white/95 border border-white shadow-soft-card rounded-3xl px-5 py-5 sm:px-6 sm:py-6 relative">
               
-              <div class="flex items-baseline justify-between mb-4">
+              <!-- id added under sir's order O-146 so a preview can hide the whole price row in one
+                   move. A preview has no price to show, and showing "--" beside "AUD per person" would
+                   read as a broken page rather than a table that is not open yet. -->
+              <div id="exp-price-row" class="flex items-baseline justify-between mb-4">
                 <div>
                   <span class="text-xl sm:text-2xl font-semibold text-tsts-ink">
                     <span id="exp-price">--</span>
@@ -196,6 +312,22 @@
                   <span id="booking-type-label" class="block">Small-group experience</span>
                   <span id="booking-type-subline" class="block mt-1 text-[0.65rem] text-slate-400">Private-booking status is shown below.</span>
                 </div>
+              </div>
+
+              <!-- PREVIEW: what stands where the price and the booking control stand on a live table.
+                   No price is shown, because a preview has none to promise; no booking control exists,
+                   because sir's order O-146 is that a draft is "nroever for booking". -->
+              <div id="preview-interest-box" class="hidden">
+                <p class="heading-serif text-lg font-semibold text-tsts-ink">Want to be told when this opens?</p>
+                <p id="preview-interest-body" class="text-sm text-slate-600 leading-relaxed mt-1.5">Tell the host you're interested and we'll email you the moment there are seats.</p>
+                <button id="preview-interest-btn" type="button"
+                  class="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl tsts-btn-primary px-4 py-2.5 text-sm font-semibold shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed">
+                  I'm interested
+                </button>
+                <a id="preview-interest-signin" href="login.html" class="hidden mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl tsts-btn-primary px-4 py-2.5 text-sm font-semibold shadow-md transition">
+                  Sign in to tell the host
+                </a>
+                <p id="preview-interest-note" class="mt-3 text-[0.7rem] text-slate-500 leading-relaxed">Nothing is booked and nothing is charged. This only puts you on the list for one email.</p>
               </div>
 
               <div id="host-self-view-box" class="hidden bg-amber-50 text-amber-800 rounded-xl p-4 text-sm flex items-center gap-3">
@@ -211,8 +343,13 @@
                 </div>
 
                 <div class="space-y-1.5">
-                  <label for="booking-date" class="text-xs font-medium text-slate-700">
-                    Date
+                  <!-- Owner 2026-05-30 (R9): per-field "!" pending marker. Stays
+                       hidden when the field has a valid value; experience.js
+                       refreshPendingFieldsUI() toggles it. Reserve-click scrolls
+                       to the FIRST visible "!" so sir can fix what's missing. -->
+                  <label for="booking-date" class="flex items-baseline justify-between gap-2 text-xs font-medium text-slate-700">
+                    <span>Date</span>
+                    <span data-pending-marker="date" class="hidden text-[11px] font-bold text-rose-600" title="Pick a date">!</span>
                   </label>
                   <input
                     type="date"
@@ -222,7 +359,12 @@
                   />
                 </div>
 
-                <div class="space-y-1.5">
+                <!-- Owner-spec 2026-05-03 (D-9): booking-type toggle wrapper.
+                     Hidden when listing.bookingMode is "shared" or "private" only , 
+                     toggle is irrelevant when only one mode exists. The single-mode
+                     state surfaces below as a static label so guest knows what they're
+                     booking. Wrapper id `booking-type-toggle` is toggled by JS. -->
+                <div id="booking-type-toggle" class="space-y-1.5">
                   <label class="text-xs font-medium text-slate-700">
                     Booking type
                   </label>
@@ -245,10 +387,22 @@
                   <p id="private-booking-note" class="text-xs text-slate-500 leading-relaxed"></p>
                   <p id="verified-fee-note" class="hidden text-xs text-blue-700 leading-relaxed">This experience has been reviewed and verified by our team for quality and trust.</p>
                 </div>
+                <!-- Single-mode label, shown only when toggle is hidden (private-only or shared-only listings). -->
+                <p id="booking-mode-fixed-label" class="hidden text-xs text-slate-700 leading-relaxed font-medium px-1"></p>
 
                 <div class="space-y-1.5">
-                  <label for="guest-count" class="text-xs font-medium text-slate-700">
+                  <!-- Owner 2026-05-30 (R4): Guests label + inline helper on the SAME row.
+                       Helper text is mode-aware (set in experience.js updateGuestsHelper):
+                         shared   → "N seats left" / "Sold out"
+                         private  → "Up to N guests · whole table" (+ extras if applicable)
+                         both     → switches with the active toggle.
+                       Keeps the form compact (no extra vertical row). -->
+                  <label for="guest-count" class="flex items-baseline justify-between gap-2 text-xs font-medium text-slate-700">
                     <span id="guest-count-label">Guests</span>
+                    <span class="flex items-baseline gap-2">
+                      <span data-pending-marker="guests" class="hidden text-[11px] font-bold text-rose-600" title="Pick number of guests">!</span>
+                      <span id="guests-inline-helper" class="text-[11px] font-medium text-slate-500"></span>
+                    </span>
                   </label>
                   <select
                     id="guest-count"
@@ -260,17 +414,33 @@
                 </div>
 
                 <div class="space-y-1.5">
-                  <label for="time-slot" class="text-xs font-medium text-slate-700">
-                    Time slot
+                  <!-- Owner 2026-05-30 (R5): label-row matches R4 (flex justify-between)
+                       and carries the booking-cutoff helper inline ("Bookings close 24h
+                       before start") instead of duplicating it as a separate paragraph
+                       below. The static-label span renders in place of the dropdown when
+                       only one slot exists for the chosen date (no wasted dropdown chevron). -->
+                  <label for="time-slot" class="flex items-baseline justify-between gap-2 text-xs font-medium text-slate-700">
+                    <span>Time slot</span>
+                    <span class="flex items-baseline gap-2">
+                      <span data-pending-marker="time" class="hidden text-[11px] font-bold text-rose-600" title="Pick a time slot">!</span>
+                      <span id="time-slot-inline-helper" class="text-[11px] font-medium text-slate-500"></span>
+                    </span>
                   </label>
                   <select
                     id="time-slot"
                     class="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent"
                   ></select>
+                  <div id="time-slot-static" class="hidden w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900"></div>
                 </div>
 
+                <!-- R5 (2026-05-30): #cutoff-info moved inline to the Time-slot label;
+                     #seats-info no longer carries seat copy (now in the Guests-row helper).
+                     This block stays for the edge cases where #seats-info still needs to
+                     say "Select another date…" or "No upcoming event dates…" — kept hidden
+                     by default; experience.js toggles it visible only when seats-info has
+                     content. -->
                 <div id="booking-rules" class="hidden text-xs text-gray-500 mt-2 space-y-1">
-                  <p id="cutoff-info"></p>
+                  <p id="cutoff-info" class="hidden"></p>
                   <p id="seats-info"></p>
                 </div>
                 <div id="waitlist-cta" class="hidden mt-3">
@@ -296,32 +466,92 @@
                     </div>
                 </div>
 
-                <div class="space-y-1.5">
+                <div id="booking-coupon-block" class="space-y-1.5">
+                  <!-- Owner 2026-05-30 (R6): Coupon with Apply affordance + inline ✓/✗
+                       result + X-to-remove. Pre-validates via POST /api/promo-codes/
+                       :code/validate (no commit) so the user sees the discount BEFORE
+                       clicking Reserve; booking-time still re-validates as the
+                       authoritative gate. -->
                   <label for="promo-code" class="text-xs font-medium text-slate-700">
                     Coupon code
                   </label>
-                  <input
-                    type="text"
-                    id="promo-code"
-                    maxlength="40"
-                    autocomplete="off"
-                    placeholder="Enter code"
-                    class="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm uppercase tracking-wide text-slate-900 focus:outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent"
-                  />
-                  <p class="text-[11px] text-slate-500">One code per booking. Eligibility and expiry rules apply.</p>
+                  <div class="flex items-stretch gap-2">
+                    <input
+                      type="text"
+                      id="promo-code"
+                      maxlength="40"
+                      autocomplete="off"
+                      placeholder="Enter code"
+                      class="flex-1 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm uppercase tracking-wide text-slate-900 focus:outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent"
+                    />
+                    <button
+                      type="button"
+                      id="promo-apply-btn"
+                      class="shrink-0 rounded-xl border border-tsts-clay/60 bg-white px-3 py-2 text-xs font-semibold text-tsts-ink hover:bg-tsts-cream transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >Apply</button>
+                  </div>
+                  <p id="promo-status" class="hidden text-[11px] font-medium mt-1" role="status"></p>
                 </div>
 
+                <!-- Owner 2026-05-30 (R7 — kept as original one-liner per sir's
+                     correction; no icon / no flex gap. Single <p>, full-width. -->
                 <div id="booking-policy-hint" class="hidden rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 text-[11px] text-amber-800 leading-relaxed">
-                  <i class="fa-solid fa-circle-info mr-1"></i>
-                  <span id="booking-policy-hint-text"></span>
+                  <p><span id="booking-policy-hint-text"></span><a href="refund-policy.html" target="_blank" rel="noopener noreferrer" class="underline font-semibold text-amber-800 hover:text-amber-900">Cancellation &amp; Refund Policy</a> for full terms.</p>
+                  <ul id="booking-policy-schedule" class="hidden"></ul>
                 </div>
-                <div id="faq-context-experience" class="hidden"></div>
+                <!-- Owner 2026-05-30 (R8): contextual FAQ accordion (#faq-context-experience)
+                     REMOVED from this page on sir's order — it wasn't sir-approved and
+                     duplicated the cancellation policy info already in the amber card
+                     above. The faq-init.js mount list is also pruned accordingly. -->
 
-                <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <!-- Owner 2026-05-30 (R9): "!" marker on the right of the T&S row
+                     when the checkbox isn't ticked yet. Reserve-click scrolls here
+                     if pending. -->
+                <div id="booking-terms-block" class="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
                     <input id="booking-terms" type="checkbox" required class="mt-1 h-4 w-4 text-orange-600 rounded border-gray-300 cursor-pointer focus:ring-orange-500" />
-                    <label for="booking-terms" class="text-xs text-slate-600 cursor-pointer select-none">
-                        I agree to the <a href="policy.html" target="_blank" rel="noopener noreferrer" class="underline hover:text-orange-600">Cancellation Policy</a> and <a href="terms.html" target="_blank" rel="noopener noreferrer" class="underline hover:text-orange-600">Terms of Service</a>.
+                    <label for="booking-terms" class="flex-1 text-xs text-slate-600 cursor-pointer select-none">
+                        I agree to the <a href="refund-policy.html" target="_blank" rel="noopener noreferrer" class="underline hover:text-orange-600">Cancellation Policy</a> and <a href="terms.html" target="_blank" rel="noopener noreferrer" class="underline hover:text-orange-600">Terms of Service</a>.
                     </label>
+                    <span data-pending-marker="terms" class="hidden text-[11px] font-bold text-rose-600 shrink-0 self-center" title="Tick to accept">!</span>
+                </div>
+
+                <!-- Owner 2026-05-30: live-updating Total above Reserve so guests see what
+                     they'll actually pay as they change the guest count. Hidden in private
+                     mode where the price headline already shows the private total. -->
+                <div id="booking-total-line" class="hidden mt-2 pt-3 border-t border-slate-200">
+                  <div class="flex items-baseline justify-between gap-2">
+                    <span class="text-sm font-semibold text-slate-700">Total</span>
+                    <span id="booking-total-amount" class="text-xl font-bold text-tsts-ink">—</span>
+                  </div>
+                  <p id="booking-total-breakdown" class="mt-0.5 text-xs text-slate-500 text-right"></p>
+                </div>
+
+                <!-- Owner 2026-06-03: PRIVATE-REQUEST fields. experience.js
+                     (refreshBookingModeUI) shows this ONLY when the Shared/Private
+                     toggle is on Private for a SHARED listing whose host enabled
+                     private requests. Submit is the SAME #book-btn (label →
+                     "Request to book privately") which posts /api/private-booking-
+                     requests = a Stripe authorization HOLD (no charge until the host
+                     accepts within 24h). One CTA + one price at a time. -->
+                <div id="pr-request-fields" class="hidden space-y-3">
+                  <div class="space-y-1.5">
+                    <label for="pr-note" class="text-xs font-medium text-slate-700">Anything the host should know? <span class="font-normal text-slate-400">(optional)</span></label>
+                    <textarea
+                      id="pr-note"
+                      rows="3"
+                      maxlength="1500"
+                      placeholder="e.g. it's a birthday, dietary needs, a preferred start time…"
+                      class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent"
+                    ></textarea>
+                  </div>
+                  <div class="rounded-xl bg-orange-50 border border-orange-100 px-3 py-2.5 text-[11px] text-slate-600 leading-relaxed flex items-start gap-2">
+                    <svg class="w-3.5 h-3.5 mt-[1px] shrink-0 text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <rect x="3" y="11" width="18" height="11" rx="2"></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <span id="pr-hold-explainer">We place a hold on your card. You're only charged if the host accepts within 24 hours. No seats are held meanwhile.</span>
+                  </div>
+                  <p id="pr-occupancy-msg" class="hidden text-[11px] font-medium text-rose-600 leading-relaxed"></p>
                 </div>
 
                 <button
@@ -332,55 +562,94 @@
                   Reserve your seat
                 </button>
 
-                <div class="mt-4 flex flex-col gap-2 text-[0.7rem] sm:text-xs text-slate-600">
-                  <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
-                    <span>The price you see is all you pay. No surprises.</span>
+                <!-- Owner 2026-05-30 (R14): persistent inline error block. When
+                     POST /book returns non-2xx (e.g. 500 PAYMENT_INIT_FAILED), JS
+                     unhides this and writes the server message + rid here. Stays
+                     visible until the user changes a field or dismisses — gives
+                     them something to copy/paste to support, not just a brief
+                     toast. -->
+                <div id="booking-error-block" class="hidden mt-3 rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-xs text-rose-800 leading-relaxed">
+                  <div class="flex items-start gap-2">
+                    <i class="fa-solid fa-circle-exclamation mt-[2px] text-rose-600"></i>
+                    <div class="flex-1">
+                      <p class="font-semibold">Booking didn't go through</p>
+                      <p id="booking-error-msg" class="mt-0.5"></p>
+                      <p id="booking-error-rid" class="hidden mt-1 text-[10px] text-rose-700/80">Reference: <span></span></p>
+                      <button type="button" id="booking-error-dismiss" class="mt-1 text-rose-700 underline text-[11px] font-semibold hover:text-rose-900">Dismiss</button>
+                    </div>
                   </div>
+                </div>
+
+                <!-- Owner 2026-05-30 (R10): dropped the duplicate "See cancellation
+                     policy" row — same link already lives in the R7 amber card AND the
+                     T&S checkbox label above. Goal: less repetition, easier scan. -->
+                <div id="booking-stripe-reassurance" class="mt-4 flex flex-col gap-2 text-[0.7rem] sm:text-xs text-slate-600">
                   <div class="flex items-center gap-2">
                     <i class="fa-solid fa-shield-check text-emerald-500 text-sm"></i>
                     <span>Secure payment via Stripe</span>
                   </div>
-                  <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-arrow-rotate-left text-amber-500 text-sm"></i>
-                    <span>See <a href="policy.html" class="underline">cancellation policy</a></span>
-                  </div>
                 </div>
 
+                <!-- Owner 2026-05-30 (R12): copy rewritten per sir — more specific
+                     about WHAT lands and WHEN; empathy-led "we'll". -->
                 <p class="mt-3 text-[0.65rem] text-slate-500 leading-relaxed">
-                  Exact address and host details are shared after your booking is confirmed.
+                  We'll email the host's name + the exact address as soon as your booking is confirmed.
                 </p>
+
+                <!-- Owner 2026-05-30 (R8 revised): contextual T&S FAQ accordion
+                     moved here, BELOW the address-note paragraph. The toggle-icon
+                     querySelector bug (subtitle being overwritten with "−") is
+                     fixed in faq-contextual.js. -->
+                <div id="faq-context-experience" class="mt-6 hidden"></div>
               </form>
+
+              <!-- Owner 2026-06-03: the private-booking REQUEST is no longer a separate
+                   stacked card — it now lives inside the booking widget as the Private
+                   side of the Shared/Private toggle (#pr-request-fields above + the
+                   shared #book-btn). One price + one CTA at a time. -->
+
             </div>
           </div>
         </aside>
       </div>
 
       <div id="similar-section" class="hidden mt-12 pt-8 border-t border-slate-200">
-        <h3 class="heading-serif text-2xl font-bold text-tsts-ink mb-6">You Might Also Like</h3>
+        <h2 class="heading-serif text-xl sm:text-2xl font-semibold text-tsts-ink mb-6">You might also like</h2>
         <div id="similar-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
       </div>
     </div>
   </main>
 
-  <!-- Mobile sticky booking bar -->
+  <!-- Mobile sticky booking bar.
+       Owner 2026-05-30 (R11): button recoloured from bg-tsts-ink (black) to the brand
+       orange (`tsts-btn-primary`) so it matches the main Reserve CTA and reads as the
+       same control. Price label switched from a static "<unit> per guest" to a live
+       Total that updates with guest count + mode — kept in sync from
+       updateDisplayedPrice(). -->
   <div id="mobile-booking-bar" class="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white border-t border-gray-200 shadow-lg px-4 py-3 flex items-center justify-between gap-3" style="display:none">
-    <div>
-      <span id="mobile-bar-price" class="text-lg font-bold text-tsts-ink"></span>
-      <span class="text-xs text-gray-500 ml-1">per guest</span>
+    <div class="flex flex-col">
+      <span id="mobile-bar-price" class="text-lg font-bold text-tsts-ink leading-none"></span>
+      <span id="mobile-bar-breakdown" class="text-[11px] text-slate-500 mt-0.5"></span>
     </div>
-    <button id="mobile-bar-cta" type="button" class="bg-tsts-ink text-white rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-90">Reserve your seat</button>
+    <button id="mobile-bar-cta" type="button" class="tsts-btn-primary rounded-xl px-5 py-2.5 text-sm font-bold transition shadow-md">Reserve your seat</button>
   </div>
 
   <footer id="footer-placeholder" role="contentinfo"></footer>
 
   <script src="js/runtime-config.js?v=20260224a"></script>
-  <script src="js/common.js?v=20260316c"></script>
-  <script src="data/faq-catalog.js?v=20260224a"></script>
+  <!-- Owner 2026-05-30 (R3 Date pilot): Flatpickr loaded before common.js so the
+       window.tstsDatePicker wrapper in common.js can detect the flatpickr global. -->
+  <script src="vendor/flatpickr/flatpickr.min.js?v=4.6.13"></script>
+  <script src="js/common.js?v=20260907a"></script>
+  <!-- Owner 2026-05-30 (R8 revised): FAQ catalog / renderer / contextual / init
+       restored — sir asked the T&S accordion to live BELOW the address-note line
+       instead of being deleted. The toggle-icon bug is fixed inside
+       faq-contextual.js. -->
+  <script src="data/faq-catalog.js?v=20260825a"></script>
   <script src="data/faq-trust.js?v=20260303a"></script>
-  <script src="js/faq-renderer.js?v=20260303a"></script>
-  <script src="js/faq-contextual.js?v=20260303a"></script>
-  <script src="js/faq-init.js?v=20260224a"></script>
-  <script src="js/experience.js?v=20260411a"></script>
+  <script src="js/faq-renderer.js?v=20260825a"></script>
+  <script src="js/faq-contextual.js?v=20260825a"></script>
+  <script src="js/faq-init.js?v=20260530a"></script>
+  <script src="js/experience.js?v=20260923c"></script>
 </body>
 </html>

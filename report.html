@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' http://localhost:4000 https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/assets/logo-mark.png">
   <meta name="theme-color" content="#ea580c">
   <title>Report an Issue – The Shared Table Story</title>
-  <link rel="stylesheet" href="css/tailwind.css?v=20260317b">
-  <link rel="stylesheet" href="css/fonts.css?v=20260310d">
+  <link rel="stylesheet" href="css/tailwind.css?v=20260914a">
+  <link rel="stylesheet" href="css/fonts.css?v=20260810a">
   <link rel="stylesheet" href="css/help-center.css?v=20260224a">
 
   <link rel="manifest" href="manifest.json">
@@ -17,7 +17,8 @@
 <body class="bg-tsts-cream text-slate-900 flex flex-col min-h-screen">
   <nav id="navbar-placeholder" role="navigation"></nav>
 
-  <main class="flex-grow container mx-auto px-4 py-10 max-w-2xl" role="main">
+  <!-- sir 2026-08-16 "Widen it": nav-container width standard -->
+  <main class="flex-grow container mx-auto px-4 py-10" role="main">
     <h1 class="heading-serif text-3xl md:text-4xl font-bold text-tsts-ink mb-2">Report an Issue</h1>
     <p class="text-slate-500 mb-6">Help us keep the community safe. All reports are reviewed by our team.</p>
 
@@ -42,31 +43,59 @@
 
     <!-- STEP 1: Category selection -->
     <div id="report-step-1" class="bg-white rounded-3xl border border-gray-100 shadow-soft-card p-6 space-y-4">
+      <!-- Shown ONLY when the page was opened without an experience or person attached (the footer
+           link sits on every page). Before this existed, that visitor could pick a category, write
+           out what happened, press Submit, and only then be told to go and find a different button.
+           Now the choice is made first, and neither answer is a dead end. -->
+      <div id="report-about" class="hidden space-y-4">
+        <h2 class="heading-serif text-xl font-bold text-tsts-ink">What is this about?</h2>
+        <p class="text-sm text-slate-500">So it reaches the right people, tell us what your report concerns.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button type="button" data-report-about="specific" class="text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
+            <span class="block text-sm font-bold text-tsts-ink">A particular experience or person</span>
+            <span class="block text-xs text-slate-500 mt-1">Something you saw on a listing, or someone you met here</span>
+          </button>
+          <button type="button" data-report-about="platform" class="text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
+            <span class="block text-sm font-bold text-tsts-ink">The platform itself, or something else</span>
+            <span class="block text-xs text-slate-500 mt-1">A problem with the site, our policies, or anything not tied to one listing</span>
+          </button>
+        </div>
+        <div id="report-about-specific-help" class="hidden rounded-2xl bg-orange-50 border border-orange-200 p-4">
+          <p class="text-sm text-tsts-ink font-semibold">Open the experience or the profile, and use Report there.</p>
+          <p class="text-xs text-slate-600 mt-1">Starting from the thing itself attaches it to your report, so our team can see exactly what you mean without having to ask.</p>
+          <div class="flex flex-wrap gap-2 mt-3">
+            <a href="explore.html" class="tsts-btn-primary px-4 py-2 text-sm font-bold rounded-xl transition">Find the experience</a>
+            <button type="button" data-report-about="platform" class="px-4 py-2 text-sm font-bold rounded-xl border border-slate-200 text-slate-700 hover:bg-white transition">It isn't about one listing — continue here</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="report-categories-block" class="space-y-4">
       <h2 class="heading-serif text-xl font-bold text-tsts-ink">What's happening?</h2>
       <p class="text-sm text-slate-500">Choose the option that best describes your concern.</p>
 
       <div id="report-categories" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <button type="button" data-report-category="safety" class="report-cat-card text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
+        <button type="button" aria-pressed="false" data-report-category="safety" class="text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
           <span class="block text-sm font-bold text-tsts-ink">Someone is being unsafe</span>
           <span class="block text-xs text-slate-500 mt-1">Safety concern about a person or experience</span>
         </button>
-        <button type="button" data-report-category="spam" class="report-cat-card text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
+        <button type="button" aria-pressed="false" data-report-category="spam" class="text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
           <span class="block text-sm font-bold text-tsts-ink">Spam or fake content</span>
           <span class="block text-xs text-slate-500 mt-1">Listing, review, or comment that isn't genuine</span>
         </button>
-        <button type="button" data-report-category="harassment" class="report-cat-card text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
+        <button type="button" aria-pressed="false" data-report-category="harassment" class="text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
           <span class="block text-sm font-bold text-tsts-ink">Harassment or threatening behaviour</span>
           <span class="block text-xs text-slate-500 mt-1">Inappropriate conduct toward you or others</span>
         </button>
-        <button type="button" data-report-category="fraud" class="report-cat-card text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
+        <button type="button" aria-pressed="false" data-report-category="fraud" class="text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
           <span class="block text-sm font-bold text-tsts-ink">Fraud or scam</span>
           <span class="block text-xs text-slate-500 mt-1">Financial deception or misrepresentation</span>
         </button>
-        <button type="button" data-report-category="inaccurate" class="report-cat-card text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
+        <button type="button" aria-pressed="false" data-report-category="inaccurate" class="text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
           <span class="block text-sm font-bold text-tsts-ink">Inaccurate or misleading information</span>
           <span class="block text-xs text-slate-500 mt-1">Content that doesn't match reality</span>
         </button>
-        <button type="button" data-report-category="other" class="report-cat-card text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
+        <button type="button" aria-pressed="false" data-report-category="other" class="text-left rounded-2xl border-2 border-slate-200 p-4 hover:border-tsts-clay hover:bg-orange-50 transition focus:outline-none focus:ring-2 focus:ring-tsts-clay/60">
           <span class="block text-sm font-bold text-tsts-ink">Something else</span>
           <span class="block text-xs text-slate-500 mt-1">Other concerns not listed above</span>
         </button>
@@ -74,6 +103,7 @@
 
       <div class="flex justify-end pt-2">
         <button type="button" id="report-next-1" disabled class="tsts-btn-primary px-6 py-2.5 font-bold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed" data-report-nav="next">Next</button>
+      </div>
       </div>
     </div>
 
@@ -83,13 +113,14 @@
       <p class="text-sm text-slate-500">The more detail you share, the faster we can look into this.</p>
 
       <div>
-        <label class="block text-sm font-bold text-slate-700 mb-1" for="reportMessage">What happened?</label>
+        <label class="block text-xs font-medium text-slate-700 mb-1" for="reportMessage">What happened?</label>
         <textarea id="reportMessage" rows="5" placeholder="Describe the issue in as much detail as you can. Include what happened, when, and any other context." class="w-full p-3 bg-gray-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" minlength="10" maxlength="2000"></textarea>
-        <p class="text-xs text-slate-400 mt-1"><span id="report-msg-counter">0</span> / 2000 characters</p>
+        <p class="text-xs text-slate-400 mt-1"><span id="report-msg-counter">0</span> / <span id="report-msg-total">2000</span> characters</p>
       </div>
 
       <div>
-        <label class="block text-sm font-bold text-slate-700 mb-1">How should we follow up?</label>
+        <label class="block text-xs font-medium text-slate-700 mb-1">How can we reach you if we need more detail?</label>
+        <p class="text-xs text-slate-500 mb-2">We only use this if the moderation team needs to ask you something. We do not send updates about the outcome.</p>
         <div class="flex flex-col gap-2">
           <label class="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
             <input type="radio" name="reportContact" value="email" checked class="accent-tsts-clay"> Email on file
@@ -113,7 +144,7 @@
     <div id="report-step-3" class="hidden bg-white rounded-3xl border border-gray-100 shadow-soft-card p-6 space-y-4 text-center">
       <div class="text-5xl mb-2">&#x2705;</div>
       <h2 class="heading-serif text-xl font-bold text-tsts-ink">We've received your report</h2>
-      <p class="text-sm text-slate-600 max-w-md mx-auto">Our team reviews all reports. We'll update you when there's progress. Thank you for helping keep The Shared Table Story a safe and welcoming community.</p>
+      <p class="text-sm text-slate-600 max-w-md mx-auto">Our team reviews every report and acts on it in line with our policies. Thank you for helping keep The Shared Table Story a safe and welcoming community.</p>
       <div class="pt-4 flex flex-col sm:flex-row gap-3 justify-center">
         <a id="report-return-link" href="explore.html" class="inline-flex items-center justify-center px-6 py-2.5 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition">Return to previous page</a>
         <a href="my-bookings.html?tab=experiences" class="inline-flex items-center justify-center px-6 py-2.5 tsts-btn-primary font-bold rounded-xl transition">My Experiences</a>
@@ -124,12 +155,12 @@
   <footer id="footer-placeholder" role="contentinfo"></footer>
 
   <script src="js/runtime-config.js?v=20260224a"></script>
-  <script src="js/common.js?v=20260316c"></script>
-  <script src="data/faq-catalog.js?v=20260224a"></script>
+  <script src="js/common.js?v=20260907a"></script>
+  <script src="data/faq-catalog.js?v=20260825a"></script>
   <script src="data/faq-trust.js?v=20260303a"></script>
-  <script src="js/faq-renderer.js?v=20260303a"></script>
-  <script src="js/faq-contextual.js?v=20260303a"></script>
+  <script src="js/faq-renderer.js?v=20260825a"></script>
+  <script src="js/faq-contextual.js?v=20260825a"></script>
   <script src="js/faq-init.js?v=20260224a"></script>
-  <script src="js/report.js?v=20260305a"></script>
+  <script src="js/report.js?v=20260916a"></script>
 </body>
 </html>

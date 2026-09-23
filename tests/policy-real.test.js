@@ -235,11 +235,15 @@ describe("policy.js — formatting helpers (exercised via render)", () => {
     expect(document.getElementById("policy-guest-max").textContent).toBe("75%");
   });
 
-  test("money helper formats cents as $N.MM", async () => {
+  // Behaviour change 2026-08-21: this is the PUBLIC fee schedule — the page a guest opens to check
+  // what they will be charged — and it printed a bare "$" while every price elsewhere on the site
+  // reads "A$". It also divided by a fixed 100, which is wrong for a zero-decimal currency. The
+  // symbol and the scale now both come from the currency, so the assertions move with it.
+  test("the fee table speaks the platform's money voice", async () => {
     await loadModule(async () => jsonRes({
       ok: true,
       data: {
-        policy: { rules: {} },
+        policy: { rules: { currency: "aud" } },
         pricingPolicy: {
           tiers: [{ minValueCents: 12345, maxValueCents: 67890, fixedFeeCents: 500, percentageFeeBps: 1000, status: "active" }],
         },
@@ -247,8 +251,27 @@ describe("policy.js — formatting helpers (exercised via render)", () => {
       },
     }));
     const tbody = document.getElementById("policy-tier-table-body");
-    expect(tbody.textContent).toContain("$123.45 to $678.90");
-    expect(tbody.textContent).toContain("$5.00");
+    expect(tbody.textContent).toContain("A$123.45 to A$678.90");
+    expect(tbody.textContent).toContain("A$5.00");
     expect(tbody.textContent).toContain("10%");
+    // A bare dollar sign must never appear beside the A$ figures on this page.
+    expect(/(^|[^A])\$123\.45/.test(tbody.textContent)).toBe(false);
+  });
+
+  test("a zero-decimal currency is not divided by a hundred", async () => {
+    await loadModule(async () => jsonRes({
+      ok: true,
+      data: {
+        policy: { rules: { currency: "jpy" } },
+        pricingPolicy: {
+          tiers: [{ minValueCents: 2800, maxValueCents: null, fixedFeeCents: 500, percentageFeeBps: 1000, status: "active" }],
+        },
+        refundPolicy: { windows: [] },
+      },
+    }));
+    const tbody = document.getElementById("policy-tier-table-body");
+    // 2800 JPY is ¥2,800 — not ¥28.00, which is what a fixed /100 produced.
+    expect(tbody.textContent).toContain("2,800");
+    expect(tbody.textContent).not.toContain("28.00");
   });
 });

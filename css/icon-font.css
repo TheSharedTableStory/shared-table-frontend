@@ -64,6 +64,8 @@
 .fa-shield-check::before { content: "\1f6e1"; }
 .fa-sliders-h::before { content: "\2699"; }
 .fa-spinner::before { content: "\21bb"; }
+.fa-seedling::before { content: "\1f331"; }
+.fa-sparkles::before { content: "\2726"; } /* monochrome ✦ (obeys text color) — NOT the pale ✨ emoji, which ignored color and had no contrast on the chip (sir 2026-06-05) */
 .fa-star::before { content: "\2605"; }
 .fa-tag::before { content: "\1f3f7"; }
 .fa-times::before { content: "\00d7"; }
@@ -74,3 +76,162 @@
 .fa-user-shield::before { content: "\1f6e1"; }
 .fa-users::before { content: "\1f465"; }
 .fa-utensils::before { content: "\1f37d"; }
+
+/* Owner-spec 2026-05-03 (D-7 — owner-approved twice via AskUserQuestion + design-marker refreshed):
+   hearts + share + thick-icon + tooltip styles extracted from explore.html
+   inline <style> so every page that uses the heart/share floating-button
+   pattern (experience.html + future detail pages) gets identical visual identity. */
+
+/* Outlined heart (♡) for "not liked" state — overrides FA's default filled ♥. */
+.far.fa-heart::before { content: "\2661"; }
+/* Share icon glyphs (FA 6 'share-nodes' + legacy aliases). */
+.fa-share-nodes::before { content: "\1F517"; }
+.fa-share-alt::before { content: "\1F517"; }
+.fa-share::before { content: "\1F517"; }
+/* Shield (Verified trust badge) — modern + legacy aliases. */
+.fa-shield-halved::before { content: "\1F6E1"; }
+.fa-shield::before { content: "\1F6E1"; }
+.fa-shield-alt::before { content: "\1F6E1"; }
+/* FA 6 'circle-check' alias. */
+.fa-circle-check::before { content: "\2714"; }
+/* Clock — both aliased. */
+.fa-clock::before { content: "\1F552"; }
+.far.fa-clock::before { content: "\1F552"; }
+
+/* Thick-outline floating action icon (heart/share over photo). */
+.tsts-thick-icon {
+  color: #1F2933;
+  -webkit-text-stroke: 1.25px #1F2933;
+  filter: drop-shadow(0 0 1.5px rgba(255,255,255,0.95)) drop-shadow(0 1px 2px rgba(0,0,0,0.45));
+}
+.tsts-thick-icon-liked {
+  color: #ea580c;
+  -webkit-text-stroke: 1.25px #ea580c;
+  filter: drop-shadow(0 0 1.5px rgba(255,255,255,0.95)) drop-shadow(0 1px 2px rgba(0,0,0,0.45));
+}
+
+/* Heart-pop animation on bookmark toggle. */
+@keyframes tsts-heart-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.45); }
+  60%  { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+.tsts-heart-pop { animation: tsts-heart-pop 0.42s ease-out; }
+
+/* Heart "like" sparkle burst — small orange dots radiate out and fade when a
+   user saves an experience. Spawned by window.tstsHeartSparkle (common.js),
+   positioned fixed at the heart's centre so nothing clips them. */
+@keyframes tsts-sparkle-fly {
+  0%   { transform: translate(-50%, -50%) translate(0, 0) scale(0.3); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translate(-50%, -50%) translate(var(--dx, 0), var(--dy, 0)) scale(1); opacity: 0; }
+}
+.tsts-sparkle {
+  position: fixed;
+  z-index: 61;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, #ffffff 0%, #fdba74 40%, #f97316 70%, rgba(249, 115, 22, 0) 76%);
+  box-shadow: 0 0 4px rgba(249, 115, 22, 0.6);
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: tsts-sparkle-fly 0.6s ease-out forwards;
+}
+/* Expanding ring pulse behind the dots — makes the "saved!" moment unmistakable. */
+@keyframes tsts-sparkle-ring {
+  0%   { transform: translate(-50%, -50%) scale(0.4); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(2.3); opacity: 0; }
+}
+.tsts-sparkle-ring {
+  position: fixed;
+  z-index: 60;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  border: 2.5px solid #f97316;
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: tsts-sparkle-ring 0.55s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tsts-sparkle, .tsts-sparkle-ring { display: none; }
+}
+
+/* Instant tooltip via data-tooltip attr (host element must be positioned). */
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1F2933;
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+  z-index: 50;
+}
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after { opacity: 1; }
+[data-tooltip-pos="below"]::after {
+  bottom: auto;
+  top: calc(100% + 6px);
+}
+
+/* Owner 2026-08-05 (sir: "i like emoji - -SVG are ----"): the 29 icons below were
+ * referenced in markup but had no mapping, so they rendered as an empty gap. They now
+ * follow the same Unicode convention as the 63 above. HELD, not added, because they
+ * render on FROZEN pages and would change a locked surface: fa-link (success),
+ * fa-magnifying-glass (explore), fa-circle-info + fa-triangle-exclamation (experience),
+ * fa-user (index, explore, common.js). */
+
+.fa-pen::before { content: "\270f"; }
+.fa-tags::before { content: "\1f3f7"; }
+.fa-align-left::before { content: "\2630"; }
+.fa-dollar-sign::before { content: "\1f4b2"; }
+.fa-image::before { content: "\1f5bc"; }
+.fa-plus::before { content: "\2795"; }
+.fa-save::before { content: "\1f4be"; }
+.fa-external-link-alt::before { content: "\1f517"; }
+
+.fa-eye::before { content: "\1f441"; }
+.fa-eye-slash::before { content: "\1f576"; }
+.fa-envelope::before { content: "\2709"; }
+.fa-envelope-open::before { content: "\1f4e8"; }
+.fa-database::before { content: "\1f5c4"; }
+.fa-trash-alt::before { content: "\1f5d1"; }
+
+.fa-download::before { content: "\2b07"; }
+.fa-upload::before { content: "\2b06"; }
+.fa-sync-alt::before { content: "\1f504"; }
+.fa-calendar-alt::before { content: "\1f4c5"; }
+.fa-calendar-day::before { content: "\1f4c6"; }
+.fa-rocket::before { content: "\1f680"; }
+.fa-code-compare::before { content: "\1f500"; }
+
+.fa-chart-line::before { content: "\1f4c8"; }
+.fa-calendar-plus::before { content: "\1f5d3"; }
+.fa-comments::before { content: "\1f4ac"; }
+.fa-comment::before { content: "\1f5e8"; }
+.fa-arrow-up::before { content: "\2b06"; }
+.fa-arrow-down::before { content: "\2b07"; }
+.fa-ban::before { content: "\1f6ab"; }
+.fa-user-slash::before { content: "\1f6b7"; }
+
+/* Owner 2026-08-05 (sir: "Add all five"), after a before/after demo on the real
+ * explore page. These five render only inside states that are display:none on a
+ * normal load — explore's load-error, success's Copy-link section, experience's
+ * host-only panels, and the no-photo avatar fallback — so a visitor sees no change
+ * on any frozen page; the hidden states simply stop showing an empty gap. */
+.fa-magnifying-glass::before { content: "\1f50d"; }
+.fa-link::before { content: "\1f517"; }
+.fa-circle-info::before { content: "\2139"; }
+.fa-triangle-exclamation::before { content: "\26a0"; }
+.fa-user::before { content: "\1f464"; }

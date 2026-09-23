@@ -75,6 +75,10 @@
   }
 
   function makeAccordionItem(item) {
+    // Shared geometric mark — see window.tstsPlusMinus in common.js. Held as its own const so the
+    // click handler flips THIS element; the old code re-found it with `span:last-child`, which is
+    // the ambiguity that already erased a subtitle once in this same file (see the note below).
+    const icon = window.tstsPlusMinus(false, { stroke: 1.7 });
     const toggle = createEl(
       "button",
       {
@@ -84,7 +88,7 @@
       },
       [
         createEl("span", { className: "pr-3", textContent: String(item.question || "") }),
-        createEl("span", { className: "text-slate-500 text-base leading-none", textContent: "+", "aria-hidden": "true" })
+        createEl("span", { className: "text-slate-500 text-base leading-none shrink-0" }, [icon])
       ]
     );
     toggle.setAttribute("aria-expanded", "false");
@@ -100,14 +104,13 @@
 
     toggle.addEventListener("click", () => {
       const hidden = answer.classList.contains("hidden");
-      const icon = toggle.querySelector("span:last-child");
       if (hidden) {
         answer.classList.remove("hidden");
-        setText(icon, "−");
+        window.tstsSetPlusMinus(icon, true);
         toggle.setAttribute("aria-expanded", "true");
       } else {
         answer.classList.add("hidden");
-        setText(icon, "+");
+        window.tstsSetPlusMinus(icon, false);
         toggle.setAttribute("aria-expanded", "false");
       }
     });
@@ -187,12 +190,23 @@
       subtitleText = "Expand quick answers for hosting operations, payouts, and reporting.";
     } else if (contextKey === "about_platform") {
       headingText = "How The Platform Works";
-      subtitleText = "Expand to view lifecycle, payment, and policy snapshot answers.";
+      subtitleText = "Expand to view how bookings work, payments, and the rules saved with your booking.";
     } else if (contextKey === "about_trust") {
       headingText = "Trust & Safety Questions";
       subtitleText = "Expand to view payments, cancellation, dispute, and privacy answers.";
     }
 
+    // Owner 2026-05-30 (R8 revised): capture the toggle-icon span as its own
+    // const so the click handler writes "+/−" to the RIGHT element. The prior
+    // `headerButton.querySelector("span:last-child")` was ambiguous — it
+    // matched the SUBTITLE span (which is also a last-child of its parent
+    // heading-wrapper) before reaching the toggle, so clicking the header
+    // erased the subtitle text. Direct ref kills the ambiguity.
+    // Shared geometric mark — see window.tstsPlusMinus in common.js.
+    const toggleIcon = window.tstsPlusMinus(false, { stroke: 1.7 });
+    const toggleIconSpan = createEl("span", {
+      className: "text-slate-500 text-lg leading-none shrink-0"
+    }, [toggleIcon]);
     const headerButton = createEl(
       "button",
       {
@@ -209,7 +223,7 @@
             subtitleText
           )
         ]),
-        createEl("span", { className: "text-slate-500 text-lg leading-none", textContent: "+", "aria-hidden": "true" })
+        toggleIconSpan
       ]
     );
 
@@ -219,14 +233,13 @@
 
     headerButton.addEventListener("click", () => {
       const hidden = panel.classList.contains("hidden");
-      const icon = headerButton.querySelector("span:last-child");
       if (hidden) {
         panel.classList.remove("hidden");
-        setText(icon, "−");
+        window.tstsSetPlusMinus(toggleIcon, true);
         headerButton.setAttribute("aria-expanded", "true");
       } else {
         panel.classList.add("hidden");
-        setText(icon, "+");
+        window.tstsSetPlusMinus(toggleIcon, false);
         headerButton.setAttribute("aria-expanded", "false");
       }
     });

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com https://maps.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com https://maps.gstatic.com https://maps.googleapis.com data: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com https://maps.googleapis.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com https://maps.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com https://maps.gstatic.com https://maps.googleapis.com data: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://localhost:4000 https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com https://maps.googleapis.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="/assets/logo-mark.png">
@@ -12,14 +12,39 @@
     <link rel="preload" href="/assets/fonts/plus-jakarta-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/assets/fonts/plus-jakarta-sans-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/assets/fonts/playfair-display-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="css/tailwind.css?v=20260317b">
-    <link rel="stylesheet" href="css/fonts.css?v=20260310d">
+    <link rel="stylesheet" href="css/tailwind.css?v=20260914a">
+    <link rel="stylesheet" href="css/fonts.css?v=20260810a">
     <link rel="stylesheet" href="vendor/nouislider/nouislider.min.css?v=15.7.0" />
     <script defer src="vendor/nouislider/nouislider.min.js?v=15.7.0"></script>
 
+    <!-- Owner 2026-05-30 (date-picker rollout R3 — TEMP UNFREEZE FOR DATE FIELDS ONLY):
+         explore.html is FROZEN per FRONTEND_PAGE_REVIEW_AND_APPROVAL_LOG.md. Owner
+         authorised unfreezing for the date-picker rollout: replace #date-input
+         (hero search) + #filter-date-input (filter modal) with the shared
+         Flatpickr wrapper so the calendar matches every other page on the site.
+         Brand override block is byte-identical to the R3-approved block on
+         experience.html. TODO future cleanup: consolidate to a shared CSS file. -->
+    <link rel="stylesheet" href="vendor/flatpickr/flatpickr.min.css?v=4.6.13" />
+    <style>
+      .flatpickr-calendar { box-shadow: 0 12px 36px rgba(15, 23, 42, 0.10); border-radius: 16px; border: 1px solid rgba(15, 23, 42, 0.06); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+      .flatpickr-months { padding-top: 4px; }
+      .flatpickr-months .flatpickr-month, .flatpickr-current-month, .flatpickr-current-month .cur-month, .flatpickr-current-month input.cur-year { color: rgb(31, 41, 55); font-weight: 600; }
+      .flatpickr-prev-month, .flatpickr-next-month { padding: 8px 12px; cursor: pointer; }
+      .flatpickr-prev-month svg, .flatpickr-next-month svg { fill: rgb(31, 41, 55); width: 14px; height: 14px; }
+      .flatpickr-prev-month:hover svg, .flatpickr-next-month:hover svg { fill: rgb(234, 88, 12); }
+      .flatpickr-weekday { color: rgb(100, 116, 139); font-weight: 600; }
+      .flatpickr-day { color: rgb(31, 41, 55); border-radius: 9999px; }
+      .flatpickr-day.today { border-color: rgb(194, 141, 107); }
+      .flatpickr-day.today:hover { background: rgb(254, 215, 170); border-color: rgb(194, 141, 107); color: rgb(154, 52, 18); }
+      .flatpickr-day:hover { background: rgb(254, 237, 213); color: rgb(154, 52, 18); }
+      .flatpickr-day.selected, .flatpickr-day.selected:hover, .flatpickr-day.selected:focus { background: rgb(234, 88, 12); border-color: rgb(234, 88, 12); color: #fff; }
+      .flatpickr-day.flatpickr-disabled, .flatpickr-day.flatpickr-disabled:hover { color: rgba(15, 23, 42, 0.22); background: transparent; cursor: not-allowed; }
+      .flatpickr-day.prevMonthDay, .flatpickr-day.nextMonthDay { color: rgba(15, 23, 42, 0.30); }
+    </style>
+
 <link rel="manifest" href="manifest.json">
 <style>
-  /* Google Places autocomplete dropdown — TSTS warm palette */
+  /* Google Places autocomplete dropdown, TSTS warm palette */
   .pac-container { border-radius: 12px; border: 1px solid #e2e8f0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; box-shadow: 0 4px 16px rgba(0,0,0,0.08); margin-top: 4px; }
   .pac-item { padding: 10px 16px; border-top: 1px solid #f1f5f9; cursor: pointer; }
   .pac-item:first-child { border-top: none; }
@@ -27,6 +52,86 @@
   .pac-item-query { color: #1F2933; font-weight: 600; }
   .pac-matched { color: #ea580c; }
   .pac-icon { display: none; }
+  /* HTML hidden attribute must override Tailwind utility classes such as
+     'flex'/'block' that explicitly set display. Owner-flagged 2026-05-02. */
+  [hidden] { display: none !important; }
+  /* Outlined-heart variant when 'far' (regular) prefix is present, owner-approved 2026-05-02. */
+  .far.fa-heart::before { content: "\2661"; }
+  /* Share icons (FA 6 'share-nodes' + FA 5 'share-alt' + 'share' alias). */
+  .fa-share-nodes::before { content: "\1F517"; }
+  .fa-share-alt::before { content: "\1F517"; }
+  .fa-share::before { content: "\1F517"; }
+  /* Shield icons for the Verified trust badge. */
+  .fa-shield-halved::before { content: "\1F6E1"; }
+  .fa-shield::before { content: "\1F6E1"; }
+  .fa-shield-alt::before { content: "\1F6E1"; }
+  /* FA 6 'circle-check' alias (icon-font.css only ships FA 5 'check-circle'). */
+  .fa-circle-check::before { content: "\2714"; }
+  /* Clock icon (missing from icon-font.css). */
+  .fa-clock::before { content: "\1F552"; }
+  .far.fa-clock::before { content: "\1F552"; }
+  /* Heart pop animation, plays on bookmark toggle. */
+  @keyframes tsts-heart-pop {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.45); }
+    60%  { transform: scale(0.92); }
+    100% { transform: scale(1); }
+  }
+  .tsts-heart-pop { animation: tsts-heart-pop 0.42s ease-out; }
+  /* Instant tooltip (no native ~1.5s delay). Triggered by data-tooltip attr.
+     CRITICAL: do NOT set position on the host element, heart/share buttons are
+     absolute-positioned and we must not override that. The ::after pseudo
+     positions itself against whichever ancestor is positioned, which works for
+     absolute and relative both. */
+  [data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1F2933;
+    color: #ffffff;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 120ms ease-out;
+    z-index: 50;
+  }
+  [data-tooltip]:hover::after,
+  [data-tooltip]:focus-visible::after { opacity: 1; }
+  /* Tooltip position override, below the host element instead of above.
+     Used for buttons sitting near the top of an overflow-hidden container
+     (where the default 'above' tooltip would be clipped). */
+  [data-tooltip-pos="below"]::after {
+    bottom: auto;
+    top: calc(100% + 6px);
+  }
+  /* Superseded heart/share iterations (halo, thick-outline, white cutout circles,
+     liked-circle) REMOVED on sir's order 2026-08-10 — zero elements wore them in
+     either state (proven by real clicks, both captures in sir's panel); the locked
+     2026-05-26 treatment (.tsts-heart-photo family, common.js) is the live design. */
+  /* sir's order O-103, phone only (finding PHONE-explore-2: Sort and Filters huddle
+     at the left of their row, 147 pixels of dead space beside them). Below 768 the
+     pair shares the row evenly and the Sort button fills the half its wrapper is given,
+     because a button is sized by its own content even at display:flex and would
+     otherwise sit 83 pixels wide inside a 167 pixel wrapper. The share is written as
+     calc(50% - 4px), half the row less half the 8 pixel gap, and not as 0%: a flex
+     basis of 0 is shared out as content boxes, so the Filters button's own 20 pixel
+     side padding and 1 pixel border landed on top of its half and made it 42 pixels
+     wider than Sort's bare wrapper, which carries neither. 767.98px is the exact
+     complement of the md breakpoint that puts the search fields back on one line, so
+     768 and every width above it, tablet and desktop alike, keeps the button widths it
+     has today. A rule and not a utility class because css/tailwind.css carries no
+     md:flex-none to switch it off. */
+  @media (max-width: 767.98px) {
+    #sort-wrap,
+    #filter-btn { flex: 1 1 calc(50% - 4px); }
+    #sort-btn { width: 100%; }
+  }
 </style>
 </head>
 <body class="bg-tsts-cream text-slate-900 flex flex-col min-h-screen">
@@ -34,13 +139,13 @@
     <nav id="navbar-placeholder" role="navigation"></nav>
 
     <main class="flex-grow" role="main">
-    <h1 class="sr-only">Explore Experiences — The Shared Table Story</h1>
+    <h1 class="sr-only">Explore Experiences, The Shared Table Story</h1>
     <div class="bg-white shadow-sm border-b border-gray-100 transition-all duration-300 filter-shell">
         <div class="container mx-auto px-4 py-4 space-y-3">
             
             <div class="flex flex-col xl:flex-row gap-4">
-                <div class="flex-grow flex flex-col md:flex-row gap-2">
-                    <div class="relative flex-grow">
+                <div class="grid grid-cols-2 gap-2 flex-grow md:flex md:flex-row">
+                    <div class="relative col-span-2 flex-grow">
                         <label for="search-input" class="sr-only">Search experiences</label>
                         <i class="fas fa-search absolute left-4 top-3.5 text-gray-400"></i>
                         <input type="search" id="search-input" placeholder="Search dish, host, or vibe..." class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm transition">
@@ -53,7 +158,8 @@
                     </div>
                     <div class="relative w-full md:w-40">
                         <label for="date-input" class="sr-only">Date</label>
-                        <input type="date" id="date-input" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm transition">
+                        <i class="fas fa-calendar absolute left-4 top-3.5 text-gray-400 pointer-events-none"></i>
+                        <input type="date" id="date-input" class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm transition">
                     </div>
                     <div class="relative w-full md:w-32">
                         <label for="guests-input" class="sr-only">Number of guests</label>
@@ -61,60 +167,339 @@
                         <input type="number" id="guests-input" min="1" placeholder="Guests" class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm transition">
                     </div>
                 </div>
-                <div class="flex gap-2">
-                    <button id="clear-filters-btn" type="button" class="px-4 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-100 transition flex items-center gap-2 whitespace-nowrap"><i class="fas fa-times"></i> Clear</button>
+                <div class="flex gap-2 items-center">
+                    <!-- Near me lives inside the filter panel under WHERE. -->
+                    <button id="near-me-btn" type="button" aria-pressed="false" class="hidden">Near me</button>
+                    <!-- Hidden state holder for sort value (read by explore.js as elSort). -->
+                    <input type="hidden" id="sort-select" value="">
+                    <!-- Sort: button-with-menu (owner-approved 2026-05-02).
+                         Closed button reads only "Sort", click toggles menu of 7 clean
+                         options. Click selected option in menu → deselect (back to "" / Recommended). -->
+                    <div class="relative" id="sort-wrap">
+                        <button id="sort-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="sort-menu" class="px-4 py-3 border border-gray-200 bg-white text-gray-800 rounded-xl text-sm font-semibold hover:border-orange-500 transition flex items-center justify-center gap-2 whitespace-nowrap">
+                            <span>Sort</span>
+                            <i class="fas fa-chevron-down text-xs text-gray-400"></i>
+                        </button>
+                        <!-- Sort menu, 224 pixels wide at every width. Below 1280 it hangs off the LEFT
+                             edge of #sort-wrap, which sits at the left of its own row there; from 1280
+                             up the wrapper sits at the right of the row and the menu hangs off its RIGHT. -->
+                        <div id="sort-menu" role="menu" aria-labelledby="sort-btn" class="hidden absolute left-0 w-56 xl:left-auto xl:right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 py-1">
+                            <button type="button" role="menuitemradio" data-sort-value=""             class="sort-option block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50">Recommended</button>
+                            <button type="button" role="menuitemradio" data-sort-value="price_asc"    class="sort-option block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50">Price low → high</button>
+                            <button type="button" role="menuitemradio" data-sort-value="price_desc"   class="sort-option block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50">Price high → low</button>
+                            <button type="button" role="menuitemradio" data-sort-value="rating_desc"  class="sort-option block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50">Top rated</button>
+                            <button type="button" role="menuitemradio" data-sort-value="newest"       class="sort-option block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50">Newest first</button>
+                            <button type="button" role="menuitemradio" data-sort-value="soonest"      class="sort-option block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50">Soonest available</button>
+                            <button type="button" role="menuitemradio" data-sort-value="popular"      class="sort-option block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50">Most popular</button>
+                        </div>
+                    </div>
+                    <button id="clear-filters-btn" type="button" hidden class="px-4 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-100 transition flex items-center gap-2 whitespace-nowrap"><i class="fas fa-times"></i> Clear</button>
                     <button id="filter-btn" type="button" aria-expanded="false" aria-controls="filter-panel" class="px-5 py-3 border border-gray-200 bg-white text-gray-800 rounded-xl text-sm font-semibold hover:border-orange-500 transition flex items-center justify-center gap-2 whitespace-nowrap">
                         <i class="fas fa-sliders-h"></i>
                         <span id="filter-btn-label">Filters</span>
-                        <span id="filter-count-badge" class="hidden filter-count-badge">0</span>
+                        <span id="filter-count-badge" class="hidden filter-count-badge" style="display:none">0</span>
                     </button>
                 </div>
             </div>
 
-            <div id="filter-panel" class="hidden mt-1 p-6 rounded-xl transition-all duration-300 filter-panel-elevated">
-                <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-                    <p class="text-xs uppercase tracking-wide font-bold text-gray-500">Fine-Tune Your Experience</p>
-                    <p id="filters-summary" class="text-xs text-gray-500">All stories</p>
+            <!-- Owner-flagged 2026-05-01 20:35, Airbnb-grade full-screen
+                 modal filter (replaces the previous inline collapsible
+                 panel). Backdrop + sliding sheet from right. JS toggles
+                 the .is-open class to slide it in. No dead code: every
+                 control inside is wired to the explore.js handlers. -->
+            <div id="filter-modal-backdrop" class="hidden fixed inset-0 z-40 bg-black/40 transition-opacity duration-300"></div>
+            <div id="filter-panel" class="hidden fixed inset-y-0 right-0 z-50 bg-white shadow-2xl transform transition-transform duration-300 translate-x-full overflow-hidden flex flex-col" style="width: 100%; max-width: 720px;">
+                <!-- Modal header: title + close + clear all -->
+                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+                    <button id="modal-clear-all" type="button" class="text-sm text-orange-600 font-semibold hover:underline" style="visibility:hidden" aria-hidden="true" tabindex="-1">Clear all</button>
+                    <h2 class="text-lg font-bold heading-serif text-tsts-ink">Filters</h2>
+                    <button id="modal-close-btn" type="button" aria-label="Close filters" class="px-3 py-1.5 text-sm font-semibold text-tsts-ink hover:text-orange-600 hover:underline transition">Close</button>
                 </div>
-                <div class="flex flex-col md:flex-row gap-8 items-start">
-                    <div class="w-full md:w-1/2">
+                <!-- Modal body: scrollable content -->
+                <div class="flex-1 overflow-y-auto px-6 py-4">
+                <div class="mb-4">
+                    <p class="text-xs text-gray-500" id="filters-summary">All stories</p>
+                </div>
+
+                <!-- Owner-approved 2026-05-02: TYPE group at top, 8 platform categories (matches mobile FiltersSheet CATEGORY_SLUGS). -->
+                <div class="mt-2 mb-3">
+                    <h3 class="font-serif text-orange-600 text-base font-bold uppercase tracking-wide">Type</h3>
+                    <div class="h-0.5 w-12 bg-orange-200 rounded mt-1 mb-3"></div>
+                    <div class="flex flex-wrap gap-2" id="modal-category-chips">
+                        <button type="button" class="modal-cat-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-modal-cat="food-gatherings">Food &amp; Gatherings</button>
+                        <button type="button" class="modal-cat-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-modal-cat="explore-outdoors">Explore &amp; Outdoors</button>
+                        <button type="button" class="modal-cat-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-modal-cat="culture-stories">Culture &amp; Stories</button>
+                        <button type="button" class="modal-cat-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-modal-cat="social-nights">Social &amp; Nights</button>
+                        <button type="button" class="modal-cat-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-modal-cat="move-wellness">Move &amp; Wellness</button>
+                        <button type="button" class="modal-cat-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-modal-cat="create-express">Create &amp; Express</button>
+                        <button type="button" class="modal-cat-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-modal-cat="learn-passion">Learn &amp; Passion</button>
+                        <button type="button" class="modal-cat-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-modal-cat="games-play">Games &amp; Play</button>
+                    </div>
+                </div>
+
+                <!-- Owner-flagged 2026-05-01 17:18, Airbnb-grade IA: WHERE group. Owner-approved 2026-05-02: added Suburb + City inputs + Distance chips. -->
+                <div class="mt-6 mb-3">
+                    <h3 class="font-serif text-orange-600 text-base font-bold uppercase tracking-wide">Where</h3>
+                    <div class="h-0.5 w-12 bg-orange-200 rounded mt-1 mb-3"></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                        <input id="filter-suburb" type="text" placeholder="Suburb (e.g. Carlton)" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-orange-500" autocomplete="off">
+                        <input id="filter-city" type="text" placeholder="City (e.g. Melbourne)" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-orange-500" autocomplete="off">
+                    </div>
+                    <label for="filter-near-me" class="flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-gray-700 cursor-pointer">
+                        <input id="filter-near-me" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                        <span class="leading-snug">
+                            <span class="font-semibold text-gray-900">Near me</span>
+                            <span class="block text-xs text-gray-500">Show experiences within the chosen radius, sorted by distance.</span>
+                        </span>
+                    </label>
+                    <div id="distance-chips-wrap" class="mt-3 hidden">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Distance radius</label>
+                        <div class="flex flex-wrap gap-2" id="distance-chips">
+                            <button type="button" class="distance-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-distance="5">5 km</button>
+                            <button type="button" class="distance-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-distance="10">10 km</button>
+                            <button type="button" class="distance-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-distance="25">25 km</button>
+                            <button type="button" class="distance-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-distance="50">50 km</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Owner-approved 2026-05-02: WHO group (guests + private + new hosts moved here from Price). -->
+                <h3 class="mt-6 font-serif text-orange-600 text-base font-bold uppercase tracking-wide">Who</h3>
+                <div class="h-0.5 w-12 bg-orange-200 rounded mt-1 mb-3"></div>
+                <div class="flex flex-col gap-3 mb-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2" for="filter-guests-input">Guests</label>
+                        <!-- sir found this 2026-08-22: the cap was max="12" on a platform that stores a
+                             1,200-seat listing. Hosts can create ANY capacity (host.html #maxGuests has no
+                             max), the backend filter handles any N correctly (sir's 2026-08-13 ruling:
+                             maxGuests >= N OR privateCapacity >= N), and mobile's guests field is uncapped —
+                             so a group of 40, 100 or 700 could type the number into the hero box on THIS page,
+                             get results, then be refused that same number here. No design authored: min and
+                             placeholder now match #guests-input, the hero box on this same page. -->
+                        <input id="filter-guests-input" type="number" min="1" placeholder="Guests" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-orange-500">
+                    </div>
+                    <label for="modal-private-booking" class="flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-gray-700 cursor-pointer">
+                        <input id="modal-private-booking" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                        <span class="leading-snug">
+                            <span class="font-semibold text-gray-900">Private booking</span>
+                            <span class="block text-xs text-gray-500">Book the whole table.</span>
+                        </span>
+                    </label>
+                    <label for="modal-new-hosts" class="flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-gray-700 cursor-pointer">
+                        <input id="modal-new-hosts" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                        <span class="leading-snug">
+                            <span class="font-semibold text-gray-900">New hosts welcome</span>
+                            <span class="block text-xs text-gray-500">Joined in the last 90 days.</span>
+                        </span>
+                    </label>
+                </div>
+
+                <h3 class="mt-6 font-serif text-orange-600 text-base font-bold uppercase tracking-wide">Price</h3>
+                <div class="h-0.5 w-12 bg-orange-200 rounded mt-1 mb-3"></div>
+                <div class="flex flex-col gap-6 items-stretch">
+                    <div class="w-full">
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-4" for="price-slider">Price Range</label>
                         <div id="price-slider" class="mb-4 mx-2"></div>
                         <div class="flex justify-between text-sm font-medium text-gray-700">
-                            <span id="price-min-label">$0</span>
-                            <span id="price-max-label">$300+</span>
+                            <span id="price-min-label">A$0</span>
+                            <span id="price-max-label">A$500+</span>
                         </div>
                         <input type="hidden" id="min-price" /><input type="hidden" id="max-price" />
                     </div>
-                    <div class="w-full md:w-1/4">
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2" for="sort-select">Sort By</label>
-                        <div class="relative">
-                            <select id="sort-select" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 appearance-none cursor-pointer">
-                                <option value="">Recommended</option>
-                                <option value="price_asc">Price: Low to High</option>
-                                <option value="rating_desc">Top Rated</option>
-                            </select>
-                            <i class="fas fa-chevron-down absolute right-4 top-3 text-gray-400 pointer-events-none"></i>
+                </div>
+
+                <!-- VIBE / DIETARY / ACCESSIBILITY group (owner-approved 2026-04-30, group headers added 2026-05-01 17:18) -->
+                <h3 class="mt-6 font-serif text-orange-600 text-base font-bold uppercase tracking-wide">Vibe</h3>
+                <div class="h-0.5 w-12 bg-orange-200 rounded mt-1 mb-3"></div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Vibe</label>
+                        <div class="flex flex-wrap gap-2" id="vibe-chips">
+                            <button type="button" class="vibe-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-vibe="cosy">Cosy</button>
+                            <button type="button" class="vibe-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-vibe="lively">Lively</button>
+                            <button type="button" class="vibe-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-vibe="intimate">Intimate</button>
+                            <button type="button" class="vibe-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-vibe="outdoors">Outdoors</button>
+                            <button type="button" class="vibe-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-vibe="curated">Curated</button>
+                            <button type="button" class="vibe-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-vibe="casual">Casual</button>
+                            <button type="button" class="vibe-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-vibe="family-friendly">Family friendly</button>
                         </div>
-                        <label for="private-booking-only" class="mt-4 flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-gray-700 cursor-pointer">
-                            <input id="private-booking-only" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
-                            <span class="leading-snug">
-                                <span class="font-semibold text-gray-900">Private booking available</span>
-                                <span class="block text-xs text-gray-500">Show only experiences with private booking options.</span>
-                            </span>
-                        </label>
-                        <label for="verified-only" class="mt-3 flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-gray-700 cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Dietary</label>
+                        <div class="flex flex-wrap gap-2" id="dietary-chips">
+                            <button type="button" class="dietary-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-dietary="vegan">Vegan</button>
+                            <button type="button" class="dietary-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-dietary="vegetarian">Vegetarian</button>
+                            <button type="button" class="dietary-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-dietary="halal">Halal</button>
+                            <button type="button" class="dietary-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-dietary="gluten-free">Gluten-free</button>
+                            <button type="button" class="dietary-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-dietary="dairy-free">Dairy-free</button>
+                            <button type="button" class="dietary-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-dietary="nut-free">Nut-free</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Accessibility</label>
+                        <div class="flex flex-wrap gap-2" id="accessibility-chips">
+                            <button type="button" class="accessibility-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-accessibility="wheelchair-friendly">Wheelchair friendly</button>
+                            <button type="button" class="accessibility-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-accessibility="step-free">Step-free entry</button>
+                            <button type="button" class="accessibility-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-accessibility="low-noise">Low noise</button>
+                            <button type="button" class="accessibility-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-accessibility="service-animals-welcome">Service animals welcome</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Owner-flagged 2026-05-01 17:18, comprehensive filter
+                     dimensions matching the mobile FiltersSheet for full
+                     web↔mobile parity. Each is grouped under an Airbnb-grade
+                     header. JS wiring will follow in explore.js. -->
+
+                <!-- WHEN group: Date + Days of week + Time of day + Duration. Owner-approved 2026-05-02: added date input. -->
+                <h3 class="mt-6 font-serif text-orange-600 text-base font-bold uppercase tracking-wide">When</h3>
+                <div class="h-0.5 w-12 bg-orange-200 rounded mt-1 mb-3"></div>
+                <div class="mb-3">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2" for="filter-date-input">Available from</label>
+                    <input id="filter-date-input" type="date" class="w-full md:w-1/3 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-orange-500">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Days of week</label>
+                        <div class="flex flex-wrap gap-2" id="dow-chips">
+                            <button type="button" class="dow-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-dow="mon">Mon</button>
+                            <button type="button" class="dow-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-dow="tue">Tue</button>
+                            <button type="button" class="dow-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-dow="wed">Wed</button>
+                            <button type="button" class="dow-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-dow="thu">Thu</button>
+                            <button type="button" class="dow-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-dow="fri">Fri</button>
+                            <button type="button" class="dow-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-dow="sat">Sat</button>
+                            <button type="button" class="dow-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-dow="sun">Sun</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Time of day</label>
+                        <div class="flex flex-wrap gap-2" id="tod-chips">
+                            <button type="button" class="tod-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-tod="morning">Morning</button>
+                            <button type="button" class="tod-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-tod="afternoon">Afternoon</button>
+                            <button type="button" class="tod-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-tod="evening">Evening</button>
+                            <button type="button" class="tod-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-tod="night">Night</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Experience length</label>
+                        <div class="flex flex-wrap gap-2" id="duration-chips">
+                            <button type="button" class="duration-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-duration="0,60">Under 1 hr</button>
+                            <button type="button" class="duration-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-duration="60,120">1–2 hrs</button>
+                            <button type="button" class="duration-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-duration="120,180">2–3 hrs</button>
+                            <button type="button" class="duration-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-duration="180,240">3–4 hrs</button>
+                            <button type="button" class="duration-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-duration="240,9999">4 hrs+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TYPE / CUISINE / OCCASION group -->
+                <h3 class="mt-6 font-serif text-orange-600 text-base font-bold uppercase tracking-wide">Type & Flavours</h3>
+                <div class="h-0.5 w-12 bg-orange-200 rounded mt-1 mb-3"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Cuisine</label>
+                        <div class="flex flex-wrap gap-2" id="cuisine-chips">
+                            <button type="button" class="cuisine-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-cuisine="italian">Italian</button>
+                            <button type="button" class="cuisine-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-cuisine="french">French</button>
+                            <button type="button" class="cuisine-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-cuisine="mediterranean">Mediterranean</button>
+                            <button type="button" class="cuisine-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-cuisine="middle-eastern">Middle Eastern</button>
+                            <button type="button" class="cuisine-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-cuisine="indian">Indian</button>
+                            <button type="button" class="cuisine-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-cuisine="japanese">Japanese</button>
+                            <button type="button" class="cuisine-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-cuisine="korean">Korean</button>
+                            <button type="button" class="cuisine-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-cuisine="chinese">Chinese</button>
+                            <button type="button" class="cuisine-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-cuisine="thai">Thai</button>
+                            <button type="button" class="cuisine-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-cuisine="vietnamese">Vietnamese</button>
+                            <button type="button" class="cuisine-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-cuisine="mexican">Mexican</button>
+                            <button type="button" class="cuisine-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-cuisine="modern-australian">Modern Australian</button>
+                            <button type="button" class="cuisine-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-cuisine="spanish">Spanish</button>
+                            <button type="button" class="cuisine-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-cuisine="african">African</button>
+                            <button type="button" class="cuisine-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-cuisine="fusion">Fusion</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Occasion</label>
+                        <div class="flex flex-wrap gap-2" id="occasion-chips">
+                            <button type="button" class="occasion-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-occasion="date-night">Date night</button>
+                            <button type="button" class="occasion-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-occasion="birthday">Birthday</button>
+                            <button type="button" class="occasion-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-occasion="anniversary">Anniversary</button>
+                            <button type="button" class="occasion-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-occasion="family-gathering">Family gathering</button>
+                            <button type="button" class="occasion-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-occasion="work-team">Work team</button>
+                            <button type="button" class="occasion-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-occasion="meet-new-people">Meet new people</button>
+                            <button type="button" class="occasion-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-occasion="solo-friendly">Solo friendly</button>
+                            <button type="button" class="occasion-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-occasion="celebration">Celebration</button>
+                            <button type="button" class="occasion-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-occasion="cultural-experience">Cultural experience</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HOST group: Languages spoken by host + Verified + New hosts + Private -->
+                <h3 class="mt-6 font-serif text-orange-600 text-base font-bold uppercase tracking-wide">Host & Language</h3>
+                <div class="h-0.5 w-12 bg-orange-200 rounded mt-1 mb-3"></div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Languages spoken</label>
+                    <div class="flex flex-wrap gap-2" id="language-chips">
+                        <button type="button" class="language-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-language="english">English</button>
+                        <button type="button" class="language-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-language="mandarin">Mandarin</button>
+                        <button type="button" class="language-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-language="cantonese">Cantonese</button>
+                        <button type="button" class="language-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-language="spanish">Spanish</button>
+                        <button type="button" class="language-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-language="french">French</button>
+                        <button type="button" class="language-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-language="italian">Italian</button>
+                        <button type="button" class="language-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-language="arabic">Arabic</button>
+                        <button type="button" class="language-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-language="hindi">Hindi</button>
+                        <button type="button" class="language-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-language="punjabi">Punjabi</button>
+                        <button type="button" class="language-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-language="japanese">Japanese</button>
+                        <button type="button" class="language-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-language="korean">Korean</button>
+                        <button type="button" class="language-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-language="vietnamese">Vietnamese</button>
+                        <button type="button" class="language-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-language="thai">Thai</button>
+                        <button type="button" class="language-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-language="auslan">Auslan</button>
+                    </div>
+                </div>
+
+                <!-- QUALITY group: Min rating + Min reviews + Instant book -->
+                <h3 class="mt-6 font-serif text-orange-600 text-base font-bold uppercase tracking-wide">Quality & Booking</h3>
+                <div class="h-0.5 w-12 bg-orange-200 rounded mt-1 mb-3"></div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Minimum rating</label>
+                        <div class="flex flex-wrap gap-2" id="min-rating-chips">
+                            <button type="button" class="min-rating-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-min-rating="">Any</button>
+                            <button type="button" class="min-rating-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-min-rating="3">3+ stars</button>
+                            <button type="button" class="min-rating-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-min-rating="4">4+ stars</button>
+                            <button type="button" class="min-rating-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-min-rating="4.5">4.5+ stars</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Minimum reviews</label>
+                        <div class="flex flex-wrap gap-2" id="min-reviews-chips">
+                            <button type="button" class="min-reviews-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-min-reviews="">Any</button>
+                            <button type="button" class="min-reviews-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-min-reviews="1">1+</button>
+                            <button type="button" class="min-reviews-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-min-reviews="5">5+</button>
+                            <button type="button" class="min-reviews-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-min-reviews="10">10+</button>
+                            <button type="button" class="min-reviews-chip px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition" data-min-reviews="25">25+</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="verified-only" class="flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-gray-700 cursor-pointer mb-3">
                             <input id="verified-only" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
                             <span class="leading-snug">
                                 <span class="font-semibold text-gray-900">Verified events only</span>
                                 <span class="block text-xs text-gray-500">Show only admin-verified experiences.</span>
                             </span>
                         </label>
+                        <label for="instant-book-toggle" class="flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-gray-700 cursor-pointer">
+                            <input id="instant-book-toggle" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                            <span class="leading-snug">
+                                <span class="font-semibold text-gray-900">Instant book</span>
+                                <span class="block text-xs text-gray-500">Confirm without waiting on the host.</span>
+                            </span>
+                        </label>
                     </div>
-                    <div class="w-full md:w-1/4 flex flex-col gap-2 items-stretch">
-                        <button id="apply-filters" type="button" class="w-full tsts-btn-primary px-6 py-2.5 rounded-xl font-bold transition shadow-sm">Apply</button>
-                        <button id="close-filters-btn" type="button" class="w-full md:hidden px-6 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold text-sm transition hover:bg-gray-50">Close filters</button>
-                    </div>
+                </div>
+
+                </div><!-- /modal body scrollable -->
+                <!-- Sticky footer: Show results CTA -->
+                <div class="px-6 py-4 border-t border-gray-100 shrink-0 bg-white">
+                    <button id="apply-filters" type="button" class="w-full tsts-btn-primary px-6 py-3 rounded-xl font-bold transition shadow-sm">Show results</button>
                 </div>
             </div>
 
@@ -155,11 +540,6 @@
     </div>
 
     <div class="container mx-auto px-4 py-8 flex-grow">
-<section id="explore-curations" class="hidden pb-6">
-  <div class="max-w-7xl mx-auto">
-    <div id="explore-curations-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
-  </div>
-</section>
         <div id="experiences-grid" aria-live="polite" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             <div class="bg-white rounded-3xl shadow-soft-card overflow-hidden border border-gray-100 flex flex-col"><div class="skeleton h-48 w-full rounded-none"></div><div class="p-4 flex flex-col gap-2 flex-grow"><div class="skeleton h-3 w-1/3"></div><div class="skeleton h-4 w-3/4"></div><div class="skeleton h-3 w-full"></div><div class="skeleton h-3 w-2/3"></div><div class="skeleton h-3 w-1/2"></div><div class="skeleton h-3 w-1/4 mt-2"></div></div></div>
             <div class="bg-white rounded-3xl shadow-soft-card overflow-hidden border border-gray-100 flex flex-col"><div class="skeleton h-48 w-full rounded-none"></div><div class="p-4 flex flex-col gap-2 flex-grow"><div class="skeleton h-3 w-1/3"></div><div class="skeleton h-4 w-3/4"></div><div class="skeleton h-3 w-full"></div><div class="skeleton h-3 w-2/3"></div><div class="skeleton h-3 w-1/2"></div><div class="skeleton h-3 w-1/4 mt-2"></div></div></div>
@@ -170,20 +550,32 @@
             <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-50 flex items-center justify-center text-orange-600">
                 <i class="far fa-compass text-2xl"></i>
             </div>
-            <h3 class="text-xl font-bold heading-serif text-tsts-ink mb-2">No experiences found</h3>
-            <p class="text-gray-500 mb-4">Try adjusting your filters.</p>
+            <h3 class="text-xl font-bold heading-serif text-tsts-ink mb-2">No table set yet</h3>
+            <!-- sir 2026-08-10: em-dash removed (sir's platform-wide ban), comma instead. -->
+            <p class="text-gray-500 mb-4">Try widening your filters, or set your own table.</p>
             <div id="zero-result-filters" class="hidden flex flex-wrap justify-center gap-2 mb-6"></div>
             <button id="clear-filters-empty-btn" type="button" class="text-orange-600 font-bold hover:underline">Clear all filters</button>
         </div>
+        <!-- Owner-approved 2026-04-30 / re-aligned 2026-05-01 15:18:
+             "Vase + steam illustration with brand-voice copy + dual CTAs".
+             Replaced generic plug icon with the brand vase mark + added a
+             secondary "Search instead" CTA. -->
         <div id="load-error" class="hidden text-center py-12">
-            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center text-gray-700">
-                <i class="fas fa-plug text-xl"></i>
+            <img src="/assets/logo-mark.png" alt="" class="w-20 h-20 mx-auto mb-4 object-contain" aria-hidden="true">
+            <h3 class="text-xl font-bold heading-serif text-tsts-ink mb-2">A little quiet on our end</h3>
+            <!-- sir 2026-08-15 ("Fix both"): was "Pull down to try again.", a phone gesture
+                 with nothing to pull on desktop web, sitting beside a working Retry button. -->
+            <p class="text-gray-500 mb-8">Check your connection, then try again.</p>
+            <div class="flex items-center justify-center gap-3 flex-wrap">
+                <button id="retry-load-btn" type="button" class="inline-flex items-center gap-2 tsts-btn-primary px-6 py-3 rounded-xl font-bold transition shadow-sm">
+                    <i class="fas fa-rotate-right"></i> Retry
+                </button>
+                <!-- sir 2026-08-15 ("Fix both"): was experience.html with no id — the guest landed
+                     on "Experience Not Found". A clean reload of the marketplace instead. -->
+                <a href="explore.html" id="retry-search-btn" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold border border-gray-200 bg-white text-gray-800 hover:border-orange-500 transition">
+                    <i class="fas fa-magnifying-glass"></i> Search instead
+                </a>
             </div>
-            <h3 class="text-xl font-bold heading-serif text-tsts-ink mb-2">Couldn’t load stories</h3>
-            <p class="text-gray-500 mb-8">Please check your connection and try again.</p>
-            <button id="retry-load-btn" type="button" class="inline-flex items-center gap-2 tsts-btn-primary px-6 py-3 rounded-xl font-bold transition shadow-sm">
-                <i class="fas fa-rotate-right"></i> Try again
-            </button>
         </div>
     </div>
     </main>
@@ -191,7 +583,10 @@
     <footer id="footer-placeholder" role="contentinfo"></footer>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBxFIeROPTRgYYpg_dw0WUNrPJBGIh0iX4&libraries=places" async defer></script>
     <script src="js/runtime-config.js?v=20260224a"></script>
-  <script src="js/common.js?v=20260316c"></script>
-    <script src="js/explore.js?v=20260412a"></script>
+  <!-- Owner 2026-05-30 (date-picker rollout R3): Flatpickr loaded before common.js
+       so the window.tstsDatePicker wrapper sees the global at init time. -->
+  <script src="vendor/flatpickr/flatpickr.min.js?v=4.6.13"></script>
+  <script src="js/common.js?v=20260907a"></script>
+    <script src="js/explore.js?v=20260923c"></script>
 </body>
 </html>

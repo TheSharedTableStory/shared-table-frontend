@@ -1,4 +1,4 @@
-// details-utils.js — extracted from inline scripts to comply with CSP
+// details-utils.js, extracted from inline scripts to comply with CSP
 // Handles: expand/collapse toggles, privacy#cookies hash, policy TOC generation
 
 (function () {

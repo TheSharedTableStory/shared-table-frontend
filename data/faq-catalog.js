@@ -29,7 +29,7 @@ const FAQ_CATALOG = [
     section: "cancellation",
     question: "Can I cancel, and what decides my refund?",
     answer:
-      "You can cancel according to the cancellation policy attached to your booking. Refund outcomes depend on timing and the policy snapshot captured at confirmation.",
+      "You can cancel according to the cancellation policy attached to your booking. Refund outcomes depend on timing and on the rules that were saved with your booking when you confirmed it.",
     answerMode: "policy_bound",
     requiredInputs: [],
     sourceRefs: [
@@ -788,7 +788,7 @@ const FAQ_CATALOG = [
     section: "cancellation-refunds",
     question: "How do cancellations and refunds work overall?",
     answer:
-      "Cancellation outcomes follow the policy snapshot captured at the time of booking.",
+      "Cancellation outcomes follow the rules that were saved with your booking at the time you booked.",
     answerMode: "policy_bound",
     requiredInputs: [],
     sourceRefs: [
@@ -848,7 +848,7 @@ const FAQ_CATALOG = [
     hub: "platform",
     section: "policies",
     question: "What happens if policies change after my booking?",
-    answer: "Your booking follows the policy snapshot captured at confirmation.",
+    answer: "Your booking follows the rules that were saved with it when you confirmed.",
     answerMode: "deterministic",
     requiredInputs: [],
     sourceRefs: [

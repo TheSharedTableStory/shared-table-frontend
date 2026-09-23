@@ -24,24 +24,24 @@
 
         if (!userId || !category || !ts || !token) {
             var errText = document.getElementById("error-text");
-            if (errText && window.tstsText) window.tstsText(errText, "This unsubscribe link is invalid. Please manage your email preferences from your Profile settings.");
+            if (errText && window.tstsSetText) window.tstsSetText(errText, "This link has expired or doesn't work anymore. You can manage your emails anytime from My Account.");
             showState("state-error");
             return;
         }
 
         var confirmText = document.getElementById("confirm-text");
-        if (confirmText && window.tstsText) {
-            window.tstsText(confirmText, "Click below to stop receiving " + categoryLabel + " emails from The Shared Table Story.");
+        if (confirmText && window.tstsSetText) {
+            window.tstsSetText(confirmText, "Click below to stop receiving " + categoryLabel + " emails from The Shared Table Story.");
         }
 
         if (confirmBtn) {
             confirmBtn.addEventListener("click", function () {
                 confirmBtn.disabled = true;
-                if (window.tstsText) window.tstsText(confirmBtn, "Processing\u2026");
+                if (window.tstsSetText) window.tstsSetText(confirmBtn, "Processing\u2026");
                 if (confirmStatus) {
                     confirmStatus.classList.remove("hidden", "text-red-600");
                     confirmStatus.classList.add("text-gray-500");
-                    if (window.tstsText) window.tstsText(confirmStatus, "");
+                    if (window.tstsSetText) window.tstsSetText(confirmStatus, "");
                 }
 
                 var apiBase = (window.__tstsApiBase || window.API_BASE || "");
@@ -60,23 +60,23 @@
                 }).then(function (result) {
                     if (result.data && result.data.ok === true) {
                         var successText = document.getElementById("success-text");
-                        if (successText && window.tstsText) {
-                            window.tstsText(successText, "You have been unsubscribed from " + categoryLabel + " emails. You can re-enable them anytime from your Profile settings.");
+                        if (successText && window.tstsSetText) {
+                            window.tstsSetText(successText, "You have been unsubscribed from " + categoryLabel + " emails. You can turn them back on anytime from My Account.");
                         }
                         showState("state-success");
                     } else {
                         var errCode = (result.data && result.data.error) || "";
-                        var msg = "This unsubscribe link is invalid or has expired. Please manage your email preferences from your Profile settings.";
+                        var msg = "This link has expired or doesn't work anymore. You can manage your emails anytime from My Account.";
                         if (errCode === "TOKEN_EXPIRED") {
-                            msg = "This unsubscribe link has expired. Please manage your email preferences from your Profile settings.";
+                            msg = "This link has expired. You can manage your emails anytime from My Account.";
                         }
                         var errText2 = document.getElementById("error-text");
-                        if (errText2 && window.tstsText) window.tstsText(errText2, msg);
+                        if (errText2 && window.tstsSetText) window.tstsSetText(errText2, msg);
                         showState("state-error");
                     }
                 }).catch(function () {
                     var errText3 = document.getElementById("error-text");
-                    if (errText3 && window.tstsText) window.tstsText(errText3, "Something went wrong. Please try again or manage your email preferences from your Profile settings.");
+                    if (errText3 && window.tstsSetText) window.tstsSetText(errText3, "We couldn't update your email preference. Please try again, or manage your emails anytime from My Account.");
                     showState("state-error");
                 });
             });

@@ -2,16 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' http://localhost:4000 https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/assets/logo-mark.png">
   <meta name="theme-color" content="#ea580c">
   <meta name="description" content="Find answers about booking, hosting, payments, and policies in the The Shared Table Story FAQs.">
-  <title>FAQs — The Shared Table Story</title>
+  <title>FAQs, The Shared Table Story</title>
 
-  <link rel="stylesheet" href="css/tailwind.css?v=20260317b">
-  <link rel="stylesheet" href="css/fonts.css?v=20260310d">
+  <link rel="stylesheet" href="css/tailwind.css?v=20260914a">
+  <link rel="stylesheet" href="css/fonts.css?v=20260810a">
   <link rel="stylesheet" href="css/help-center.css?v=20260224a">
   <link rel="manifest" href="manifest.json">
 </head>
@@ -20,12 +20,23 @@
   <nav id="navbar-placeholder" role="navigation"></nav>
 
   <main class="flex-grow" role="main">
-    <div id="help-root" class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-0 py-12 space-y-8">
+    <!-- sir 2026-08-16: nav-container width standard for all pages ("make it like explore") -->
+    <div id="help-root" class="container mx-auto px-4 py-12 space-y-8">
       <header>
         <p class="text-xs tracking-[0.18em] font-semibold text-slate-500 mb-2">FAQs</p>
-        <h1 class="text-4xl sm:text-5xl font-bold mb-3 heading-serif text-tsts-ink">How can we help today?</h1>
+        <h1 class="text-4xl md:text-6xl font-bold mb-3 heading-serif text-tsts-ink">How can we help today?</h1>
+        <!-- Was: "Choose the section that matches your journey. Answers reflect current platform
+             policy and booking behavior." Three faults in one sentence, found by reading the page
+             on screen 2026-08-22:
+             (1) "behavior" is American spelling — the ONLY one in user-visible text anywhere on the
+                 site (verified across all 34 pages with tags stripped; every other apparent hit was
+                 CSS or a Tailwind class name). This is an Australian platform.
+             (2) "platform policy and booking behavior" is system language. Someone arriving here
+                 with a problem does not think in those words.
+             (3) It said nothing. Of course a help page reflects current policy — that is what it is
+                 for. The line sat in the position where a reader should be told where to start. -->
         <p class="text-slate-600 text-lg">
-          Choose the section that matches your journey. Answers reflect current platform policy and booking behavior.
+          Choose the section that matches you. These answers cover bookings, payments, cancellations and safety.
         </p>
       </header>
 
@@ -41,7 +52,7 @@
             <div class="help-center-hub-content">
               <div class="help-center-hub-copy">
                 <span class="block heading-serif help-center-hub-title text-tsts-ink mb-2">How The Platform Works</span>
-                <span class="block help-center-hub-description text-slate-700 mt-1">Roles, lifecycle, trust, and payment process.</span>
+                <span class="block help-center-hub-description text-slate-700 mt-1">Roles, how bookings work, trust, and payments.</span>
               </div>
               <span class="help-center-chevron text-slate-500 text-2xl" data-hub-icon aria-hidden="true">⌄</span>
             </div>
@@ -87,13 +98,13 @@
           <p id="faq-active-subtitle" class="text-xs text-gray-500 mt-1"></p>
         </div>
 
-        <div id="faq-hub-panel-guest" class="help-center-hub-panel hidden">
+        <div id="faq-hub-panel-guest" class="hidden">
           <div id="faq-hub-guest-root" class="space-y-3"></div>
         </div>
-        <div id="faq-hub-panel-host" class="help-center-hub-panel hidden">
+        <div id="faq-hub-panel-host" class="hidden">
           <div id="faq-hub-host-root" class="space-y-3"></div>
         </div>
-        <div id="faq-hub-panel-platform" class="help-center-hub-panel hidden">
+        <div id="faq-hub-panel-platform" class="hidden">
           <div id="faq-hub-platform-root" class="space-y-3"></div>
         </div>
       </section>
@@ -103,12 +114,12 @@
   <footer id="footer-placeholder" role="contentinfo"></footer>
 
   <script src="js/runtime-config.js?v=20260224a"></script>
-  <script src="js/common.js?v=20260316c"></script>
-  <script src="data/faq-catalog.js?v=20260224a"></script>
+  <script src="js/common.js?v=20260907a"></script>
+  <script src="data/faq-catalog.js?v=20260825a"></script>
   <script src="data/faq-trust.js?v=20260303a"></script>
-  <script src="js/faq-renderer.js?v=20260303a"></script>
-  <script src="js/faq-contextual.js?v=20260303a"></script>
+  <script src="js/faq-renderer.js?v=20260825a"></script>
+  <script src="js/faq-contextual.js?v=20260825a"></script>
   <script src="js/faq-init.js?v=20260224a"></script>
-  <script src="js/help-center.js?v=20260224a"></script>
+  <script src="js/help-center.js?v=20260822a"></script>
 </body>
 </html>

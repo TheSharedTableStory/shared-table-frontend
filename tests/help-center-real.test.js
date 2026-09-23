@@ -113,14 +113,17 @@ describe("help-center — render delegation", () => {
     loadModule({ renderer: () => ({ ok: false, error: "BLEW_UP" }) });
     document.querySelector('[data-hub-toggle="host"]').click();
     const mount = document.getElementById("faq-hub-host-root");
-    expect(mount.textContent).toContain("Unable to load host questions");
+    // 2026-08-22 fix: showRenderError(mount, hub) -> showRenderError(mount). The hub name is
+    // no longer interpolated into the message (setActiveMeta() already renders the human title
+    // above the error), so the raw "host"/"guest"/"platform" enum can no longer leak here.
+    expect(mount.textContent).toContain("We couldn't load these questions just now. Give it a moment and try again.");
   });
 
   test("missing renderer global shows error message", () => {
     loadModule({});
     document.querySelector('[data-hub-toggle="guest"]').click();
     const mount = document.getElementById("faq-hub-guest-root");
-    expect(mount.textContent).toContain("Unable to load guest questions");
+    expect(mount.textContent).toContain("We couldn't load these questions just now. Give it a moment and try again.");
   });
 
   test("subsequent toggles do NOT re-render (cached after first success)", () => {

@@ -25,12 +25,22 @@ function buildDom() {
     <button id="report-back-2" data-report-nav="prev">Back</button>
 
     <div id="report-step-1">
+      <!-- The "what is this about?" step, shown only when no target arrived on the URL. -->
+      <div id="report-about" class="hidden">
+        <button data-report-about="specific">A particular experience or person</button>
+        <button data-report-about="platform">The platform itself</button>
+        <div id="report-about-specific-help" class="hidden">
+          <button data-report-about="platform">It isn't about one listing</button>
+        </div>
+      </div>
+      <div id="report-categories-block">
       <div data-report-category="safety">Safety</div>
       <div data-report-category="spam">Spam</div>
       <div data-report-category="harassment">Harassment</div>
       <div data-report-category="fraud">Fraud</div>
       <div data-report-category="inaccurate">Inaccurate</div>
       <div data-report-category="other">Other</div>
+      </div>
       <span data-report-step-label="1">1</span>
     </div>
     <div id="report-step-2" class="hidden">
@@ -291,15 +301,38 @@ describe("report — submit", () => {
     expect(document.getElementById("report-alert").textContent).toMatch(/at least 10/i);
   });
 
-  test("submit without targetId shows alert", async () => {
+  // Behaviour change 2026-08-21: opening this page with nothing to report about now says so at the
+  // TOP, before a word is typed, instead of letting the reporter choose a category, write out what
+  // happened, press Submit, and only then be told to go and find a different button. The footer
+  // link that lands here sits on every page.
+  // UPDATED 2026-08-22 TO THE NEW SPEC (sir: "i will not tolerate any feature gap"). This test used
+  // to assert the DEAD END — that arriving with no target greeted the reporter with a red error
+  // sending them somewhere else. That behaviour was the defect: a person with a concern about the
+  // platform itself had nowhere to file it. The page now ASKS what the report is about, and both
+  // answers lead somewhere. The assertion moves from "shows the refusal" to "asks the question".
+  test("arriving with no target asks what it is about, instead of refusing", async () => {
     loadReport({ search: "" });
     await fireDOMReady();
+    expect(document.getElementById("report-about").classList.contains("hidden")).toBe(false);
+    // No red error before a single word has been typed.
+    expect(document.getElementById("report-alert").classList.contains("hidden")).toBe(true);
+  });
+
+  // UPDATED 2026-08-22 TO THE NEW SPEC. Submitting with neither a target NOR a platform choice is
+  // still refused — the gap is closed without letting a report through that is about nothing at
+  // all — but the wording no longer sends the reporter away, because they can now continue here.
+  test("submit with no target and no choice made is still refused, and sends nothing", async () => {
+    loadReport({ search: "" });
+    await fireDOMReady();
+    let sent = 0;
+    window.authFetch = async () => { sent += 1; return { ok: true, json: async () => ({ ok: true }) }; };
     document.querySelector('[data-report-category="safety"]').click();
     document.getElementById("report-next-1").click();
     document.getElementById("reportMessage").value = "this is a long enough message";
     document.getElementById("report-submit-btn").click();
     for (let i = 0; i < 10; i++) await Promise.resolve();
-    expect(document.getElementById("report-alert").textContent).toMatch(/report button on the relevant/i);
+    expect(sent).toBe(0);
+    expect(document.getElementById("report-alert").textContent).toMatch(/what this report is about/i);
   });
 
   test("successful submit POSTs /api/moderation/report with normalised payload + advances to step 3", async () => {
@@ -375,5 +408,83 @@ describe("report — submit", () => {
     document.getElementById("report-submit-btn").click();
     for (let i = 0; i < 20; i++) await Promise.resolve();
     expect(document.getElementById("report-alert").textContent).toMatch(/network down/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PLATFORM REPORTS — the feature gap sir refused to tolerate, 2026-08-22.
+//
+// The Report link sits in the footer of EVERY page. Arriving that way, nothing about a listing or
+// a person comes in on the URL — and the page used to greet the reporter with an error telling
+// them to go and find a different button. There was no way to report the platform itself, our
+// policies, or anything not tied to one listing. Now the first question is what the report is
+// about, and NEITHER answer is a dead end.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("Report — arriving with nothing attached", () => {
+  // Same contract every other block in this file uses: the addEventListener spy must be restored
+  // before each load, or the next loadReport() binds origAdd to the previous MOCK and recurses.
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  test("asks what the report is about instead of showing an error", async () => {
+    loadReport({ search: "" });
+    await fireDOMReady();
+    const about = document.getElementById("report-about");
+    const cats = document.getElementById("report-categories-block");
+    const alert = document.getElementById("report-alert");
+    expect(about.classList.contains("hidden")).toBe(false);
+    expect(cats.classList.contains("hidden")).toBe(true);
+    // The old behaviour put a red error on screen before a word was typed.
+    expect(alert.classList.contains("hidden")).toBe(true);
+  });
+
+  test("choosing 'the platform itself' opens the form as a platform report", async () => {
+    loadReport({ search: "" });
+    await fireDOMReady();
+    document.querySelector("#report-about > [data-report-about='platform']").click();
+    expect(document.getElementById("reportTargetType").value).toBe("platform");
+    expect(document.getElementById("reportTargetId").value).toBe("");
+    expect(document.getElementById("report-about").classList.contains("hidden")).toBe(true);
+    expect(document.getElementById("report-categories-block").classList.contains("hidden")).toBe(false);
+  });
+
+  test("choosing 'a particular experience or person' points there, and still offers a way through", async () => {
+    loadReport({ search: "" });
+    await fireDOMReady();
+    document.querySelector("[data-report-about='specific']").click();
+    const help = document.getElementById("report-about-specific-help");
+    expect(help.classList.contains("hidden")).toBe(false);
+    // Never a dead end: the reporter can still continue from inside that guidance.
+    expect(help.querySelector("[data-report-about='platform']")).toBeTruthy();
+  });
+
+  test("a platform report submits — the journey that used to be impossible", async () => {
+    loadReport({ search: "" });
+    await fireDOMReady();
+    document.querySelector("#report-about > [data-report-about='platform']").click();
+    document.querySelector("[data-report-category='other']").click();
+
+    const calls = [];
+    window.authFetch = async (url, opts) => {
+      calls.push({ url, body: JSON.parse(opts.body) });
+      return { ok: true, json: async () => ({ ok: true, data: { id: "r1" } }) };
+    };
+    document.getElementById("reportMessage").value = "The policy page does not explain host cancellations.";
+    document.getElementById("report-submit-btn").click();
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].body.targetType).toBe("platform");
+    expect(calls[0].body.targetId).toBe("");
+    // It reached step 3 rather than being refused.
+    expect(document.getElementById("report-step-3").classList.contains("hidden")).toBe(false);
+  });
+
+  test("arriving FROM a listing skips the question entirely", async () => {
+    loadReport({ search: "?targetType=experience&targetId=" + VALID_TARGET_ID });
+    await fireDOMReady();
+    // The target is already known, so there is nothing to ask.
+    expect(document.getElementById("report-about").classList.contains("hidden")).toBe(true);
+    expect(document.getElementById("report-categories-block").classList.contains("hidden")).toBe(false);
+    expect(document.getElementById("reportTargetId").value).toBe(VALID_TARGET_ID);
   });
 });

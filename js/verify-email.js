@@ -1,4 +1,4 @@
-// TSTS — Verify Email (web)
+// TSTS, Verify Email (web)
 // Owner-approved 3-step progressive flow on a single page (mirrors the
 // reset-password flow but without the password step):
 //   Step 1: email entry → POST /api/auth/otp/request-email-verify
@@ -38,6 +38,7 @@
   var continueBtn        = document.getElementById("continue-btn");
   var alertEl            = document.getElementById("alert");
   var pageSubtitle       = document.getElementById("page-subtitle");
+  var pageHeading        = document.getElementById("page-heading");
 
   // ─── State ──
   var otpSessionId = "";
@@ -46,6 +47,11 @@
   var resendSecondsLeft = 0;
   var inflightSend   = false;
   var inflightVerify = false;
+  // GF-9 (sir's fix-all order 2026-08-20): signup lands here with ?email=&sent=1 —
+  // the code is already in their inbox, so the page opens on the code-entry step.
+  // ?returnTo= carries where to go after Continue (relative paths only).
+  var sentFromSignup = false;
+  var returnTarget   = "";
 
   // ─── Generic UI helpers ──
   function setAlert(type, msg) {
@@ -86,6 +92,11 @@
       else if (n === 2) pageSubtitle.textContent = "Enter the 6-digit code we just emailed you.";
       else if (n === 3) pageSubtitle.textContent = "";
     }
+    // sir 2026-08-08: "Why the headinsays Verify the email when email is verified?" — the subtitle was
+    // cleared on success but the h1 was not, so the page ordered the person to verify an email while the
+    // card beneath it said "Email verified" with a green tick. One screen contradicting itself. The card
+    // already carries the success message, so the heading retires on step 3 rather than repeating it.
+    if (pageHeading) pageHeading.classList.toggle("hidden", n === 3);
   }
 
   // ─── URL param parsing (deep-link entry points) ──
@@ -94,6 +105,42 @@
       var q = new URLSearchParams(location.search || "");
       var em = q.get("email");
       if (em) emailUsed = String(em).trim();
+      sentFromSignup = q.get("sent") === "1";
+      var rtRaw = String(q.get("returnTo") || "").trim();
+      // Same-site relative paths only, built the same way the approved sign-in page builds it:
+      // undo any percent-encoding FIRST (an encoded scheme slips straight past a plain string
+      // test), refuse any scheme or protocol-relative target BEFORE the leading slashes are
+      // stripped, then require what is left to resolve to this exact site and to name a page
+      // this platform actually serves. Anything else is ignored and the person lands on the
+      // home page, which is what the line at the end of this file already does.
+      if (rtRaw) {
+        var rt = rtRaw;
+        try { rt = decodeURIComponent(rt); } catch (eDecode) { swallow(eDecode); }
+        var rtLower = rt.toLowerCase();
+        var rtHasScheme = rtLower.indexOf("http://") === 0 ||
+          rtLower.indexOf("https://") === 0 ||
+          rtLower.indexOf("//") === 0 ||
+          rtLower.indexOf("javascript:") === 0;
+        if (!rtHasScheme) {
+          var rtPath = rt.charAt(0) === "/" ? rt.slice(1) : rt;
+          try {
+            var rtParsed = new URL(rtPath, location.origin + "/");
+            if (rtParsed.origin === location.origin) {
+              var rtAllowed = {
+                "index.html": true, "admin.html": true, "profile.html": true,
+                "host.html": true, "explore.html": true, "feed.html": true,
+                "connections.html": true, "bookmarks.html": true, "my-bookings.html": true,
+                "experience.html": true, "reset-password.html": true, "login.html": true,
+                "check-in.html": true
+              };
+              var rtCleanPath = String(rtParsed.pathname || "").replace(/^\/+/, "");
+              if (rtAllowed[rtCleanPath]) {
+                returnTarget = rtCleanPath + String(rtParsed.search || "") + String(rtParsed.hash || "");
+              }
+            }
+          } catch (eParse) { swallow(eParse); }
+        }
+      }
     } catch (e) { swallow(e); }
     try {
       var rawHash = (location.hash || "");
@@ -108,6 +155,8 @@
     try {
       var u = new URL(location.href);
       try { u.searchParams.delete("email"); } catch (eDel) { swallow(eDel); }
+      try { u.searchParams.delete("sent"); } catch (eDelS) { swallow(eDelS); }
+      try { u.searchParams.delete("returnTo"); } catch (eDelR) { swallow(eDelR); }
       if (u.hash) {
         var hh = u.hash.charAt(0) === "#" ? u.hash.slice(1) : u.hash;
         var qs = new URLSearchParams(hh || "");
@@ -152,6 +201,40 @@
         return;
       }
       var inner = (data.data && typeof data.data === "object") ? data.data : data;
+
+      // sir 2026-08-08: "if a user is already verified then why is he allowed t ogo to next window with
+      // fake hole ot get code and put it?" — the page used to advance to the code screen and announce a
+      // code that was never sent, leaving the person waiting on an email that could not come. It now stops
+      // here and says so. This branch is the ONLY place that may hint at password reset: sir noted
+      // "FOrgot passowrd is hint that user exisits", and every other branch (unknown address, deleted,
+      // inactive) stays deliberately generic on the server, so a hint there would silently confirm an
+      // address the server just refused to confirm.
+      if (inner && inner.alreadyVerified === true) {
+        // sir: "Why would i drop Rest your passowrd from sentenceand not make it a link which acutlly
+        // takes to rest password apge". Right — my version said "reset your password" in the sentence and
+        // then repeated it as a separate link underneath, saying the same words twice. The phrase in the
+        // sentence IS the action, so it carries the link itself. Built as nodes through tstsEl (setAlert
+        // writes textContent, and this project never takes raw markup).
+        setAlert("success", "");
+        try {
+          if (alertEl && window.tstsEl) {
+            alertEl.classList.add("text-center");
+            alertEl.appendChild(document.createTextNode("This email is already verified. If you can't log in, "));
+            alertEl.appendChild(window.tstsEl("a", {
+              href: "reset-password.html",
+              className: "font-bold underline"
+            }, "reset your password"));
+            alertEl.appendChild(document.createTextNode("."));
+          } else {
+            setAlert("success", inner.message || data.message || "This email is already verified.");
+          }
+        } catch (eLink) {
+          swallow(eLink);
+          setAlert("success", inner.message || data.message || "This email is already verified.");
+        }
+        return;
+      }
+
       var sid = inner && inner.otpSessionId ? String(inner.otpSessionId) : "";
       if (!sid) {
         setAlert("error", "Could not start the verification. Please try again.");
@@ -203,13 +286,15 @@
       if (!cell) return;
       setOtpError("");
       var raw = String(cell.value || "").replace(/\D/g, "");
+      // BUG-080 fix: multi-digit paste distributes from idx (cursor cell), not from 0.
       if (raw.length > 1) {
-        for (var i = 0; i < otpCells.length; i++) {
-          var ch = raw[i] || "";
+        var fillEnd = Math.min(otpCells.length, idx + raw.length);
+        for (var i = idx; i < fillEnd; i++) {
+          var ch = raw[i - idx] || "";
           otpCells[i].value = ch;
           otpCells[i].classList.toggle("is-filled", !!ch);
         }
-        var lastFilled = Math.min(raw.length, otpCells.length) - 1;
+        var lastFilled = fillEnd - 1;
         if (lastFilled >= 0 && lastFilled < otpCells.length - 1) {
           otpCells[lastFilled + 1].focus();
         } else if (otpCells[otpCells.length - 1]) {
@@ -369,7 +454,9 @@
   }
 
   function continueAfterVerify() {
-    location.href = "index.html";
+    // GF-9: honor the destination the signup flow carried in (relative paths only,
+    // sanitized in parseUrlParams); everyone else goes home as before.
+    location.href = returnTarget || "index.html";
   }
 
   // ─── Wiring ──
@@ -384,30 +471,36 @@
       if (!c) return;
       c.addEventListener("input", handleOtpInput(idx));
       c.addEventListener("keydown", handleOtpKeydown(idx));
-      c.addEventListener("paste", function (e) {
-        try {
-          var txt = (e.clipboardData && e.clipboardData.getData("text")) || "";
-          var clean = String(txt).replace(/\D/g, "").slice(0, 6);
-          if (!clean) return;
-          e.preventDefault();
-          for (var i = 0; i < otpCells.length; i++) {
-            var ch = clean[i] || "";
-            otpCells[i].value = ch;
-            otpCells[i].classList.toggle("is-filled", !!ch);
-          }
-          setOtpError("");
-          var lastFilled = Math.min(clean.length, otpCells.length) - 1;
-          if (lastFilled >= 0 && lastFilled < otpCells.length - 1) {
-            otpCells[lastFilled + 1].focus();
-          } else if (otpCells[otpCells.length - 1]) {
-            otpCells[otpCells.length - 1].focus();
-          }
-          if (clean.length === 6) {
-            setVerifyEnabled(true);
-            if (!inflightVerify) verifyOtp();
-          }
-        } catch (eP) { swallow(eP); }
-      });
+      // BUG-080 fix: paste distributes from this cell's idx, not from index 0.
+      c.addEventListener("paste", (function (pasteIdx) {
+        return function (e) {
+          try {
+            var txt = (e.clipboardData && e.clipboardData.getData("text")) || "";
+            var available = otpCells.length - pasteIdx;
+            var clean = String(txt).replace(/\D/g, "").slice(0, available);
+            if (!clean) return;
+            e.preventDefault();
+            var fillEnd = Math.min(otpCells.length, pasteIdx + clean.length);
+            for (var i = pasteIdx; i < fillEnd; i++) {
+              var ch = clean[i - pasteIdx] || "";
+              otpCells[i].value = ch;
+              otpCells[i].classList.toggle("is-filled", !!ch);
+            }
+            setOtpError("");
+            var lastFilled = fillEnd - 1;
+            if (lastFilled >= 0 && lastFilled < otpCells.length - 1) {
+              otpCells[lastFilled + 1].focus();
+            } else if (otpCells[otpCells.length - 1]) {
+              otpCells[otpCells.length - 1].focus();
+            }
+            var full = getOtpValue();
+            if (full.length === 6) {
+              setVerifyEnabled(true);
+              if (!inflightVerify) verifyOtp();
+            }
+          } catch (eP) { swallow(eP); }
+        };
+      })(idx));
     });
     if (verifyCodeBtn) verifyCodeBtn.addEventListener("click", verifyOtp);
     if (resendCodeBtn) resendCodeBtn.addEventListener("click", resendCode);
@@ -422,8 +515,18 @@
     if (emailUsed && emailFieldEl) {
       emailFieldEl.value = emailUsed;
     }
-    showStep(1);
-    try { if (emailFieldEl) emailFieldEl.focus(); } catch (eFocus) { swallow(eFocus); }
+    if (emailUsed && sentFromSignup) {
+      // GF-9: the signup flow already emailed the code — open on the code-entry step
+      // (the verify endpoint accepts email + code; resend works from the email alone).
+      if (sentBannerEmailEl) sentBannerEmailEl.textContent = emailUsed;
+      resetOtpCells();
+      showStep(2);
+      startResendCooldown(60);
+      try { if (otpCells[0]) otpCells[0].focus(); } catch (eFocus2) { swallow(eFocus2); }
+    } else {
+      showStep(1);
+      try { if (emailFieldEl) emailFieldEl.focus(); } catch (eFocus) { swallow(eFocus); }
+    }
     scrubUrl();
   }
 

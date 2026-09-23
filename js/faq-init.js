@@ -67,6 +67,8 @@
 
   function mountContextualIfPresent() {
     const mounts = [
+      // Owner 2026-05-30 (R8 revised): "experience" entry restored — sir moved
+      // the T&S accordion below the address-note instead of deleting it.
       { context: "experience", selector: "#faq-context-experience" },
       { context: "checkout", selector: "#faq-context-checkout" },
       { context: "host_onboarding", selector: "#faq-context-host-onboarding" },

@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' http://localhost:4000 https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/assets/logo-mark.png">
   <meta name="theme-color" content="#ea580c">
-  <title>Booking Success — The Shared Table Story</title>
+  <title>Booking Success, The Shared Table Story</title>
 
-  <link rel="stylesheet" href="css/tailwind.css?v=20260317b">
-  <link rel="stylesheet" href="css/fonts.css?v=20260310d">
+  <link rel="stylesheet" href="css/tailwind.css?v=20260914a">
+  <link rel="stylesheet" href="css/fonts.css?v=20260810a">
   <link rel="stylesheet" href="css/help-center.css?v=20260224a">
 
 
@@ -39,15 +39,27 @@
         </p>
       </section>
 
+      <!-- ── HOLD-PLACED STATE (Owner 2026-06-03) ──────────────────────────────
+           Shown after a PRIVATE BOOKING REQUEST is sent (?holdPlaced=1). This is
+           NOT a confirmed booking — a Stripe authorization HOLD has been placed
+           (not a charge) and the host has 24h to accept. Reuses the success-card
+           chrome (white card, soft shadow, rounded-3xl, brand orange) but with the
+           request's own copy + details. success.js (showHoldPlaced) drives it. -->
+
       <!-- Success State -->
       <section
         id="success-state"
         class="hidden space-y-8"
       >
-        <!-- Hero / Checkmark -->
+        <!-- Hero / Checkmark.
+             Owner 2026-05-30 (S1): the prior `bg-tsts-green-soft` + `text-tsts-green`
+             classes weren't defined anywhere in CSS — Tailwind dropped them silently
+             and the checkmark rendered as plain black on white. Switched to the
+             built-in emerald palette (bg-emerald-50 + text-emerald-600) so the
+             brand-green treatment is honoured per the original markup intent. -->
         <div class="bg-white/90 border border-white shadow-soft-card rounded-3xl px-6 sm:px-10 py-8 sm:py-10 text-center">
-          <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-tsts-green-soft">
-            <svg class="h-9 w-9 text-tsts-green" viewBox="0 0 24 24" fill="none">
+          <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
+            <svg class="h-9 w-9 text-emerald-600" viewBox="0 0 24 24" fill="none">
               <path
                 d="M9.00039 16.1998L5.80039 12.9998C5.41039 12.6098 4.78039 12.6098 4.39039 12.9998C4.00039 13.3898 4.00039 14.0198 4.39039 14.4098L8.29039 18.3098C8.68039 18.6998 9.31039 18.6998 9.70039 18.3098L20.3004 7.70984C20.6904 7.31984 20.6904 6.68984 20.3004 6.29984C19.9104 5.90984 19.2804 5.90984 18.8904 6.29984L9.00039 16.1998Z"
                 fill="currentColor"
@@ -58,150 +70,282 @@
           <h1 class="heading-serif text-2xl sm:text-3xl font-semibold text-tsts-ink mb-2">
             Your booking is confirmed!
           </h1>
+          <!-- Owner 2026-05-30 (S1): name the email address so the user sees
+               EXACTLY where the confirmation went. Filled by success.js from
+               the active session. Falls back to a generic line if missing. -->
           <p class="text-sm sm:text-base text-slate-700 max-w-xl mx-auto">
-            You’re all set. We’ve saved your seat at the table and sent a confirmation to your email.
+            You’re all set. We’ve saved your seat at the table and sent a confirmation to <span id="success-confirmation-email" class="font-semibold text-tsts-ink">your email</span>.
           </p>
         </div>
 
-        <!-- Booking Summary Card -->
-        <div
-          id="booking-summary-card"
-          class="bg-tsts-soft border border-white shadow-soft-card rounded-3xl px-5 sm:px-7 py-6 sm:py-7 flex flex-col sm:flex-row gap-4 sm:gap-6"
-        >
-          <div class="flex-shrink-0 w-full sm:w-40">
+        <!-- Booking Summary Card — Owner 2026-05-30 (S2 world-best):
+             Full Airbnb / OpenTable-style trip card. Hero photo, clickable title
+             back to listing, host card with verified badge, all key facts +
+             total paid + booking ID, prominent entry code, address with map
+             deep-link, prep section (about / what to bring / joining), concrete
+             cancellation deadline pulled from the active policy + booking
+             timing, action row (re-read listing / add to calendar), support
+             contact. Every node populated by success.js. -->
+        <div id="booking-summary-card" class="bg-white border border-tsts-soft shadow-soft-card rounded-3xl overflow-hidden">
+          <!-- Hero image — owner 2026-05-30 (S2 #1):
+               • Pre-fix: fixed h-48/56/64 + object-cover → 3.67:1 ultra-wide crop on a 3:2 photo (50%+ chopped).
+               • Tailwind aspect-* classes purged from build.
+               • Fix: inline aspect-ratio: 16/9 (CSP allows style-src 'unsafe-inline')
+                 + max-height: 320px so desktop doesn't over-dominate the recap card.
+               • Result: mobile keeps natural 16:9 (~360×203 on phones), desktop
+                 caps at card-width × 320 with object-cover doing a small centre
+                 crop. Owner approved the cap on this card 2026-05-30. -->
+          <a id="success-exp-image-link" href="#" class="block group">
             <img
               id="success-exp-image"
               alt="Experience image"
               loading="lazy"
-              class="w-full h-40 sm:h-32 object-cover rounded-2xl border border-white shadow-md bg-slate-200"
+              src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+              style="aspect-ratio: 16 / 9; max-height: 320px;"
+              class="w-full object-cover object-center bg-slate-200 group-hover:opacity-95 transition"
             />
-          </div>
+          </a>
 
-          <div class="flex-1 space-y-2">
-            <p class="text-xs uppercase tracking-[0.18em] text-slate-500">
-              Your experience
-            </p>
-            <h2
-              id="success-exp-title"
-              class="heading-serif text-lg sm:text-xl font-semibold text-tsts-ink"
-            >
-              <!-- Filled by JS -->
-            </h2>
+          <div class="px-5 sm:px-7 py-6 sm:py-7 space-y-6">
+            <!-- Title + verified badge — owner 2026-06-01 (S2 #2): "YOUR EXPERIENCE"
+                 all-caps kicker dropped. experience.html (the locked anchor page)
+                 has no eyebrow above its serif title; the title speaks for itself. -->
+            <div>
+              <a id="success-exp-title-link" href="#" class="inline-block">
+                <h2 id="success-exp-title" class="heading-serif text-xl sm:text-2xl font-semibold text-tsts-ink hover:text-orange-600 transition">
+                  <!-- Filled by JS -->
+                </h2>
+              </a>
+              <!-- Owner 2026-05-30 (S2 visual audit): bg-blue-600 (no opacity) is
+                   purged from the compiled Tailwind — only bg-blue-600/95 survived
+                   (used by experience-page hero badge). Use that variant so the badge
+                   actually renders. -->
+              <span id="success-verified-badge" class="hidden ml-2 align-middle inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wide bg-blue-600/95 text-white shadow-sm">
+                <i class="fa-solid fa-shield-halved text-[9px]"></i> Verified
+              </span>
+            </div>
 
-            <div class="flex flex-wrap gap-3 text-sm text-slate-700 mt-2">
-              <div class="inline-flex items-center gap-2">
-                <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow border border-slate-200">
-                  <svg class="h-3.5 w-3.5 text-slate-600" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M12 7V12L15 15"
-                      stroke="currentColor"
-                      stroke-width="1.6"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="8"
-                      stroke="currentColor"
-                      stroke-width="1.6"
-                    />
-                  </svg>
-                </span>
-                <span id="success-exp-date">Date: —</span>
+            <!-- Host card -->
+            <div class="flex items-center gap-3 bg-tsts-cream/50 rounded-2xl p-3 border border-tsts-cream">
+              <!-- Owner 2026-08-05 (sir approved "Fix the copy and the empty img"): this carried NO src
+                   attribute at all, so until JS filled it the browser held a broken image in the DOM —
+                   two of them whenever the page stopped at a guard before loading a booking. `hidden`
+                   keeps it out of the document until populateBookingSummary sets a real src. -->
+              <img id="success-host-avatar" alt="Host" loading="lazy" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="hidden h-12 w-12 rounded-full object-cover bg-slate-200 shrink-0" />
+              <!-- Owner 2026-06-02 (premium pass #2): when the host has no photo,
+                   show 2-letter initials on the brand-orange circle (same pattern
+                   as the Explore card host avatar, common.js ~506) instead of a
+                   flat grey disc. Toggled by success.js; falls back to a neutral
+                   silhouette only when there's also no host name. -->
+              <div id="success-host-initials" class="hidden h-12 w-12 rounded-full bg-orange-600 shrink-0 flex items-center justify-center text-white text-base font-semibold leading-none" aria-hidden="true"></div>
+              <div class="min-w-0 flex-1">
+                <p class="heading-serif text-base font-semibold text-tsts-ink">Hosted by</p>
+                <p id="success-exp-host" class="font-semibold text-tsts-ink truncate">—</p>
               </div>
+              <a id="success-host-profile-link" href="#" class="hidden shrink-0 text-xs font-semibold text-orange-600 hover:text-orange-700 underline">View profile</a>
+            </div>
 
-              <div class="inline-flex items-center gap-2">
-                <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow border border-slate-200">
-                  <svg class="h-3.5 w-3.5 text-slate-600" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M3 7H21"
-                      stroke="currentColor"
-                      stroke-width="1.6"
-                      stroke-linecap="round"
-                    />
-                    <path
-                      d="M7 3V7"
-                      stroke="currentColor"
-                      stroke-width="1.6"
-                      stroke-linecap="round"
-                    />
-                    <path
-                      d="M17 3V7"
-                      stroke="currentColor"
-                      stroke-width="1.6"
-                      stroke-linecap="round"
-                    />
-                    <rect
-                      x="3"
-                      y="7"
-                      width="18"
-                      height="14"
-                      rx="2"
-                      stroke="currentColor"
-                      stroke-width="1.6"
-                    />
-                  </svg>
-                </span>
-                <span id="success-exp-guests">Guests: —</span>
+            <!-- Key facts grid -->
+            <dl class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 text-sm">
+              <div>
+                <dt class="heading-serif text-base font-semibold text-tsts-ink">Date</dt>
+                <dd id="success-exp-date" class="font-semibold text-tsts-ink">—</dd>
+              </div>
+              <div>
+                <dt class="heading-serif text-base font-semibold text-tsts-ink">Time</dt>
+                <dd id="success-exp-time" class="font-semibold text-tsts-ink">—</dd>
+              </div>
+              <div>
+                <dt class="heading-serif text-base font-semibold text-tsts-ink">Guests</dt>
+                <dd id="success-exp-guests" class="font-semibold text-tsts-ink">—</dd>
+              </div>
+              <div>
+                <dt class="heading-serif text-base font-semibold text-tsts-ink">Total paid</dt>
+                <dd id="success-exp-total" class="font-semibold text-tsts-ink">—</dd>
+              </div>
+            </dl>
+
+            <!-- Entry code block — owner 2026-06-01 (S2 #5 visual): the prior
+                 EMERALD-GREEN block was off-brand — TSTS's palette is warm
+                 cream/clay/orange/ink, so a cold green block read as a foreign
+                 component from another site (sir's call). Re-skinned to the
+                 brand's orange emphasis (the same orange used by the Reserve CTA,
+                 View profile, Open in maps + Copy), crisp inline SVG lock, and
+                 tighter monospace digits. -->
+            <div class="rounded-2xl bg-orange-50 border border-orange-100 px-4 py-3 flex items-center gap-3">
+              <svg class="w-5 h-5 text-orange-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              <div class="flex-1 min-w-0">
+                <p id="success-otp-label" class="heading-serif text-base font-semibold text-orange-700">Show this entry code to your host on arrival</p>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span id="success-exp-otp" class="font-mono font-bold text-xl sm:text-2xl text-tsts-ink" style="letter-spacing: 0.12em;">——————</span>
+                  <button id="success-otp-copy" type="button" class="text-xs font-semibold underline text-orange-600 hover:text-orange-700">Copy</button>
+                  <span id="success-otp-copy-feedback" class="hidden text-[11px] text-orange-700">Copied</span>
+                </div>
+                <!-- Owner 2026-06-01 (S2 #5): keep-it-private safety note + email
+                     backup reassurance (the page used to say "Check your email";
+                     now it shows the live code, so this confirms the email copy
+                     still exists as backup). No em-dash per owner rule. -->
+                <p id="success-otp-helper" class="text-[11px] text-slate-500 mt-1.5">Keep this code private. It's also in your confirmation email.</p>
               </div>
             </div>
 
-            <p class="text-xs sm:text-[0.8rem] text-slate-500 mt-3">
-              Full details, address, and host contact will be available in your <span class="font-medium">My Experiences</span> page.
+            <!-- Where — owner 2026-06-02: address is now plain info; "Open in maps"
+                 moved into the single action bar below (one-glance actions, less scroll). -->
+            <div>
+              <p class="heading-serif text-base font-semibold text-tsts-ink mb-1">Where</p>
+              <p id="success-exp-address" class="text-sm font-medium text-tsts-ink whitespace-pre-line">—</p>
+            </div>
+
+            <!-- Prep section: About / What to bring / Joining — space-y-5 (was 4)
+                 for more breathing room between sub-sections per S2 visual audit. -->
+            <div id="success-prep-section" class="hidden pt-4 border-t border-slate-200 space-y-5">
+              <div id="success-about-wrap" class="hidden">
+                <p class="heading-serif text-base font-semibold text-tsts-ink mb-1">About this experience</p>
+                <p id="success-exp-about" class="text-sm text-slate-700 leading-relaxed"></p>
+                <button id="success-about-toggle" type="button" class="hidden mt-1 text-xs font-semibold text-orange-600 hover:text-orange-700 underline">Show more</button>
+              </div>
+              <div id="success-bring-wrap" class="hidden">
+                <p class="heading-serif text-base font-semibold text-tsts-ink mb-1">What to bring</p>
+                <p id="success-exp-bring" class="text-sm text-slate-700 leading-relaxed"></p>
+              </div>
+              <div id="success-joining-wrap" class="hidden">
+                <p class="heading-serif text-base font-semibold text-tsts-ink mb-1">Joining instructions</p>
+                <p id="success-exp-joining" class="text-sm text-slate-700 leading-relaxed whitespace-pre-line"></p>
+              </div>
+            </div>
+
+            <!-- Cancellation deadline — solid clock icon for visual weight, amber-200
+                 border for a touch more presence than amber-100. -->
+            <div id="success-cancel-wrap" class="hidden rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs sm:text-sm text-amber-900 flex items-start gap-2">
+              <i class="fa-solid fa-clock mt-[2px] text-amber-700"></i>
+              <span id="success-cancel-text">—</span>
+            </div>
+
+            <!-- Action bar — owner 2026-06-02: ONE row for all post-booking actions
+                 (less scroll, one glance). Constructive actions grouped LEFT: Add to
+                 calendar (orange primary), Open in maps + Re-read (light outline).
+                 Cancel booking (subtle red) pushed far RIGHT via plain ml-auto
+                 (sm:ml-auto is purged from the build) so it's separated from the safe
+                 actions and never mis-tapped. flex-wrap → wraps on narrow phones.
+                 #success-exp-map-link + #success-cancel-action-wrap are un-hidden by
+                 success.js (maps when an address exists; cancel for an upcoming,
+                 cancellable booking) — IDs unchanged so the existing JS still drives them. -->
+            <div class="flex flex-wrap items-center gap-2.5 pt-1">
+              <a id="success-action-calendar" href="#" download="booking.ics" class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                  <path d="M16 2v4M8 2v4M3 10h18"></path>
+                </svg>
+                Add to calendar
+              </a>
+              <a id="success-exp-map-link" href="#" target="_blank" rel="noopener noreferrer" class="hidden inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                Open in maps
+              </a>
+              <div id="success-cancel-action-wrap" class="hidden">
+                <button id="success-cancel-btn" type="button" class="inline-flex items-center gap-2 rounded-xl border border-red-300 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 hover:text-red-700 transition">Cancel booking</button>
+              </div>
+            </div>
+
+            <!-- Booking ID + Support -->
+            <p class="pt-1 text-[11px] text-slate-500">
+              Booking ID: <span id="success-booking-id" class="font-mono text-slate-700">—</span>
+              · Need help? <a href="mailto:support@thesharedtablestory.com" class="underline hover:text-orange-600">support@thesharedtablestory.com</a>
             </p>
           </div>
         </div>
-        <div id="faq-context-checkout" class="hidden"></div>
 
-        <!-- Viral Loop / Invite Section -->
-        <section class="bg-white/90 border border-white shadow-soft-card rounded-3xl px-5 sm:px-7 py-6 sm:py-7 space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <p class="text-xs uppercase tracking-[0.20em] text-slate-500 mb-1">
-                Share the table
-              </p>
-              <h3 class="heading-serif text-lg sm:text-xl font-semibold text-tsts-ink">
-                Dining is better together.
-              </h3>
-              <p class="text-sm text-slate-700 max-w-md mt-1">
-                Invite a friend to join this experience. They get a personal invite — you get better stories at the table.
-              </p>
+        <!-- Cancel safety modal — owner 2026-06-02. Calls GET /cancel-preview on
+             open and shows the EXACT refund + cancellation charge at this moment
+             (server-authoritative numbers, no FE math) before the guest confirms.
+             Confirm POSTs /cancel (authFetch auto-attaches CSRF). Overlay bg is an
+             inline rgba() so it can't be dropped by the Tailwind purge. -->
+        <div id="cancel-modal-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4" style="background-color: rgba(15,23,42,0.55);">
+          <div class="bg-white rounded-3xl shadow-soft-card w-full max-w-md p-6 space-y-4" role="dialog" aria-modal="true" aria-labelledby="cancel-modal-title">
+            <h3 id="cancel-modal-title" class="heading-serif text-base font-semibold text-tsts-ink">Cancel this booking?</h3>
+            <p class="text-sm text-slate-700">Here's exactly what happens if you cancel right now:</p>
+            <div class="rounded-2xl bg-tsts-cream/50 border border-tsts-cream p-4 space-y-2">
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-slate-600">Total paid</span>
+                <span id="cancel-modal-paid" class="font-medium text-tsts-ink">—</span>
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-slate-600">Cancellation charge</span>
+                <span id="cancel-modal-charge" class="font-medium text-tsts-ink">—</span>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-tsts-cream">
+                <span class="text-sm font-semibold text-slate-700">Refund to you</span>
+                <span id="cancel-modal-refund" class="text-lg font-semibold text-tsts-ink">—</span>
+              </div>
+              <p class="text-xs text-slate-500 pt-1">Your refund is based on our cancellation terms and how close the experience is.</p>
+            </div>
+            <p class="text-xs text-slate-500">This can't be undone.</p>
+            <div id="cancel-modal-error" class="hidden text-sm text-red-600"></div>
+            <!-- Keep (primary orange) sits on the RIGHT via markup order — no
+                 flex-row-reverse (that utility is purged from the build). -->
+            <div class="flex flex-col sm:flex-row gap-2.5 pt-1">
+              <button id="cancel-modal-confirm" type="button" class="flex-1 inline-flex items-center justify-center rounded-xl border border-red-300 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 hover:text-red-700 transition">Cancel booking</button>
+              <button id="cancel-modal-keep" type="button" class="flex-1 inline-flex items-center justify-center rounded-xl bg-orange-500 hover:bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition">Keep my booking</button>
             </div>
           </div>
+        </div>
 
-          <div class="mt-3 space-y-3">
-            <label for="invite-link-input" class="text-xs font-medium text-slate-700 block mb-1">
-              Your invite link
-            </label>
-            <div class="flex flex-col sm:flex-row gap-2">
-              <input
-                id="invite-link-input"
-                type="text"
-                readonly
-                class="flex-1 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs sm:text-sm text-slate-800 truncate focus:outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent"
-                value=""
-              />
-              <button
-                id="copy-invite-btn"
-                type="button"
-                class="inline-flex items-center justify-center rounded-xl tsts-btn-secondary px-4 py-2 text-xs sm:text-sm font-semibold shadow transition"
-              >
-                Copy link
-              </button>
-            </div>
-            <p id="copy-feedback" class="text-[0.7rem] text-emerald-600 hidden">
-              Link copied to clipboard. See you at the table. ✨
-            </p>
+        <!-- Owner 2026-06-02: Trust & Safety Questions accordion removed (sir's order)
+             — same accordion sir had me remove from the experience page (R8); also
+             redundant with the support FAQ at the foot of the page. faq-contextual.js
+             no-ops gracefully when this target is absent. -->
+
+        <!-- Viral Loop / Invite Section (Owner 2026-06-11, sir): tightened to one line; the bare link
+             textbox is gone (the Copy button covers it). Primary action = GIFT a seat to a fellow
+             traveller (you pre-pay; they claim it free), via the connection-aware gift picker. -->
+        <section class="bg-white/90 border border-white shadow-soft-card rounded-3xl px-5 sm:px-7 py-6 sm:py-7 space-y-3">
+          <div>
+            <h3 class="heading-serif text-base font-semibold text-tsts-ink">
+              Every experience is better shared.
+            </h3>
+            <p class="text-sm text-slate-700 mt-1">Bring a fellow traveller to the table.</p>
           </div>
+
+          <div class="flex flex-col sm:flex-row gap-2">
+            <button
+              id="gift-seat-btn"
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-xl tsts-btn-primary px-5 py-2.5 text-sm font-bold shadow transition"
+            >
+              <span aria-hidden="true">🎁</span> Gift this experience
+            </button>
+            <button
+              id="copy-invite-btn"
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-xl tsts-btn-secondary px-4 py-2.5 text-sm font-semibold shadow transition"
+            >
+              <i class="fas fa-link"></i> Copy link
+            </button>
+          </div>
+          <!-- sir's go-ahead 2026-08-19 («Also fix the helper line»): id added so gift-mode JS can
+               swap the attending phrasing ("join you at the table") for the gift voice. -->
+          <p id="gift-block-helper" class="text-xs text-slate-500">
+            Gift a paid seat to one of your connections, or invite someone new to join you at the table.
+          </p>
+          <!-- Hidden: holds the friend-pays raw link so "Copy link" still works without showing the URL. -->
+          <input id="invite-link-input" type="hidden" value="" />
+          <p id="copy-feedback" class="text-[0.7rem] text-emerald-600 hidden">
+            Link copied to clipboard. See you at the table. ✨
+          </p>
         </section>
 
         <!-- Next Steps -->
         <section id="success-next-steps" class="hidden bg-tsts-soft border border-white/80 rounded-2xl p-5 space-y-2 text-sm text-slate-700">
-          <h3 class="font-bold text-tsts-ink text-base mb-2">What happens next</h3>
+          <h3 class="heading-serif text-base font-semibold text-tsts-ink mb-2">What happens next</h3>
           <ul class="space-y-1.5">
             <li class="flex items-start gap-2"><span class="text-emerald-600 mt-0.5">&#10003;</span> Confirmation email sent to your inbox</li>
-            <li class="flex items-start gap-2"><span class="text-emerald-600 mt-0.5">&#10003;</span> You'll receive your entry code before the experience</li>
+            <li class="flex items-start gap-2"><span class="text-emerald-600 mt-0.5">&#10003;</span> Your entry code is shown above and in your email</li>
             <li class="flex items-start gap-2"><span class="text-emerald-600 mt-0.5">&#10003;</span> Full details, address, and host contact are in My Experiences</li>
             <li class="flex items-start gap-2"><span class="text-emerald-600 mt-0.5">&#10003;</span> Share the invite link above to bring a friend</li>
           </ul>
@@ -210,11 +354,11 @@
         <!-- Navigation Buttons -->
         <section class="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <a
-            href="my-bookings.html"
+            href="my-bookings.html?tab=experiences"
             id="view-ticket-btn"
             class="inline-flex items-center justify-center w-full sm:w-auto rounded-xl tsts-btn-primary px-4 py-2.5 text-sm font-semibold shadow transition"
           >
-            View my ticket
+            My Experiences
           </a>
           <a
             href="explore.html"
@@ -237,11 +381,11 @@
             <circle cx="12" cy="16" r="0.9" fill="currentColor" />
           </svg>
         </div>
-        <h2 class="heading-serif text-xl sm:text-2xl font-semibold text-tsts-ink">
+        <h2 class="heading-serif text-base font-semibold text-tsts-ink">
           We couldn’t confirm this booking.
         </h2>
         <p id="error-message" class="text-sm sm:text-base text-slate-700">
-          Something went wrong while verifying your payment. Please try again, or check your My Experiences page.
+          We couldn’t finish confirming this booking. Your payment is safe. Tap Try Again below, or open My Experiences to see its current status.
         </p>
         <div class="flex flex-col sm:flex-row justify-center gap-3 mt-4">
           <button
@@ -273,13 +417,13 @@
 
   <!-- Common layout (navbar/footer injection) -->
   <script src="js/runtime-config.js?v=20260224a"></script>
-  <script src="js/common.js?v=20260316c"></script>
-  <script src="data/faq-catalog.js?v=20260224a"></script>
+  <script src="js/common.js?v=20260907a"></script>
+  <script src="data/faq-catalog.js?v=20260825a"></script>
   <script src="data/faq-trust.js?v=20260303a"></script>
-  <script src="js/faq-renderer.js?v=20260303a"></script>
-  <script src="js/faq-contextual.js?v=20260303a"></script>
+  <script src="js/faq-renderer.js?v=20260825a"></script>
+  <script src="js/faq-contextual.js?v=20260825a"></script>
   <script src="js/faq-init.js?v=20260224a"></script>
   <!-- Page logic -->
-  <script src="js/success.js?v=20260303a"></script>
+  <script src="js/success.js?v=20260821b"></script>
 </body>
 </html>

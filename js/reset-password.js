@@ -1,4 +1,4 @@
-// TSTS — Reset Password (web)
+// TSTS, Reset Password (web)
 // Owner-approved 4-step progressive flow on a single page:
 //   Step 1: email entry → POST /api/auth/otp/request-reset
 //   Step 2: 6-cell OTP entry → POST /api/auth/otp/verify (auto-submit on 6 digits, paste-friendly)
@@ -13,7 +13,7 @@
 //     old single-form submit path that swaps directly to Step 3 (token-only).
 
 (function () {
-  // Frozen empty placeholder for failed JSON parses — using a named symbol
+  // Frozen empty placeholder for failed JSON parses, using a named symbol
   // instead of an inline {} keeps the file out of the lazy-code linter's
   // "empty curly" pattern check.
   var EMPTY_RESPONSE = Object.freeze(Object.create(null));
@@ -55,7 +55,7 @@
   var inflightReset  = false;
   var inflightLogin  = false;
 
-  // No-op for swallowed exceptions — narrow swallow points are documented at
+  // No-op for swallowed exceptions, narrow swallow points are documented at
   // each call site (URL parsing, optional UI focus, etc).
   function swallow(e) { void e; }
 
@@ -156,7 +156,7 @@
         body: JSON.stringify({ email: email })
       });
       var data = await res.json().catch(emptyResponse);
-      // The endpoint is privacy-safe — it always returns ok:true with a session
+      // The endpoint is privacy-safe, it always returns ok:true with a session
       // ID even if the email isn't registered. We still want to surface real
       // errors (5xx, network), but we trust the success-path response.
       if (!res.ok || !data || data.ok !== true) {
@@ -218,14 +218,16 @@
       // Clear error highlight on any input
       setOtpError("");
       var raw = String(cell.value || "").replace(/\D/g, "");
-      // Multi-digit paste into first cell — distribute across cells
+      // BUG-080 fix: multi-digit paste distributes from idx (the cell that received the input),
+      // not from index 0. Pasting into cell 3 fills cells 3,4,5 — earlier cells untouched.
       if (raw.length > 1) {
-        for (var i = 0; i < otpCells.length; i++) {
-          var ch = raw[i] || "";
+        var fillEnd = Math.min(otpCells.length, idx + raw.length);
+        for (var i = idx; i < fillEnd; i++) {
+          var ch = raw[i - idx] || "";
           otpCells[i].value = ch;
           otpCells[i].classList.toggle("is-filled", !!ch);
         }
-        var lastFilled = Math.min(raw.length, otpCells.length) - 1;
+        var lastFilled = fillEnd - 1;
         if (lastFilled >= 0 && lastFilled < otpCells.length - 1) {
           otpCells[lastFilled + 1].focus();
         } else if (otpCells[otpCells.length - 1]) {
@@ -301,6 +303,17 @@
       }
       otpToken = String(data.data.otpToken);
       // Move to Step 3
+      // Carry the verified email into the password form's hidden username field. A password manager
+      // needs the ACCOUNT in the same form as the new password, or it saves an entry with no
+      // username attached instead of updating the existing one — which is how someone finishes a
+      // reset and still has the old password stored.
+      try {
+        var __resetUsernameEl = document.getElementById("reset-username");
+        var __resetUsernameValue = emailUsed || (emailFieldEl && emailFieldEl.value ? emailFieldEl.value : "");
+        if (__resetUsernameEl && __resetUsernameValue) {
+          __resetUsernameEl.value = String(__resetUsernameValue).trim().toLowerCase();
+        }
+      } catch (eUser) { swallow(eUser); }
       showStep(3);
       try { if (newPasswordEl) newPasswordEl.focus(); } catch (eFocus) { swallow(eFocus); }
       stopResendCooldown();
@@ -345,7 +358,7 @@
   async function resendCode() {
     if (resendSecondsLeft > 0) return;
     if (!emailUsed) {
-      // Edge case — if we lost email state somehow, drop back to Step 1
+      // Edge case, if we lost email state somehow, drop back to Step 1
       showStep(1);
       return;
     }
@@ -386,19 +399,18 @@
 
   // ─── Step 3: password fields + live hint ──
   function evaluatePassword(pw) {
-    // Mirrors the backend's password policy (basic): 8-24 chars, mixed types
+    // Mirrors the backend's password policy (basic): 8-72 chars, mixed types
     // for "strong" vs "weak". The backend is authoritative; the hint is just
     // UX guidance so users don't hit the submit-then-error loop.
+    // BUG-050 (2026-05-15): upper bound raised to 72 to match bcrypt's true input ceiling.
     var s = String(pw || "");
     if (!s) return { state: "none", text: "" };
     if (s.length < 8)  return { state: "warn", text: "At least 8 characters" };
-    if (s.length > 24) return { state: "bad",  text: "Use 24 characters or fewer" };
+    if (s.length > 72) return { state: "bad",  text: "Use 72 characters or fewer" };
     var hasLower = /[a-z]/.test(s);
     var hasUpper = /[A-Z]/.test(s);
     var hasDigit = /\d/.test(s);
-    var hasSym   = /[^A-Za-z0-9]/.test(s);
-    var classes  = [hasLower, hasUpper, hasDigit, hasSym].filter(Boolean).length;
-    if (classes < 3) return { state: "warn", text: "Mix uppercase, lowercase, numbers, and symbols" };
+    if (!hasLower || !hasUpper || !hasDigit) return { state: "warn", text: "Use uppercase and lowercase letters, plus a number" };
     return { state: "good", text: "Strong password" };
   }
   function applyHint(el, hint) {
@@ -414,6 +426,45 @@
     else if (hint.state === "bad")  el.classList.add("is-bad");
     el.textContent = (hint.state === "good" ? "✓ " : "") + hint.text;
   }
+  // sir's order 2026-08-10 (gap sir found): the reset form carries the SAME approved
+  // helper as Sign Up. Painting logic mirrors login.js tstsBindSignupPasswordRules /
+  // tstsBindConfirmMatch exactly — same rules, same warm strength scale, same tick.
+  function paintStrengthHelper(pw, cpw) {
+    var list = document.getElementById("reset-password-rules");
+    var segs = document.querySelectorAll("#reset-password-strength .pw-seg");
+    var label = document.getElementById("reset-pw-strength-label");
+    var tick = document.getElementById("reset-confirm-tick");
+    if (list) {
+      var s = {
+        length: pw.length >= 8,
+        lower: /[a-z]/.test(pw),
+        upper: /[A-Z]/.test(pw),
+        number: /[0-9]/.test(pw)
+      };
+      var TRACK = "#ece3da";
+      var LEVELS = [
+        { c: TRACK,     t: "" },
+        { c: "#dca890", t: "Weak" },
+        { c: "#c28d6b", t: "Fair" },
+        { c: "#f97316", t: "Good" },
+        { c: "#ea580c", t: "Strong" }
+      ];
+      var met = 0;
+      list.querySelectorAll("li[data-rule]").forEach(function (li) {
+        var ok = !!s[li.getAttribute("data-rule")];
+        if (ok) met++;
+        li.setAttribute("data-met", ok ? "1" : "0");
+      });
+      var lvl = (pw.length === 0) ? 0 : met;
+      var info = LEVELS[lvl];
+      segs.forEach(function (seg, i) {
+        seg.style.backgroundColor = (i < lvl) ? info.c : TRACK;
+      });
+      if (label) { label.textContent = info.t; label.style.color = (lvl === 0) ? "#b9a99c" : info.c; }
+    }
+    if (tick) tick.classList.toggle("is-match", cpw.length > 0 && cpw === pw);
+  }
+
   function updatePwUi() {
     var pw  = newPasswordEl && newPasswordEl.value ? String(newPasswordEl.value) : "";
     var cpw = confirmPasswordEl && confirmPasswordEl.value ? String(confirmPasswordEl.value) : "";
@@ -425,6 +476,7 @@
       else            cHint = { state: "bad",  text: "Passwords don’t match" };
     }
     applyHint(confirmHintEl, cHint);
+    paintStrengthHelper(pw, cpw);
     var enable = (hint.state === "good") && (cHint.state === "good");
     if (resetPasswordBtn) resetPasswordBtn.disabled = !enable;
   }
@@ -497,7 +549,7 @@
     }
     var pw = newPasswordEl && newPasswordEl.value ? String(newPasswordEl.value) : "";
     if (!pw) {
-      // Safety net — shouldn't happen because Step 4 only renders post-reset
+      // Safety net, shouldn't happen because Step 4 only renders post-reset
       try { location.href = "login.html"; } catch (eNav) { swallow(eNav); }
       return;
     }
@@ -523,7 +575,7 @@
         location.href = "index.html";
         return;
       }
-      // Auto-login failed — graceful fallback to login page with email pre-filled
+      // Auto-login failed, graceful fallback to login page with email pre-filled
       try {
         var u = new URL("login.html", location.href);
         u.searchParams.set("email", emailUsed);
@@ -549,31 +601,37 @@
       if (!c) return;
       c.addEventListener("input", handleOtpInput(idx));
       c.addEventListener("keydown", handleOtpKeydown(idx));
-      // Allow paste into any cell
-      c.addEventListener("paste", function (e) {
-        try {
-          var txt = (e.clipboardData && e.clipboardData.getData("text")) || "";
-          var clean = String(txt).replace(/\D/g, "").slice(0, 6);
-          if (!clean) return;
-          e.preventDefault();
-          for (var i = 0; i < otpCells.length; i++) {
-            var ch = clean[i] || "";
-            otpCells[i].value = ch;
-            otpCells[i].classList.toggle("is-filled", !!ch);
-          }
-          setOtpError("");
-          var lastFilled = Math.min(clean.length, otpCells.length) - 1;
-          if (lastFilled >= 0 && lastFilled < otpCells.length - 1) {
-            otpCells[lastFilled + 1].focus();
-          } else if (otpCells[otpCells.length - 1]) {
-            otpCells[otpCells.length - 1].focus();
-          }
-          if (clean.length === 6) {
-            setVerifyEnabled(true);
-            if (!inflightVerify) verifyOtp();
-          }
-        } catch (eP) { swallow(eP); }
-      });
+      // BUG-080 fix: paste distributes from this cell's idx, not from index 0.
+      // Capture idx via IIFE closure to preserve cursor-aware paste behavior.
+      c.addEventListener("paste", (function (pasteIdx) {
+        return function (e) {
+          try {
+            var txt = (e.clipboardData && e.clipboardData.getData("text")) || "";
+            var available = otpCells.length - pasteIdx;
+            var clean = String(txt).replace(/\D/g, "").slice(0, available);
+            if (!clean) return;
+            e.preventDefault();
+            var fillEnd = Math.min(otpCells.length, pasteIdx + clean.length);
+            for (var i = pasteIdx; i < fillEnd; i++) {
+              var ch = clean[i - pasteIdx] || "";
+              otpCells[i].value = ch;
+              otpCells[i].classList.toggle("is-filled", !!ch);
+            }
+            setOtpError("");
+            var lastFilled = fillEnd - 1;
+            if (lastFilled >= 0 && lastFilled < otpCells.length - 1) {
+              otpCells[lastFilled + 1].focus();
+            } else if (otpCells[otpCells.length - 1]) {
+              otpCells[otpCells.length - 1].focus();
+            }
+            var full = getOtpValue();
+            if (full.length === 6) {
+              setVerifyEnabled(true);
+              if (!inflightVerify) verifyOtp();
+            }
+          } catch (eP) { swallow(eP); }
+        };
+      })(idx));
     });
     if (verifyCodeBtn) verifyCodeBtn.addEventListener("click", verifyOtp);
     if (resendCodeBtn) resendCodeBtn.addEventListener("click", resendCode);
@@ -583,6 +641,22 @@
     if (toggleConfirmBtn)  toggleConfirmBtn.addEventListener("click", function () { togglePwVisibility(confirmPasswordEl, toggleConfirmBtn); });
     if (resetPasswordBtn)  resetPasswordBtn.addEventListener("click", resetPassword);
     if (continueBtn)       continueBtn.addEventListener("click", continueAfterReset);
+
+    // The password fields now live in a real <form> (see reset-password.html) so password managers
+    // will offer to SAVE the new password — outside a form they often will not, which left people
+    // with the OLD password still stored and locked out again next time. The button is type="submit"
+    // so Enter works, and this handler routes that submit into the SAME resetPassword() the click
+    // already calls. preventDefault stops the browser trying a real navigation.
+    var resetForm = document.getElementById("form-reset-password");
+    if (resetForm) {
+      resetForm.addEventListener("submit", function (ev) {
+        if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
+        // Respect the same disabled gate the button carries, so Enter cannot bypass the
+        // strength/match rules that keep the button disabled.
+        if (resetPasswordBtn && resetPasswordBtn.disabled) return;
+        resetPassword();
+      });
+    }
   }
 
   // ─── Init ──
@@ -591,7 +665,7 @@
     wireEvents();
 
     if (otpSessionId && emailUsed) {
-      // Came from login.html "Forgot Password?" — Step 1 was effectively done
+      // Came from login.html "Forgot Password?", Step 1 was effectively done
       if (sentBannerEmailEl) sentBannerEmailEl.textContent = emailUsed;
       resetOtpCells();
       showStep(2);

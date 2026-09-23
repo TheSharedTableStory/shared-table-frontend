@@ -50,7 +50,7 @@ function __triggerGoogleSignIn(isSignup) {
 
   google.accounts.id.prompt(function (notification) {
     if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-      // One Tap blocked by browser — user can use email/password instead
+      // One Tap blocked by browser, user can use email/password instead
     }
   });
 
@@ -77,8 +77,8 @@ async function __handleGoogleCredential(response) {
 
   var btnLogin = document.getElementById("btn-google-login");
   var btnSignup = document.getElementById("btn-google-signup");
-  if (btnLogin) { btnLogin.disabled = true; window.tstsText(btnLogin, "Signing in\u2026"); }
-  if (btnSignup) { btnSignup.disabled = true; window.tstsText(btnSignup, "Signing in\u2026"); }
+  if (btnLogin) { btnLogin.disabled = true; window.tstsSetText(btnLogin, "Signing in\u2026"); }
+  if (btnSignup) { btnSignup.disabled = true; window.tstsSetText(btnSignup, "Signing in\u2026"); }
 
   try {
     var res = await window.authFetch("/api/auth/google", {
@@ -198,6 +198,24 @@ async function handleForgotPassword(e) {
     }
 }
 
+// GF-9 (sir's fix-all order 2026-08-20): shown once after a failed login. New accounts must
+// verify their email before login works, but the refusal is a generic wrong-password sentence
+// (anti-guessing hardening) — this line is the honest bridge to the code-entry page.
+function revealVerifyBridge(emailValue) {
+    if (document.getElementById("verify-bridge-line")) return;
+    const form = document.getElementById("form-login");
+    if (!form || !window.tstsEl) return;
+    const href = "verify-email.html" + (emailValue ? ("?email=" + encodeURIComponent(String(emailValue).trim())) : "");
+    const link = window.tstsEl("a", { className: "font-bold text-orange-600 hover:underline", textContent: "enter your code here" });
+    link.href = href;
+    const line = window.tstsEl("p", { id: "verify-bridge-line", className: "text-xs text-slate-500 text-center" }, [
+        "Just signed up? Your email may still need verifying, ",
+        link,
+        "."
+    ]);
+    form.appendChild(line);
+}
+
 function safeRedirectTarget(rawTarget) {
   // Allow only same-site relative navigations (no schemes, no protocol-relative)
   let t = String(rawTarget || "index.html").trim();
@@ -237,11 +255,32 @@ function safeRedirectTarget(rawTarget) {
     "my-bookings.html",
     "experience.html",
     "reset-password.html",
-    "login.html"
+    "login.html",
+    // sir 2026-08-15 ("Fix it — both lines"): the door check-in station is a legitimate
+    // signed-in destination — without it here, a host signing in at the door was forced
+    // onto profile.html and lost the station.
+    "check-in.html"
   ]);
   if (!allowed.has(path)) return "profile.html";
 
   return path + String(parsed.search || "") + String(parsed.hash || "");
+}
+
+// Owner 2026-05-27: when login is reached WITHOUT a ?returnTo / ?redirect param
+// (e.g. a plain nav to the page, or an auth redirect that didn't set one), fall
+// back to the page the user came FROM (same-origin only) instead of dumping them
+// on the landing page. Returns "" when there's no usable referrer so the caller's
+// final "index.html" default still applies. safeRedirectTarget re-validates the result.
+function referrerReturnTarget() {
+  try {
+    var ref = String(document.referrer || "").trim();
+    if (!ref) return "";
+    var u = new URL(ref);
+    if (u.origin !== window.location.origin) return "";
+    var p = String(u.pathname || "").replace(/^\/+/, "");
+    if (!p || p === "login.html") return ""; // never bounce back to the login page itself
+    return p + String(u.search || "") + String(u.hash || "");
+  } catch (_) { return ""; }
 }
 
 
@@ -267,13 +306,26 @@ function toggleAuth(mode) {
 }
 
 // --- 2. LOGIN LOGIC ---
+let loginInFlight = false;
+
 async function handleLogin(e) {
     e.preventDefault();
+    // sir 2026-09-13: the email sign-in and sign-up buttons guard a second press like their siblings on this page.
+    if (loginInFlight) return;
     const email = document.getElementById("login-email").value;
     const password = document.getElementById("login-password").value;
     const params = new URLSearchParams(window.location.search);
     const inviteToken = String(params.get("adminInviteToken") || "").trim();
     const inviteEmail = String(params.get("adminInviteEmail") || "").trim();
+
+    const loginBtn = (e && e.submitter) ? e.submitter : document.querySelector('#form-login button[type="submit"]');
+    const loginBtnWords = loginBtn ? String(loginBtn.textContent || "") : "";
+    loginInFlight = true;
+    if (loginBtn) {
+        loginBtn.disabled = true;
+        loginBtn.setAttribute("aria-busy", "true");
+        window.tstsSetText(loginBtn, "Signing in\u2026");
+    }
 
     try {
         const res = await window.authFetch("/api/auth/login", {
@@ -286,6 +338,11 @@ async function handleLogin(e) {
 
         if (!res.ok) {
             showModal("Login Failed", (data && data.message) || "Please check your email and password.", "error");
+            // GF-9 (sir's fix-all order 2026-08-20): an unverified account is refused with the
+            // generic wrong-password sentence (deliberate anti-guessing hardening), so the real
+            // owner of a fresh account gets no route to the code page. After a failed attempt,
+            // surface the one bridge that rescues that person.
+            revealVerifyBridge(email);
             return;
         }
 
@@ -336,23 +393,33 @@ async function handleLogin(e) {
 
         const redirect = params.get("redirect");
         const returnTo = params.get("returnTo");
-        const rawTarget = redirect || returnTo || "index.html";
+        // Owner 2026-05-27: no returnTo param → return to the page the user came from
+        // (referrer), not the landing page. safeRedirectTarget validates the result.
+        const rawTarget = redirect || returnTo || referrerReturnTarget() || "index.html";
         const target = safeRedirectTarget(rawTarget);
         window.location.href = target;
 
     } catch (err) {
         showModal("Connection Error", "Could not connect to the server. Please try again.", "error");
+    } finally {
+        loginInFlight = false;
+        if (loginBtn) {
+            loginBtn.disabled = false;
+            loginBtn.removeAttribute("aria-busy");
+            window.tstsSetText(loginBtn, loginBtnWords);
+        }
     }
 
 
 }
 
 // --- 3. SIGNUP LOGIC ---
-// Live password checklist — flips each rule's dot to a green check as the
+// Live password checklist, flips each rule's dot to a green check as the
 // user types. Rules mirror backend __passwordPolicyOk exactly.
+// BUG-050 (2026-05-15): upper bound 24 → 72 to match the backend bcrypt-aligned cap.
 function tstsPasswordRulesEval(pw) {
     return {
-        length: pw.length >= 8 && pw.length <= 24,
+        length: pw.length >= 8 && pw.length <= 72,
         lower:  /[a-z]/.test(pw),
         upper:  /[A-Z]/.test(pw),
         number: /[0-9]/.test(pw),
@@ -361,22 +428,33 @@ function tstsPasswordRulesEval(pw) {
 function tstsBindSignupPasswordRules() {
     var input = document.getElementById("signup-password");
     var list = document.getElementById("signup-password-rules");
+    var segs = document.querySelectorAll("#signup-password-strength .pw-seg");
+    var label = document.getElementById("pw-strength-label");
     if (!input || !list) return;
+    var TRACK = "#ece3da";
+    // Warm, on-brand strength scale (soft clay → brand orange), keyed by rules met (0–4).
+    var LEVELS = [
+        { c: TRACK,     t: "" },
+        { c: "#dca890", t: "Weak" },
+        { c: "#c28d6b", t: "Fair" },
+        { c: "#f97316", t: "Good" },
+        { c: "#ea580c", t: "Strong" }
+    ];
     function paint() {
-        var s = tstsPasswordRulesEval(String(input.value || ""));
-        var rows = list.querySelectorAll("li[data-rule]");
-        rows.forEach(function (li) {
-            var rule = li.getAttribute("data-rule");
-            var ok = !!s[rule];
-            li.classList.toggle("text-emerald-600", ok);
-            li.classList.toggle("text-slate-500", !ok);
-            var dot = li.querySelector(".rule-dot");
-            if (dot) {
-                dot.classList.toggle("bg-emerald-500", ok);
-                dot.classList.toggle("border-emerald-500", ok);
-                dot.classList.toggle("border-slate-300", !ok);
-            }
+        var pw = String(input.value || "");
+        var s = tstsPasswordRulesEval(pw);
+        var met = 0;
+        list.querySelectorAll("li[data-rule]").forEach(function (li) {
+            var ok = !!s[li.getAttribute("data-rule")];
+            if (ok) met++;
+            li.setAttribute("data-met", ok ? "1" : "0");
         });
+        var lvl = (pw.length === 0) ? 0 : met;
+        var info = LEVELS[lvl];
+        segs.forEach(function (seg, i) {
+            seg.style.backgroundColor = (i < lvl) ? info.c : TRACK;
+        });
+        if (label) { label.textContent = info.t; label.style.color = (lvl === 0) ? "#b9a99c" : info.c; }
     }
     input.addEventListener("input", paint);
     paint();
@@ -384,8 +462,44 @@ function tstsBindSignupPasswordRules() {
 // Bind once DOM is ready (login.html already loads this script with defer).
 document.addEventListener("DOMContentLoaded", tstsBindSignupPasswordRules);
 
+// Show/hide password toggle for every .pw-toggle button (login + signup fields).
+// Lets the user reveal what they typed to catch typos. Swaps type + eye/eye-off icon.
+function tstsBindPasswordToggles() {
+    document.querySelectorAll(".pw-toggle").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            var input = document.getElementById(btn.getAttribute("data-target"));
+            if (!input) return;
+            var show = input.getAttribute("type") === "password";
+            input.setAttribute("type", show ? "text" : "password");
+            btn.classList.toggle("is-on", show);
+            btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+        });
+    });
+}
+document.addEventListener("DOMContentLoaded", tstsBindPasswordToggles);
+
+// Live confirm-password match feedback on the signup form (catches typos before submit).
+function tstsBindConfirmMatch() {
+    var pw = document.getElementById("signup-password");
+    var cpw = document.getElementById("signup-confirm-password");
+    var tick = document.getElementById("signup-confirm-tick");
+    if (!pw || !cpw || !tick) return;
+    function paint() {
+        var c = String(cpw.value || "");
+        var match = c.length > 0 && c === String(pw.value || "");
+        tick.classList.toggle("is-match", match);
+    }
+    cpw.addEventListener("input", paint);
+    pw.addEventListener("input", paint);
+    paint();
+}
+document.addEventListener("DOMContentLoaded", tstsBindConfirmMatch);
+
+let signupInFlight = false;
+
 async function handleSignup(e) {
     e.preventDefault();
+    if (signupInFlight) return;
     const name = document.getElementById("signup-name").value;
     const email = document.getElementById("signup-email").value;
     const password = document.getElementById("signup-password").value;
@@ -401,7 +515,8 @@ async function handleSignup(e) {
     // server after completing the form.
     var pwRules = tstsPasswordRulesEval(password);
     if (!pwRules.length) {
-        showModal("Password requirements", "Password must be 8–24 characters.", "error");
+        // BUG-050 (2026-05-15): copy updated to 8–72 to match backend __passwordPolicyOk
+        showModal("Password requirements", "Password must be 8–72 characters.", "error");
         return;
     }
     if (!pwRules.lower) {
@@ -422,6 +537,15 @@ async function handleSignup(e) {
         return;
     }
 
+    const signupBtn = (e && e.submitter) ? e.submitter : document.querySelector('#form-signup button[type="submit"]');
+    const signupBtnWords = signupBtn ? String(signupBtn.textContent || "") : "";
+    signupInFlight = true;
+    if (signupBtn) {
+        signupBtn.disabled = true;
+        signupBtn.setAttribute("aria-busy", "true");
+        window.tstsSetText(signupBtn, "Creating your account\u2026");
+    }
+
     try {
         const res = await window.authFetch("/api/auth/register", {
             method: "POST",
@@ -438,7 +562,9 @@ async function handleSignup(e) {
 
         // Registration creates the account but does NOT establish a cookie session.
         // Email verification is required before login (world-class baseline security).
-        showModal("Account Created", "Welcome aboard! We\u2019ve sent a verification link to your inbox. Sit tight, we\u2019re taking you to the login page.", "success");
+        // GF-9 (sir's fix-all order 2026-08-20): the email carries a 6-digit CODE, not a link, and
+        // the only page that accepts it is verify-email.html \u2014 say "code", and go THERE next.
+        showModal("Account Created", "Welcome aboard! We\u2019ve emailed you a 6-digit code. Taking you to the code page now.", "success");
 
         // Clear any stale auth state (register response may include legacy token fields; cookie auth is authoritative).
         try { if (window.clearAuth) window.clearAuth(); } catch (_) {}
@@ -447,17 +573,35 @@ async function handleSignup(e) {
             const params = new URLSearchParams(window.location.search);
             const rawTarget = params.get("redirect") || params.get("returnTo") || "index.html";
             const target = safeRedirectTarget(rawTarget);
-            const next = new URLSearchParams();
-            next.set("returnTo", target);
             const inviteToken = String(params.get("adminInviteToken") || "").trim();
             const inviteEmail = String(params.get("adminInviteEmail") || "").trim();
-            if (inviteToken) next.set("adminInviteToken", inviteToken);
-            if (inviteEmail) next.set("adminInviteEmail", inviteEmail);
-            window.location.href = "login.html?" + next.toString();
+            // Admin invites are accepted at sign-in, so their post-verify stop is the login
+            // form with the invite params; everyone else goes straight to their destination
+            // (verification auto-signs the account in).
+            let afterVerify = target;
+            if (inviteToken) {
+                const next = new URLSearchParams();
+                next.set("returnTo", target);
+                next.set("adminInviteToken", inviteToken);
+                if (inviteEmail) next.set("adminInviteEmail", inviteEmail);
+                afterVerify = "login.html?" + next.toString();
+            }
+            const vq = new URLSearchParams();
+            vq.set("email", email);
+            vq.set("sent", "1");
+            vq.set("returnTo", afterVerify);
+            window.location.href = "verify-email.html?" + vq.toString();
         }, 1200);
 
     } catch (err) {
         showModal("Connection Error", "Could not connect to the server. Please try again.", "error");
+    } finally {
+        signupInFlight = false;
+        if (signupBtn) {
+            signupBtn.disabled = false;
+            signupBtn.removeAttribute("aria-busy");
+            window.tstsSetText(signupBtn, signupBtnWords);
+        }
     }
 
 
@@ -499,6 +643,26 @@ function __initAppleSignIn() {
   var btnSignup = document.getElementById("btn-apple-signup");
   if (btnLogin)  btnLogin.addEventListener("click",  function () { __triggerAppleSignIn(false); });
   if (btnSignup) btnSignup.addEventListener("click", function () { __triggerAppleSignIn(true); });
+
+  // Load Apple's JS SDK only when a web Services ID is configured (runtime-config).
+  // Until then, AppleID stays undefined and the button shows a graceful "being set up"
+  // message (see __triggerAppleSignIn) — placeholder behaviour is preserved pre-config.
+  var rt = window.__TSTS_RUNTIME__ || {};
+  var servicesId = String(rt.appleServicesId || "").trim();
+  if (!servicesId) return;
+  if (document.querySelector('script[src*="appleid.cdn-apple.com"]')) return;
+  var redirectUri = String(rt.appleRedirectUri || (window.location.origin + "/login.html")).trim();
+  var s = document.createElement("script");
+  s.src = "https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js";
+  s.async = true;
+  s.onload = function () {
+    try {
+      if (typeof AppleID !== "undefined" && AppleID.auth) {
+        AppleID.auth.init({ clientId: servicesId, scope: "name email", redirectURI: redirectUri, usePopup: true });
+      }
+    } catch (e) { /* init failed; placeholder remains */ }
+  };
+  document.head.appendChild(s);
 }
 
 function __triggerAppleSignIn(isSignup) {
@@ -519,7 +683,7 @@ function __triggerAppleSignIn(isSignup) {
   if (typeof AppleID === "undefined" || !AppleID.auth) {
     showModal(
       "Sign in with Apple",
-      "Apple Sign-In on the web is being set up. For now, please continue with Google or your email — both connect to the same account.",
+      "Apple Sign-In on the web is being set up. For now, please continue with Google or your email, both connect to the same account.",
       "info"
     );
     return;
@@ -528,16 +692,16 @@ function __triggerAppleSignIn(isSignup) {
   __appleSignInBusy = true;
   var btnLogin  = document.getElementById("btn-apple-login");
   var btnSignup = document.getElementById("btn-apple-signup");
-  if (btnLogin)  { btnLogin.disabled = true;  window.tstsText(btnLogin, "Signing in\u2026"); }
-  if (btnSignup) { btnSignup.disabled = true; window.tstsText(btnSignup, "Signing in\u2026"); }
+  if (btnLogin)  { btnLogin.disabled = true;  window.tstsSetText(btnLogin, "Signing in\u2026"); }
+  if (btnSignup) { btnSignup.disabled = true; window.tstsSetText(btnSignup, "Signing in\u2026"); }
 
   AppleID.auth.signIn().then(function (response) {
     return __handleAppleCredential(response, isSignup);
   }).catch(function () {
     showModal("Apple Sign-In", "Apple sign-in was cancelled or failed. Please try again.", "error");
     __appleSignInBusy = false;
-    if (btnLogin)  { btnLogin.disabled = false;  window.tstsText(btnLogin, "Continue with Apple"); }
-    if (btnSignup) { btnSignup.disabled = false; window.tstsText(btnSignup, "Continue with Apple"); }
+    if (btnLogin)  { btnLogin.disabled = false;  window.tstsSetText(btnLogin, "Continue with Apple"); }
+    if (btnSignup) { btnSignup.disabled = false; window.tstsSetText(btnSignup, "Continue with Apple"); }
   });
 }
 
@@ -562,7 +726,13 @@ async function __handleAppleCredential(response, isSignup) {
     var res = await window.authFetch("/api/auth/apple", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken: idToken, code: code, name: name, email: email, termsAccepted: termsAccepted }),
+      body: JSON.stringify({
+        identityToken: idToken,
+        code: code,
+        fullName: (name && (name.firstName || name.lastName)) ? { givenName: String(name.firstName || ""), familyName: String(name.lastName || "") } : null,
+        email: email,
+        termsAccepted: termsAccepted
+      }),
     });
     var data = null;
     try { data = await res.json(); } catch (e) {

@@ -39,12 +39,24 @@ rm -rf "$DIST"
 mkdir -p "$DIST"
 
 # Whitelist: static public website only.
+#
+# 2026-08-25: refund-policy.html, acceptable-use.html and community-guidelines.html were MISSING from
+# this list, so they were never deployed. The consequences were not cosmetic:
+#   - experience.html's REQUIRED booking checkbox ("I agree to the Cancellation Policy") linked to
+#     refund-policy.html, which 404'd in production. A guest could not read the document they were
+#     compelled to accept before paying.
+#   - Terms of Service charges fees "under the Cancellation Policy" and removes content that breaches
+#     "our Community Guidelines". Both documents were unreachable, so neither term could be read.
+# The build does `rm -rf "$DIST"` and copies ONLY what is named here, and there is no _redirects or
+# rewrite rule to rescue an omission. Anything linked from a page must appear in this list.
 PUBLIC_FILES=(
   "404.html"
   "about.html"
+  "acceptable-use.html"
   "admin.html"
   "bookmarks.html"
   "check-in.html"
+  "community-guidelines.html"
   "connections.html"
   "cookie-policy.html"
   "experience.html"
@@ -64,6 +76,7 @@ PUBLIC_FILES=(
   "privacy.html"
   "profile.html"
   "public-profile.html"
+  "refund-policy.html"
   "report.html"
   "reset-password.html"
   "robots.txt"

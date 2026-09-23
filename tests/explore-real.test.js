@@ -24,6 +24,11 @@ function buildDom() {
     <button id="modal-clear-all" class="hidden">Clear all</button>
     <button id="clear-filters-btn">Clear</button>
     <button id="near-me-btn"></button>
+    <!-- Added 2026-08-22: the drawer's Near-me CHECKBOX, so the test can assert that a refused
+         location request puts the box back instead of leaving it ticked and claiming a filter
+         that is not applied. -->
+    <input type="checkbox" id="filter-near-me" />
+    <div id="distance-chips-wrap" class="hidden"></div>
     <button id="clear-filters-empty-btn">Clear</button>
     <button id="apply-filters">Apply</button>
     <select id="sort-select"><option value="">Sort</option></select>
@@ -77,6 +82,13 @@ function loadExplore(opts) {
 
   window.tstsGetSession = opts.session || (async () => ({ ok: false }));
   window.authFetch = opts.authFetch || (async () => ({ ok: true, status: 200, json: async () => ({ ok: true, data: [] }) }));
+  // ⛔ 2026-08-22 — THIS STUB IS WHY THE "All Stories" DEFECT SURVIVED EVERY TEST RUN.
+  // It lowercases and returns, so here `normalizeCategory("all")` === "all" and the chip's
+  // clear-branch is reached. The REAL helper (common.js:2031) returns an **empty string** for
+  // "all", so on the live page that branch was never reached: the else-branch pushed "" into
+  // filterState.categories, every consumer dropped the falsy entry, and clicking "All Stories"
+  // did nothing at all. A stub that is kinder than the real implementation hides real defects —
+  // recorded here so the next reader distrusts it rather than trusting the green tick.
   window.tstsNormalizeCategory = (s) => String(s || "").toLowerCase();
   window.tstsSafeImg = (el, p) => { if (el) el.src = String(p || ""); };
   window.tstsSafeUrl = (u, fb) => String(u || fb || "");
@@ -176,16 +188,56 @@ describe("explore — smoke load", () => {
 describe("explore — Near me", () => {
   beforeEach(() => { vi.restoreAllMocks(); });
 
-  test("clicking Near me without geolocation API → tstsToast info", async () => {
-    const toast = vi.fn();
+  // ⛔ UPDATED 2026-08-22 TO THE NEW SPEC — NOT LOOSENED. THIS TEST WAS PINNING A REAL DEFECT.
+  //
+  // It used to assert `window.tstsToast` was called. That helper **does not exist anywhere on the
+  // platform** — it is called in 14 places across 4 files and defined in none of them, so every one
+  // of those messages is silently skipped in a real browser. The test passed only because it
+  // assigned its OWN mock onto `window.tstsToast` (and buildDom stubs one too), manufacturing the
+  // very global whose absence is the bug. So the suite stayed green while a guest ticking "Near me"
+  // saw absolutely nothing happen: no message, no badge, no distance chips.
+  //
+  // PROVEN IN A REAL BROWSER before the fix: box ticked, badge 0, distance chips absent, not one
+  // word on screen. After the fix, the real helper `window.tstsNotify(msg, type)` renders
+  // "We couldn't get your location just now…" at z-index 9999 over the drawer, and the checkbox is
+  // put back so it stops claiming a filter that is not applied.
+  //
+  // The lesson this file now guards: a test must never invent the global whose absence IS the
+  // defect. `tstsToast` is deliberately left UNDEFINED below.
+  test("Near me with no geolocation API → speaks through the REAL helper and unticks itself", async () => {
+    const notify = vi.fn();
     loadExplore({});
     await fireDOMReady();
-    window.tstsToast = toast;
-    // Strip navigator.geolocation
+    // The broken helper is deliberately removed, not mocked: if the code ever calls it again this
+    // test must fail rather than pass on a global that does not exist in production.
+    delete window.tstsToast;
+    window.tstsNotify = notify;
+
+    const box = document.getElementById("filter-near-me");
+    box.checked = true;
+
     delete navigator.geolocation;
     document.getElementById("near-me-btn").click();
     for (let i = 0; i < 5; i++) await Promise.resolve();
-    expect(toast).toHaveBeenCalled();
-    expect(toast.mock.calls[0][0].message).toMatch(/not supported/i);
+
+    expect(notify).toHaveBeenCalled();
+    // tstsNotify's contract is (message, type) — positional, not an object.
+    expect(notify.mock.calls[0][0]).toMatch(/can't share your location/i);
+    // Rule 16: the message must also say what to do next.
+    expect(notify.mock.calls[0][0]).toMatch(/Suburb or City/i);
+    // and the control must stop claiming a filter that was never applied
+    expect(box.checked).toBe(false);
+  });
+
+  test("the broken helper is never called again", async () => {
+    const toast = vi.fn();
+    loadExplore({});
+    await fireDOMReady();
+    window.tstsToast = toast;      // if explore.js still reaches for it, this records the call
+    window.tstsNotify = vi.fn();
+    delete navigator.geolocation;
+    document.getElementById("near-me-btn").click();
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    expect(toast).not.toHaveBeenCalled();
   });
 });

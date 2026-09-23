@@ -49,10 +49,17 @@ async function loadModule(opts) {
 }
 
 describe("verify-email-change — token parsing", () => {
-  test("missing token shows error", async () => {
+  // Behaviour change 2026-08-21: the message said "Missing confirmation token" — "token" is
+  // developer shorthand, and it left the reader with no idea what was missing or what to do next.
+  // Behaviour change 2026-08-22 (follow-up): that 08-21 fix had opened the body with "This link
+  // didn't work" — word-for-word the <h1> directly above it, repeating the problem instead of
+  // giving the next step. The body no longer repeats the heading; it states the next step only.
+  test("arriving without a working link says so in plain words", async () => {
     await loadModule({ hash: "" });
     expect(document.getElementById("state-error").classList.contains("hidden")).toBe(false);
-    expect(document.getElementById("error-message").textContent).toMatch(/Missing confirmation token/);
+    const msg = document.getElementById("error-message").textContent;
+    expect(msg).toMatch(/from your email/i);
+    expect(msg).not.toMatch(/token/i);
   });
 
   test("hash with non-token query also shows error", async () => {
@@ -95,18 +102,25 @@ describe("verify-email-change — failure paths", () => {
     expect(document.getElementById("error-message").textContent).toBe("Token expired or invalid.");
   });
 
-  test("server error without message: falls back to default text", async () => {
+  // Behaviour change 2026-08-21: the fallbacks said "Confirmation failed." and "Confirmation failed
+  // due to a network error." — a bare verdict with nothing the reader can do about it. Both now say
+  // what to try next, and neither leans on the word "error".
+  test("server error without message: the fallback names the next step", async () => {
     const fetchImpl = async () => ({ ok: false, status: 500, json: async () => null });
     await loadModule({ hash: "#token=bad", fetch: fetchImpl });
     expect(document.getElementById("state-error").classList.contains("hidden")).toBe(false);
-    expect(document.getElementById("error-message").textContent).toMatch(/Confirmation failed/);
+    const msg = document.getElementById("error-message").textContent;
+    expect(msg).toMatch(/couldn't confirm this email change/i);
+    expect(msg).toMatch(/from your profile/i);
   });
 
-  test("network error: shows network-flavoured message", async () => {
+  test("network failure: tells the reader to check their connection and retry", async () => {
     const fetchImpl = async () => { throw new Error("network down"); };
     await loadModule({ hash: "#token=x", fetch: fetchImpl });
     expect(document.getElementById("state-error").classList.contains("hidden")).toBe(false);
-    expect(document.getElementById("error-message").textContent).toMatch(/network error/i);
+    const msg = document.getElementById("error-message").textContent;
+    expect(msg).toMatch(/check your connection/i);
+    expect(msg).toMatch(/open the link again/i);
   });
 });
 

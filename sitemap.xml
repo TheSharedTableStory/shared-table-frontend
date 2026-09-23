@@ -48,10 +48,62 @@
       <changefreq>monthly</changefreq>
       <priority>0.4</priority>
    </url>
-   <!-- cookie-policy.html merged into privacy.html#cookies -->
    <url>
       <loc>https://www.thesharedtablestory.com/policy.html</loc>
       <lastmod>2026-02-20</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.4</priority>
+   </url>
+   <!-- WALK-P880-1 fix (2026-09-15, F228 re-verified): these 8 real, robots.txt-allowed public
+        pages were entirely absent, so a sitemap-only crawler never discovered them. The stale
+        "cookie-policy.html merged into privacy.html#cookies" comment above this block is also
+        removed: the file is real, live, and linked from the live pages (grep-verified), not
+        merged. lastmod is each file's own real on-disk modified date, not a hand-typed guess. -->
+   <url>
+      <loc>https://www.thesharedtablestory.com/help-center.html</loc>
+      <lastmod>2026-09-14</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.5</priority>
+   </url>
+   <url>
+      <loc>https://www.thesharedtablestory.com/help-guest.html</loc>
+      <lastmod>2026-09-14</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.5</priority>
+   </url>
+   <url>
+      <loc>https://www.thesharedtablestory.com/help-host.html</loc>
+      <lastmod>2026-09-14</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.5</priority>
+   </url>
+   <url>
+      <loc>https://www.thesharedtablestory.com/help-platform.html</loc>
+      <lastmod>2026-09-14</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.5</priority>
+   </url>
+   <url>
+      <loc>https://www.thesharedtablestory.com/refund-policy.html</loc>
+      <lastmod>2026-09-14</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.4</priority>
+   </url>
+   <url>
+      <loc>https://www.thesharedtablestory.com/community-guidelines.html</loc>
+      <lastmod>2026-09-14</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.4</priority>
+   </url>
+   <url>
+      <loc>https://www.thesharedtablestory.com/acceptable-use.html</loc>
+      <lastmod>2026-09-14</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.4</priority>
+   </url>
+   <url>
+      <loc>https://www.thesharedtablestory.com/cookie-policy.html</loc>
+      <lastmod>2026-09-14</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.4</priority>
    </url>

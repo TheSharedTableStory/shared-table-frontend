@@ -90,14 +90,17 @@ async function fireDOMReady() {
 describe("index — ways-to-connect carousel", () => {
   beforeEach(() => { vi.restoreAllMocks(); });
 
-  test("renders one <details> per category with correct dataset and explore link", async () => {
+  test("renders the INFINITE-LOOP carousel: 3 copies of the category set, each card wired", async () => {
+    // UPDATED 2026-08-05: the carousel became an infinite loop — index.js renders 3
+    // consecutive copies of the set and re-centers on the middle copy, so N categories
+    // render 3×N <details>. Category order and explore links are per-copy identical.
     loadIndex({});
     await fireDOMReady();
     const cards = document.querySelectorAll("#ways-to-connect-carousel > details");
-    expect(cards.length).toBe(3);
+    expect(cards.length).toBe(9); // 3 categories × 3 loop copies
     expect(cards[0].dataset.category).toBe("wine");
     expect(cards[1].dataset.category).toBe("food");
-    // explore link is href="explore.html?category=<slug>"
+    expect(cards[3].dataset.category).toBe("wine"); // second copy repeats the set
     const link = cards[0].querySelector('a[href*="explore.html"]');
     expect(link.getAttribute("href")).toBe("explore.html?category=wine");
   });
@@ -217,64 +220,47 @@ describe("index — home curations", () => {
     expect(document.getElementById("home-curations").classList.contains("hidden")).toBe(true);
   });
 
-  test("signed-in user: curations list renders top 3 + explore-more tile", async () => {
+  test("signed-in user: curated-navigation stays REMOVED (sir's order 2026-05-24) — no /api/curations call, section stays hidden without discounts", async () => {
+    // UPDATED 2026-08-05: the 'Shortcuts for you' curated-navigation was REMOVED from the
+    // frozen P1 landing on sir's order (approval log, POST-FREEZE CHANGES 2026-05-24). The
+    // old assertion demanded the removed renderer. The current contract: /api/curations is
+    // NEVER fetched — signed-in or not — and the #home-curations section only unhides via
+    // the group-discount banner path.
+    const seen = [];
     loadIndex({
       signedIn: true,
       authFetch: async (url) => {
-        if (url === "/api/curations") {
-          return { ok: true, status: 200, json: async () => ({ ok: true, data: { collections: [
-            { title: "Weekend vibes", filters: { category: "wine" } },
-            { title: "Quiet dinners", filters: { city: "Melbourne", maxPrice: 60 } },
-            { title: "Birthday picks", filters: { q: "birthday" } },
-            { title: "ignored — beyond top 3", filters: {} },
-          ] } }) };
-        }
-        if (url === "/api/recommendations") return { ok: false, status: 500, json: async () => ({}) };
+        seen.push(String(url));
         return { ok: false, status: 500, json: async () => ({}) };
       },
     });
     await fireDOMReady();
-    expect(document.getElementById("home-curations").classList.contains("hidden")).toBe(false);
-    const tiles = document.querySelectorAll("#home-curations-list > a");
-    expect(tiles.length).toBe(4); // 3 curations + 1 explore-more
-    expect(tiles[0].getAttribute("href")).toBe("explore.html?category=wine");
-    expect(tiles[1].getAttribute("href")).toContain("city=Melbourne");
-    expect(tiles[1].getAttribute("href")).toContain("maxPrice=60");
-    expect(tiles[2].getAttribute("href")).toContain("q=birthday");
-    expect(tiles[3].getAttribute("href")).toBe("explore.html");
+    expect(seen).not.toContain("/api/curations");
+    expect(document.getElementById("home-curations").classList.contains("hidden")).toBe(true);
   });
 });
 
-describe("index — max discount banner", () => {
+// Behavior change (sir approved 2026-08-10, log entry back-filled 2026-08-15): the dead
+// savings strip (#max-discount-banner + updateMaxDiscountBanner) was REMOVED from P1 —
+// it had never rendered once. The suite now asserts the approved removal holds.
+describe("index — max discount banner removed", () => {
   beforeEach(() => { vi.restoreAllMocks(); });
 
-  test("computes max across dynamicDiscounts and writes banner text", async () => {
+  test("index.js never writes banner text, even with discounts in the data", async () => {
     loadIndex({
       authFetch: async (url) => {
         if (url === "/api/experiences") {
           return { ok: true, status: 200, json: async () => ([
             { dynamicDiscounts: { tier1: 10, tier2: 25 } },
-            { dynamicDiscounts: { tier1: 5,  tier2: 18 } },
-            { dynamicDiscounts: { tier1: 40 } }, // winner
+            { dynamicDiscounts: { tier1: 40 } },
           ]) };
         }
         return { ok: false, status: 500, json: async () => ({}) };
       },
     });
     await fireDOMReady();
-    expect(document.getElementById("max-discount-banner").textContent).toMatch(/up to 40% off/);
-  });
-
-  test("no dynamic discounts → banner text unchanged", async () => {
-    loadIndex({
-      authFetch: async (url) => {
-        if (url === "/api/experiences") {
-          return { ok: true, status: 200, json: async () => ([{ title: "x" }]) };
-        }
-        return { ok: false, status: 500, json: async () => ({}) };
-      },
-    });
-    await fireDOMReady();
+    // Fixture keeps the old element; the removed driver must leave it untouched.
     expect(document.getElementById("max-discount-banner").textContent).toBe("");
+    expect(typeof window.updateMaxDiscountBanner).toBe("undefined");
   });
 });

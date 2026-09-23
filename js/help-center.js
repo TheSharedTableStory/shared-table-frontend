@@ -45,12 +45,16 @@
     });
   }
 
-  function showRenderError(mount, hub) {
+  // The hub's human title ("Guest FAQ" / "How The Platform Works") is already rendered directly
+  // above this mount by setActiveMeta(), which runs before ensureHubRendered(). So this message
+  // must NOT name the hub: the old copy interpolated the raw key and rendered as
+  // "Unable to load platform questions" — an internal enum on a user-visible surface (Rule 16).
+  function showRenderError(mount) {
     if (!mount) return;
     mount.textContent = "";
     const box = document.createElement("p");
     box.className = "rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700";
-    box.textContent = "Unable to load " + hub + " questions right now. Please refresh and try again.";
+    box.textContent = "We couldn't load these questions just now. Give it a moment and try again.";
     mount.appendChild(box);
   }
 
@@ -60,12 +64,12 @@
     const mount = document.querySelector(mountSelector);
     if (!mount) return false;
     if (typeof window.renderTheSharedTableStoryFaqHub !== "function") {
-      showRenderError(mount, hub);
+      showRenderError(mount);
       return false;
     }
     const result = window.renderTheSharedTableStoryFaqHub(hub, mountSelector, { includeTrust: true });
     if (!result || !result.ok) {
-      showRenderError(mount, hub);
+      showRenderError(mount);
       return false;
     }
     rendered[hub] = true;

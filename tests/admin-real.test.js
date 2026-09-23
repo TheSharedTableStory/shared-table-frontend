@@ -77,11 +77,18 @@ describe("admin — mustBeAdmin", () => {
     expect(__navigatedTo).toMatch(/login\.html/);
   });
 
-  test("non-admin (no isAdmin, role=user) → replaces body with 'Access denied'", async () => {
+  // Updated 2026-09-08: this case asserted the old behaviour, which wiped the whole page and left the
+  // two bare words "Access denied" with no way out. That was replaced on 2026-08-25 with wording that
+  // says what happened and what to do next, inside the page's main area, keeping the site's navigation
+  // so the person is not stranded. The case now checks the behaviour the page actually has.
+  test("non-admin (no isAdmin, role=user) → says what happened, what to do, and keeps a way out", async () => {
     bootAdmin({ session: async () => ({ ok: true, user: { isAdmin: false, role: "user" } }) });
     const ok = await globalThis.mustBeAdmin();
     expect(ok).toBe(false);
-    expect(document.body.textContent).toBe("Access denied");
+    const shown = document.body.textContent || "";
+    expect(shown).toContain("This area is for administrators");
+    expect(shown).toContain("admin access");
+    expect(shown.length).toBeGreaterThan("Access denied".length);
     expect(__navigatedTo).toBe("");
   });
 
@@ -157,5 +164,29 @@ describe("admin — loadDashboardSummary", () => {
     });
     const out = await globalThis.loadDashboardSummary();
     expect(out).toEqual({ expByStatus: { ACTIVE: 5 } });
+  });
+});
+
+describe("admin — refundBookingPartial", () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  test("refundBookingPartial sends the admin's intent key as Idempotency-Key and reuses it on retry", async () => {
+    const calls = [];
+    bootAdmin({ authFetch: async (path, opts) => { calls.push({ path, opts }); return { ok: true, status: 200, json: async () => ({ ok: true, data: { bookingId: "b1" } }) }; } });
+    await globalThis.refundBookingPartial("b1", { amountCents: 500, reason: "requested_by_customer", note: "" }, "intent-abc");
+    await globalThis.refundBookingPartial("b1", { amountCents: 500, reason: "requested_by_customer", note: "" }, "intent-abc"); // the same intent, sent again
+    expect(calls.length).toBe(2);
+    expect(calls[0].path).toBe("/api/admin/bookings/b1/refund-partial");
+    expect(calls[0].opts.idempotencyKey).toBe("intent-abc");
+    expect(calls[1].opts.idempotencyKey).toBe("intent-abc");
+  });
+
+  test("with no key given it still sends one, minted by the page", async () => {
+    const calls = [];
+    window.tstsIdempotencyKey = () => "minted-1";
+    bootAdmin({ authFetch: async (path, opts) => { calls.push({ path, opts }); return { ok: true, status: 200, json: async () => ({ ok: true, data: {} }) }; } });
+    window.tstsIdempotencyKey = () => "minted-1";
+    await globalThis.refundBookingPartial("b2", { amountCents: 100 });
+    expect(calls[0].opts.idempotencyKey).toBe("minted-1");
   });
 });

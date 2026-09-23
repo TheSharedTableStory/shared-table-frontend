@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://localhost:4000 https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com https://accounts.google.com https://oauth2.googleapis.com; frame-src https://js.stripe.com https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com https://accounts.google.com https://apis.google.com https://appleid.cdn-apple.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://localhost:4000 https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com https://accounts.google.com https://oauth2.googleapis.com https://appleid.apple.com; frame-src https://js.stripe.com https://accounts.google.com https://appleid.apple.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Log In – The Shared Table Story</title>
@@ -11,8 +11,8 @@
   <meta property="og:title" content="Log In | The Shared Table Story">
   <meta property="og:image" content="https://www.thesharedtablestory.com/assets/og-image.jpg?v=20260401">
 
-  <link rel="stylesheet" href="css/tailwind.css?v=20260317b">
-  <link rel="stylesheet" href="css/fonts.css?v=20260310d">
+  <link rel="stylesheet" href="css/tailwind.css?v=20260914a">
+  <link rel="stylesheet" href="css/fonts.css?v=20260810a">
 
   <link rel="icon" type="image/png" href="/assets/logo-mark.png">
   <link rel="apple-touch-icon" href="/assets/logo-mark.png">
@@ -22,7 +22,7 @@
 <body class="bg-tsts-cream text-slate-900 flex flex-col min-h-screen">
   <nav id="navbar-placeholder" role="navigation"></nav>
   <main class="flex-grow" role="main">
-  <h1 class="sr-only">Log In or Sign Up — The Shared Table Story</h1>
+  <h1 class="sr-only">Log In or Sign Up, The Shared Table Story</h1>
   <div class="flex-grow flex flex-col items-center justify-center p-4">
     
     <div id="login-card" class="max-w-md w-full bg-white rounded-3xl shadow-soft-card p-8 border border-gray-100" style="opacity:0;transition:opacity 0.2s ease">
@@ -54,15 +54,20 @@
         <label for="login-email" class="sr-only">Email Address</label>
         <input id="login-email" type="email" maxlength="254" autocomplete="email" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Email Address" required />
         <label for="login-password" class="sr-only">Password</label>
-        <input id="login-password" type="password" maxlength="24" autocomplete="current-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Password" required />
-        
-        <div class="text-right">
-            <button id="btn-forgot-password" type="button" class="text-xs text-orange-600 hover:underline font-bold">Forgot Password?</button>
+        <div class="relative">
+          <input id="login-password" type="password" maxlength="72" autocomplete="current-password" class="w-full p-3 pr-11 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Password" required />
+          <button type="button" class="pw-toggle absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 transition" data-target="login-password" aria-label="Show password">
+            <svg class="pw-eye" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg class="pw-eye-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </button>
         </div>
-
+        
         <button type="submit" class="w-full py-3 tsts-btn-primary font-bold rounded-xl transition transform active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">Log In</button>
 
-        <p class="text-center text-xs text-slate-500">Don't have an account? <button type="button" id="switch-to-signup" class="font-bold text-orange-600 hover:underline">Sign up</button></p>
+        <div class="flex flex-col items-center justify-center gap-2 text-sm text-slate-500 sm:flex-row sm:gap-4 sm:text-xs">
+          <button id="btn-forgot-password" type="button" class="font-bold text-orange-600 hover:underline">Forgot Password?</button>
+          <span>Don't have an account? <button type="button" id="switch-to-signup" class="font-bold text-orange-600 hover:underline">Sign up</button></span>
+        </div>
       </form>
 
       <form id="form-signup" class="space-y-5 hidden" autocomplete="on">
@@ -90,28 +95,55 @@
         <input id="signup-email" type="email" maxlength="254" autocomplete="email" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Email Address" required />
         <label for="signup-password" class="sr-only">Create Password</label>
         <div>
-          <input id="signup-password" type="password" maxlength="24" autocomplete="new-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Create Password" minlength="8" required />
-          <ul id="signup-password-rules" class="mt-2 ml-1 space-y-1 text-xs" aria-label="Password requirements">
-            <li data-rule="length" class="flex items-center gap-2 text-slate-500">
-              <span class="rule-dot inline-block w-3 h-3 rounded-full border border-slate-300"></span>
-              <span>8–24 characters</span>
-            </li>
-            <li data-rule="lower" class="flex items-center gap-2 text-slate-500">
-              <span class="rule-dot inline-block w-3 h-3 rounded-full border border-slate-300"></span>
-              <span>One lowercase letter</span>
-            </li>
-            <li data-rule="upper" class="flex items-center gap-2 text-slate-500">
-              <span class="rule-dot inline-block w-3 h-3 rounded-full border border-slate-300"></span>
-              <span>One uppercase letter</span>
-            </li>
-            <li data-rule="number" class="flex items-center gap-2 text-slate-500">
-              <span class="rule-dot inline-block w-3 h-3 rounded-full border border-slate-300"></span>
-              <span>One number</span>
-            </li>
-          </ul>
+          <div class="relative">
+            <input id="signup-password" type="password" maxlength="72" autocomplete="new-password" class="w-full p-3 pr-11 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Create Password" minlength="8" required />
+            <button type="button" class="pw-toggle absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 transition" data-target="signup-password" aria-label="Show password">
+              <svg class="pw-eye" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="pw-eye-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
+          <style>
+            #signup-password-strength{margin-top:12px;}
+            #signup-password-strength .pw-seg-row{display:flex;align-items:center;gap:10px;}
+            #signup-password-strength .pw-segs{display:flex;gap:5px;flex:1;}
+            #signup-password-strength .pw-seg{flex:1;height:5px;border-radius:9999px;background:#ece3da;transition:background-color .3s ease;}
+            #signup-password-strength .pw-label{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;min-width:48px;text-align:right;color:#b9a99c;transition:color .25s ease;}
+            #signup-password-strength .pw-reqs{display:flex;flex-wrap:nowrap;gap:10px;margin-top:11px;}
+            #signup-password-strength .pw-req{display:inline-flex;align-items:center;gap:5px;font-size:11px;white-space:nowrap;color:#9c8e82;transition:color .2s ease;}
+            #signup-password-strength .pw-req[data-met="1"]{color:#1f2933;}
+            #signup-password-strength .pw-req-mark{display:inline-flex;width:14px;height:14px;align-items:center;justify-content:center;border-radius:9999px;border:1.5px solid #d8cabd;font-size:9px;line-height:1;color:transparent;transition:background-color .2s ease,border-color .2s ease,color .2s ease;}
+            #signup-password-strength .pw-req[data-met="1"] .pw-req-mark{background:#ea580c;border-color:#ea580c;color:#fff;}
+            .pw-toggle{display:inline-flex;align-items:center;justify-content:center;}
+            .pw-toggle .pw-eye-off{display:none;}
+            .pw-toggle.is-on .pw-eye{display:none;}
+            .pw-toggle.is-on .pw-eye-off{display:inline;}
+            .pw-inline-tick{position:absolute;right:46px;top:50%;transform:translateY(-50%);display:none;width:14px;height:14px;align-items:center;justify-content:center;border-radius:9999px;background:#ea580c;color:#fff;font-size:9px;line-height:1;font-weight:700;}
+            .pw-inline-tick.is-match{display:inline-flex;}
+          </style>
+          <div id="signup-password-strength">
+            <div class="pw-seg-row">
+              <div class="pw-segs">
+                <span class="pw-seg"></span><span class="pw-seg"></span><span class="pw-seg"></span><span class="pw-seg"></span>
+              </div>
+              <span id="pw-strength-label" class="pw-label" aria-live="polite"></span>
+            </div>
+            <ul id="signup-password-rules" class="pw-reqs" aria-label="Password requirements">
+              <li data-rule="length" class="pw-req" data-met="0"><span class="pw-req-mark">✓</span><span>≥8 characters</span></li>
+              <li data-rule="lower"  class="pw-req" data-met="0"><span class="pw-req-mark">✓</span><span>Lowercase</span></li>
+              <li data-rule="upper"  class="pw-req" data-met="0"><span class="pw-req-mark">✓</span><span>Uppercase</span></li>
+              <li data-rule="number" class="pw-req" data-met="0"><span class="pw-req-mark">✓</span><span>Number</span></li>
+            </ul>
+          </div>
         </div>
         <label for="signup-confirm-password" class="sr-only">Confirm Password</label>
-        <input id="signup-confirm-password" type="password" maxlength="24" autocomplete="new-password" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Confirm Password" minlength="8" required />
+        <div class="relative">
+          <input id="signup-confirm-password" type="password" maxlength="72" autocomplete="new-password" class="w-full p-3 pr-16 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" placeholder="Confirm Password" minlength="8" required />
+          <span id="signup-confirm-tick" class="pw-inline-tick" role="img" aria-label="Passwords match">✓</span>
+          <button type="button" class="pw-toggle absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 transition" data-target="signup-confirm-password" aria-label="Show password">
+            <svg class="pw-eye" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg class="pw-eye-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </button>
+        </div>
 
         <div class="flex items-start gap-3">
             <input id="signup-terms" type="checkbox" class="mt-1 h-4 w-4 text-orange-600 rounded border-gray-300 cursor-pointer" required />
@@ -132,7 +164,7 @@
 
         <button type="submit" class="w-full py-3 tsts-btn-primary font-bold rounded-xl transition transform active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">Create Account</button>
 
-        <p class="text-center text-xs text-slate-500">Already have an account? <button type="button" id="switch-to-login" class="font-bold text-orange-600 hover:underline">Log in</button></p>
+        <p class="text-center text-sm text-slate-500 sm:text-xs">Already have an account? <button type="button" id="switch-to-login" class="font-bold text-orange-600 hover:underline">Log in</button></p>
       </form>
 
     </div>
@@ -148,7 +180,7 @@
   <footer id="footer-placeholder" role="contentinfo"></footer>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="js/runtime-config.js?v=20260429a" defer></script>
-  <script src="js/common.js?v=20260316c" defer></script>
-  <script src="js/login.js?v=20260429b" defer></script>
+  <script src="js/common.js?v=20260907a" defer></script>
+  <script src="js/login.js?v=20260820a" defer></script>
 </body>
 </html>

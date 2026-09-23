@@ -2,13 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' http://localhost:4000 https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Redirecting – The Shared Table Story</title>
+  <title>Taking you to My Account – The Shared Table Story</title>
+  <!-- Single refresh. This tag was duplicated in the previous version of this file. -->
   <meta http-equiv="refresh" content="0;url=profile.html">
+  <link rel="canonical" href="profile.html">
   <link rel="icon" type="image/png" href="/assets/logo-mark.png">
-  <meta http-equiv="refresh" content="0;url=profile.html">
+  <meta name="theme-color" content="#ea580c">
+  <link rel="stylesheet" href="css/tailwind.css?v=20260914a">
+  <link rel="stylesheet" href="css/fonts.css?v=20260810a">
 </head>
-<body>
-  <p>Redirecting to <a href="profile.html">My Account</a>…</p>
+<body class="bg-tsts-cream text-slate-900 min-h-screen flex items-center justify-center px-4">
+  <main class="text-center max-w-sm" role="main">
+    <h1 class="text-2xl font-bold text-tsts-ink mb-2 heading-serif">Taking you to My Account</h1>
+    <p class="text-gray-600 mb-6">These settings now live in My Account.</p>
+    <a href="profile.html" class="inline-block px-6 py-2.5 rounded-xl tsts-btn-primary font-bold transition">Continue to My Account</a>
+  </main>
 </body>
 </html>

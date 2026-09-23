@@ -37,7 +37,8 @@ describe("unsubscribe — param validation", () => {
   test("missing userId shows error state", () => {
     loadModule({ search: "?category=recommendations&ts=1&token=x" });
     expect(document.getElementById("state-error").classList.contains("hidden")).toBe(false);
-    expect(document.getElementById("error-text").textContent).toMatch(/invalid/i);
+    // sir-approved calm error copy 2026-08-16 (unsubscribe.js?v=20260816a) replaced "invalid link" wording.
+    expect(document.getElementById("error-text").textContent).toMatch(/expired or doesn't work anymore/);
   });
 
   test("missing category shows error state", () => {
@@ -104,21 +105,26 @@ describe("unsubscribe — confirm click", () => {
     expect(document.getElementById("error-text").textContent).toMatch(/expired/);
   });
 
-  test("server returns other error → generic invalid-link message", async () => {
+  test("server returns other error → calm link-not-working message", async () => {
     const fetchImpl = async () => ({ status: 400, json: async () => ({ ok: false, error: "SOMETHING_ELSE" }) });
     loadModule({ search: VALID_PARAMS, fetch: fetchImpl });
     document.getElementById("confirm-btn").click();
     for (let i = 0; i < 20; i++) await Promise.resolve();
-    expect(document.getElementById("error-text").textContent).toMatch(/invalid or has expired/);
+    // sir-approved calm error copy 2026-08-16 (unsubscribe.js?v=20260816a) replaced "invalid link" wording.
+    expect(document.getElementById("error-text").textContent).toMatch(/expired or doesn't work anymore/);
   });
 
-  test("network error → 'Something went wrong' message", async () => {
+  test("network error → specific couldn't-update message (no banned generic copy)", async () => {
+    // Behaviour change 2026-08-03 (owner's zero-developer-remarks rule): the banned
+    // "Something went wrong" copy was replaced with a specific, actionable sentence.
     const fetchImpl = async () => { throw new Error("net"); };
     loadModule({ search: VALID_PARAMS, fetch: fetchImpl });
     document.getElementById("confirm-btn").click();
     await Promise.resolve(); await Promise.resolve();
     await Promise.resolve(); await Promise.resolve();
-    expect(document.getElementById("error-text").textContent).toMatch(/Something went wrong/);
+    const txt = document.getElementById("error-text").textContent;
+    expect(txt).toMatch(/couldn't update your email preference/);
+    expect(txt).not.toMatch(/Something went wrong/);
   });
 
   test("confirm button is disabled mid-flight + shows Processing…", async () => {

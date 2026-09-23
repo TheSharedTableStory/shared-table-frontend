@@ -12,15 +12,18 @@ function renderWaysToConnectCarousel() {
 
   const El = window.tstsEl;
   const safeImg = window.tstsSafeImg;
-  const cats = window.TSTS_CATEGORIES.slice(0);
+  const cats = window.TSTS_CATEGORIES.slice(0).filter(function (c) {
+    return c && String(c.slug || "").trim();
+  });
+  if (!cats.length) return;
 
   wrap.textContent = "";
 
   const cards = [];
 
-  cats.forEach((c) => {
+  // Build one fully-wired category card (its own listeners, so every loop copy works).
+  function buildCard(c) {
     const slug = String(c.slug || "").trim();
-    if (!slug) return;
 
     const details = El("details", {
       className: "tsts-cat-card group relative flex-shrink-0 h-96 rounded-2xl overflow-hidden shadow-lg bg-gray-900",
@@ -34,17 +37,16 @@ function renderWaysToConnectCarousel() {
 
     const overlay = El("div", { className: "tsts-cat-overlay absolute inset-0 z-10" });
 
-    const header = El("div", { className: "tsts-cat-header absolute bottom-0 left-0 p-6 z-20 text-white", style: "text-shadow: 0 1px 4px rgba(0,0,0,0.5)" }, [
-      El("div", { className: "flex items-center gap-2 mb-2" }, [
+    const header = El("div", { className: "tsts-cat-header absolute bottom-0 left-0 p-6 z-20 text-white" }, [
+      El("h3", { className: "text-2xl font-bold serif mb-2 flex items-center gap-2" }, [
         El("span", { className: "inline-flex items-center justify-center w-9 h-9 rounded-full tsts-glass-circle", }, [
-          El("i", { className: "fas " + String(c.icon || "fa-compass") })
+          El("i", { className: "fas " + String(c.icon || "fa-compass"), "aria-hidden": "true" })
         ]),
-        El("span", { className: "text-xs font-bold tracking-wide uppercase text-white", textContent: "Category" })
+        El("span", { textContent: String(c.label || "") })
       ]),
-      El("h3", { className: "text-2xl font-bold serif mb-2", textContent: String(c.label || "") }),
-      El("p", { className: "text-sm opacity-90 font-light", textContent: String(c.teaser || "") }),
-      El("div", { className: "mt-4 inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full tsts-glass-pill", }, [
-        El("i", { className: "fas fa-info-circle" }),
+      El("p", { className: "tsts-cat-sub text-sm opacity-90 font-light", textContent: String(c.teaser || "") }),
+      El("div", { className: "tsts-cat-readmore mt-4 inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full tsts-glass-pill", }, [
+        El("i", { className: "fas fa-info-circle", "aria-hidden": "true" }),
         El("span", { textContent: "Read more" })
       ])
     ]);
@@ -55,7 +57,6 @@ function renderWaysToConnectCarousel() {
       header
     ]);
 
-    // z-30 does not exist in our compiled Tailwind; use z-50 so expanded CTA sits above the summary header.
     const more = El("div", { className: "tsts-cat-more absolute inset-x-0 bottom-0 z-50 p-6 text-white" }, [
       El("div", { className: "rounded-2xl tsts-glass-backdrop px-5 py-4 shadow-xl" }, [
         El("p", { className: "text-sm text-white leading-relaxed", textContent: String(c.blurb || "") }),
@@ -70,7 +71,7 @@ function renderWaysToConnectCarousel() {
           El("button", {
             type: "button",
             className: "inline-flex items-center gap-2 tsts-btn-glass px-4 py-2.5 rounded-xl font-bold text-sm transition",
-            onclick: function() { details.open = false; }
+            onclick: function () { details.open = false; }
           }, [
             El("span", { textContent: "Close" })
           ])
@@ -78,8 +79,45 @@ function renderWaysToConnectCarousel() {
       ])
     ]);
 
-    // Ensure only one expanded card at a time (keeps the carousel tidy).
+    // sir 2026-08-09: on open the heading STAYS and rises — the sub header and the
+    // Read more pill give way, and the detail block takes their place directly under
+    // it, so the card reads heading -> details -> buttons. Before this, the panel was
+    // an overlay pinned to the same bottom edge at z-50 and simply covered the header
+    // (heading included), which is why the heading appeared to vanish. Both blocks are
+    // still anchored to the bottom, so the header is lifted by the panel's own height.
+    function applyOpenState() {
+      const sub = header.querySelector(".tsts-cat-sub");
+      const pill = header.querySelector(".tsts-cat-readmore");
+      const h = header.querySelector("h3");
+      if (details.open) {
+        if (sub) sub.style.display = "none";
+        if (pill) pill.style.display = "none";
+        // sir's words: the heading sits JUST ABOVE the expanded details, the two
+        // reading as one block. The panel's outer inset tightens to 16px so the pair
+        // sits lower in the card and the heading is not driven up into the arrow;
+        // that same 16px is the breathing space between the heading and the box.
+        // 16px top/bottom pulls the pair lower and clear of the arrow; 24px left/right
+        // keeps the box on the same left edge as the heading above it.
+        more.style.padding = "16px 24px";
+        header.style.paddingBottom = "0px";
+        if (h) h.style.marginBottom = "0px";
+        header.style.bottom = more.offsetHeight + "px";
+      } else {
+        if (sub) sub.style.display = "";
+        if (pill) pill.style.display = "";
+        more.style.padding = "";
+        header.style.paddingBottom = "";
+        header.style.bottom = "";
+        if (h) h.style.marginBottom = "";
+      }
+    }
+    // Exposed so one shared resize handler can re-measure every open card: the panel's
+    // height changes when its text rewraps, and a stale lift would re-overlap the heading.
+    details.__tstsApplyOpenState = applyOpenState;
+
+    // Only one card expanded at a time across all copies.
     details.addEventListener("toggle", function () {
+      applyOpenState();
       if (!details.open) return;
       for (const d of cards) {
         if (d !== details) d.open = false;
@@ -88,33 +126,90 @@ function renderWaysToConnectCarousel() {
 
     details.appendChild(summary);
     details.appendChild(more);
-    cards.push(details);
-    wrap.appendChild(details);
+    return details;
+  }
+
+  // Infinite loop: render 3 consecutive copies of the category set and keep the
+  // viewport parked on the middle copy. Scrolling past either edge lands on an
+  // identical clone, then we silently re-center across the seam, so the carousel
+  // has no visible start or end (every card carries equal weight). One category
+  // has nothing to loop, so it renders once.
+  const N = cats.length;
+  const loop = N > 1;
+  const copies = loop ? 3 : 1;
+  for (let r = 0; r < copies; r++) {
+    cats.forEach(function (c) {
+      const card = buildCard(c);
+      cards.push(card);
+      wrap.appendChild(card);
+    });
+  }
+
+  // Distance from one card to the next (card width + gap), measured live.
+  function step() {
+    if (cards.length < 2) return Math.max(1, Math.round(wrap.clientWidth * 0.8));
+    const p = cards[1].offsetLeft - cards[0].offsetLeft;
+    return p > 0 ? p : Math.max(1, Math.round(wrap.clientWidth * 0.8));
+  }
+
+  // Re-center onto the middle copy (no animation; invisible because copies match),
+  // keeping a full set of cards available on both sides for a seamless wrap.
+  function recenter() {
+    if (!loop) return;
+    const setW = N * step();
+    if (setW <= 0) return;
+    const sl = wrap.scrollLeft;
+    if (sl < setW) {
+      wrap.scrollLeft = sl + setW;
+    } else if (sl >= setW * 2) {
+      wrap.scrollLeft = sl - setW;
+    }
+  }
+
+  // Park on the middle copy once layout (and thus the pitch) is known.
+  function center() {
+    if (!loop) { try { wrap.scrollLeft = 0; } catch (_) {} return; }
+    try { wrap.scrollLeft = N * step(); } catch (_) {}
+  }
+  if (window.requestAnimationFrame) {
+    requestAnimationFrame(function () { requestAnimationFrame(center); });
+  } else {
+    setTimeout(center, 60);
+  }
+
+  // Re-center after any scroll settles (arrow click, swipe, or auto-advance).
+  if (loop) {
+    let settleTimer = 0;
+    function settle() {
+      if (settleTimer) clearTimeout(settleTimer);
+      settleTimer = setTimeout(recenter, 140);
+    }
+    if ("onscrollend" in wrap) {
+      try { wrap.addEventListener("scrollend", recenter); } catch (_) {}
+    }
+    try { wrap.addEventListener("scroll", settle, { passive: true }); } catch (_) {}
+  }
+
+  // One handler for all copies: the open card's panel rewraps when the window changes,
+  // so its lift is re-measured rather than left stale (sir's window is never fixed).
+  window.addEventListener("resize", function () {
+    for (const d of cards) {
+      if (d && d.open === true && typeof d.__tstsApplyOpenState === "function") {
+        d.__tstsApplyOpenState();
+      }
+    }
   });
 
-  // Reset scroll so the first render never lands in blank trailing space
-  // after a resize or restored scroll position.
-  try { wrap.scrollLeft = 0; } catch (_) {}
-
-  initCarouselAutoAdvance(wrap, cards);
-  initCarouselManualNav(wrap, cards);
+  initCarouselAutoAdvance(wrap, cards, step);
+  initCarouselManualNav(wrap, cards, step);
 }
 
-function initCarouselManualNav(container, cards) {
+function initCarouselManualNav(container, cards, getStep) {
   if (!container || !Array.isArray(cards) || cards.length < 1) return;
 
   const prevBtn = document.getElementById("ways-to-connect-prev");
   const nextBtn = document.getElementById("ways-to-connect-next");
   if (!prevBtn && !nextBtn) return;
-
-  function currentIndex() {
-    const left = Number(container.scrollLeft || 0);
-    let idx = 0;
-    for (let i = 0; i < cards.length; i++) {
-      if (cards[i] && typeof cards[i].offsetLeft === "number" && cards[i].offsetLeft <= (left + 10)) idx = i;
-    }
-    return idx;
-  }
 
   function closeAll() {
     for (const d of cards) {
@@ -124,11 +219,10 @@ function initCarouselManualNav(container, cards) {
 
   function go(delta) {
     if (cards.length < 2) return;
-    const idx = currentIndex();
-    const next = (idx + delta + cards.length) % cards.length;
-    const target = cards[next];
-    if (!target) return;
-    container.scrollTo({ left: target.offsetLeft, behavior: "smooth" });
+    // Two cards per click; the loop re-center makes the wrap seamless, so a left
+    // click on the first card slides the last card in from the left (round motion).
+    const px = (typeof getStep === "function" ? getStep() : 0) || Math.round(container.clientWidth * 0.8);
+    container.scrollBy({ left: delta * 2 * px, behavior: "smooth" });
   }
 
   if (prevBtn) {
@@ -159,10 +253,10 @@ function initCarouselManualNav(container, cards) {
   });
 }
 
-function initCarouselAutoAdvance(container, cards) {
+function initCarouselAutoAdvance(container, cards, getStep) {
   if (!container || !Array.isArray(cards) || cards.length < 2) return;
 
-  const AUTO_MS = 90000; // 1.5 min (within the 1–2 minute requirement)
+  const AUTO_MS = 30000; // owner-set 2026-05-23: auto-advance every 30s
   let pauseUntil = 0;
 
   function pause(ms) {
@@ -176,133 +270,27 @@ function initCarouselAutoAdvance(container, cards) {
   try { container.addEventListener("mouseenter", () => pause(120000)); } catch (_) {}
   try { container.addEventListener("scroll", () => pause(20000), { passive: true }); } catch (_) {}
 
-  function currentIndex() {
-    const left = Number(container.scrollLeft || 0);
-    let idx = 0;
-    for (let i = 0; i < cards.length; i++) {
-      if (cards[i] && typeof cards[i].offsetLeft === "number" && cards[i].offsetLeft <= (left + 10)) idx = i;
-    }
-    return idx;
-  }
-
   setInterval(function () {
     try {
       if (document.hidden) return;
       if (Date.now() < pauseUntil) return;
       if (cards.some((d) => d && d.open === true)) return;
 
-      const idx = currentIndex();
-      const next = (idx + 1) % cards.length;
-      const target = cards[next];
-      if (!target) return;
-      container.scrollTo({ left: target.offsetLeft, behavior: "smooth" });
+      // Advance one card; the loop re-center keeps it endless.
+      const px = (typeof getStep === "function" ? getStep() : 0) || Math.round(container.clientWidth * 0.8);
+      container.scrollBy({ left: px, behavior: "smooth" });
     } catch (_) {
       return;
     }
   }, AUTO_MS);
 }
 
-async function loadHomeCurations() {
-  const section = document.getElementById("home-curations");
-  const list = document.getElementById("home-curations-list");
-  if (!section || !list) return;
-
-  if (!hasSessionHint()) return;
-
-  try {
-    const res = await window.authFetch("/api/curations", { method: "GET" });
-    if (!res || !res.ok) return;
-
-    const payload = await res.json();
-    const curData = (payload && payload.data) ? payload.data : payload;
-    const collections = curData && Array.isArray(curData.collections) ? curData.collections : [];
-    if (collections.length <= 0) return;
-
-    section.classList.remove("hidden");
-
-    const top3 = collections.slice(0, 3);
-    list.textContent = "";
-
-    top3.forEach((c) => list.appendChild(renderCurationTile(c)));
-
-    list.appendChild(renderExploreMoreTile());
-  } catch (_) {
-    return;
-  }
-}
-
-function renderCurationTile(c) {
-  const El = window.tstsEl;
-  const filters = (c && c.filters && typeof c.filters === "object") ? c.filters : {};
-  const href = buildExploreHref(filters);
-
-  const title = String((c && c.title) || "").trim();
-  const subtitle = String((c && c.subtitle) || "").trim();
-
-  return El("a", {
-    href,
-    className: "bg-white px-4 py-3 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition cursor-pointer group flex items-center gap-3"
-  }, [
-    El("div", { className: "flex-1" }, [
-      El("h3", { className: "text-sm font-bold font-serif text-gray-900", textContent: title || "Explore" }),
-    ]),
-    El("div", { className: "flex items-center text-xs font-bold text-orange-600 whitespace-nowrap", textContent: "Browse →" })
-  ]);
-}
-
-function renderExploreMoreTile() {
-  const El = window.tstsEl;
-  return El("a", {
-    href: "explore.html",
-    className: "bg-white px-4 py-3 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition cursor-pointer group flex items-center gap-3"
-  }, [
-    El("div", { className: "flex-1" }, [
-      El("h3", { className: "text-sm font-bold font-serif text-gray-900", textContent: "Explore more experiences →" }),
-    ]),
-    El("div", { className: "flex items-center text-xs font-bold text-orange-600 whitespace-nowrap", textContent: "Explore →" })
-  ]);
-}
-
-function buildExploreHref(filters) {
-  const p = new URLSearchParams();
-  if (filters.q) p.set("q", String(filters.q));
-  if (filters.city) p.set("city", String(filters.city));
-  if (filters.category) {
-    const raw = String(filters.category);
-    const norm = (window.tstsNormalizeCategory && typeof window.tstsNormalizeCategory === "function")
-      ? window.tstsNormalizeCategory(raw)
-      : raw;
-    if (norm) p.set("category", String(norm));
-  }
-  if (filters.minPrice != null) p.set("minPrice", String(filters.minPrice));
-  if (filters.maxPrice != null) p.set("maxPrice", String(filters.maxPrice));
-  if (filters.date) p.set("date", String(filters.date));
-  return "explore.html?" + p.toString();
-}
-
-// --- 3. RECOMMENDATIONS & DEALS ---
-async function updateMaxDiscountBanner() {
-  const bannerEl = document.getElementById("max-discount-banner");
-  if (!bannerEl) return;
-
-  try {
-      const res = await window.authFetch("/api/experiences");
-      const envelope = await res.json();
-      const experiences = (envelope && Array.isArray(envelope.data)) ? envelope.data : (Array.isArray(envelope) ? envelope : []);
-
-      let maxDiscount = 0;
-      experiences.forEach(exp => {
-          if (exp.dynamicDiscounts) {
-              const vals = Object.values(exp.dynamicDiscounts);
-              if (vals.length > 0) maxDiscount = Math.max(maxDiscount, ...vals);
-          }
-      });
-
-      if (maxDiscount > 0) {
-        bannerEl.textContent = `Discover hosts offering up to ${maxDiscount}% off for groups this week.`;
-      }
-  } catch(e) { console.warn("[TSTS] Banner load failed:", e); }
-}
+// --- 3. RECOMMENDATIONS ---
+// sir's ruling 2026-08-10: updateMaxDiscountBanner was removed with its section. It read
+// a discount shape the platform had abandoned (Math.max over tier OBJECTS → NaN), so the
+// strip had never rendered once — sir froze P1 without ever seeing it, which under sir's
+// own standard means it was never approved. Deals speak on the 🔥Deals page, where the
+// locked tier logic actually works.
 
 async function loadHomeRecommendations() {
   const section = document.getElementById("home-recommend");
@@ -324,88 +312,50 @@ async function loadHomeRecommendations() {
     const unwrapped = (payload && payload.data !== undefined) ? payload.data : payload;
     const items = Array.isArray(unwrapped) ? unwrapped : (unwrapped && unwrapped.experiences) ? unwrapped.experiences : (unwrapped && unwrapped.items) ? unwrapped.items : [];
     const recs = items.slice(0, 4);
-    if (recs.length > 0) {
-      section.classList.remove("hidden");
-      // Update heading based on auth state
-      if (!hasSessionHint()) {
-        var h2 = section.querySelector("h2");
-        var subtitle = section.querySelector("p");
-        if (h2) h2.textContent = "Popular Experiences";
-        if (subtitle) subtitle.textContent = "Discover what travellers are loving right now.";
-      }
-      list.textContent = "";
-      recs.forEach(function(exp) {
-        list.appendChild(renderCard(exp));
-      });
+    // sir's decision 2026-09-13: having nothing to recommend is a real state, not a
+    // failure to dress up. The cards are built FIRST and the section is revealed only if
+    // a real one exists — so the row can never be a heading standing over a hole, and it
+    // never invents a filler card to stand in for a recommendation the platform does not
+    // have. With nothing real to show the section stays out of the page entirely, which
+    // is how this page has always treated this row.
+    // sir's order 2026-08-09: these cards are the SAME full rich card as Explore, and
+    // the price follows the currency the listing was posted in. Both come from the one
+    // shared renderer in common.js — P1 previously drew its own slim card with a
+    // hardcoded "$", which is how an AUD listing came to read "$85.00" instead of A$.
+    const cards = [];
+    recs.forEach(function (exp, i) {
+      var card = window.tstsRenderExperienceCard(exp, { idx: i + 1 });
+      if (card) cards.push(card);
+    });
+    list.textContent = "";
+    if (cards.length === 0) {
+      section.classList.add("hidden");
+      return;
     }
+    section.classList.remove("hidden");
+    // Update heading based on auth state
+    if (!hasSessionHint()) {
+      var h2 = section.querySelector("h2");
+      var subtitle = section.querySelector("p");
+      if (h2) h2.textContent = "Popular Experiences";
+      if (subtitle) subtitle.textContent = "Discover what travellers are loving right now.";
+    }
+    cards.forEach(function (card) { list.appendChild(card); });
   } catch(e) {
+    // A row that could not load is not a recommendation either: leave the section out of
+    // the page rather than leave an empty band under its heading.
+    try { section.classList.add("hidden"); list.textContent = ""; } catch (_) {}
     console.warn("[TSTS] Recommendations load failed:", e);
   }
 }
 
-function renderCard(exp) {
-    const El = window.tstsEl;
-    const fallbackImg = "/assets/experience-default.jpg";
-    let imgSrc = fallbackImg;
-    if (exp.imageUrl && exp.imageUrl.includes("cloudinary.com")) {
-        imgSrc = exp.imageUrl.replace('/upload/', '/upload/w_400,h_300,c_fill,q_auto/');
-    } else if (exp.imageUrl) {
-        imgSrc = window.tstsSafeUrl(exp.imageUrl, fallbackImg);
-    }
-
-    const avg = (exp && typeof exp.averageRating === 'number') ? exp.averageRating : 0;
-    const rating = avg > 0 ? "★ " + avg.toFixed(1) : "New";
-    const expId = (exp && (exp._id || exp.id)) || "";
-    const isStarterTitle = (raw) => {
-      const t = String(raw || "").trim();
-      if (!t) return false;
-      return /^WORLDCLASS_STARTER_/i.test(t) || /^starter[_\-\s]/i.test(t);
-    };
-    const stripWorldClassPrefix = (raw) => String(raw || "").trim().replace(/^world[\s_-]*class\s*[:\-]?\s*/i, "").trim();
-    const title = (function() {
-      const raw = String(exp.title || "").trim();
-      const debranded = stripWorldClassPrefix(raw);
-      if (debranded) return debranded;
-      if (raw && !isStarterTitle(raw)) return raw;
-      return "Shared experience";
-    })();
-    const city = exp.city || "";
-    const tagsRaw = (exp && Array.isArray(exp.tags)) ? exp.tags : [];
-    const labels = tagsRaw
-      .map((t) => (window.tstsCategoryLabel ? window.tstsCategoryLabel(t) : String(t || "").trim()))
-      .map((t) => String(t || "").trim())
-      .filter((t) => t);
-    const tag = labels.length ? labels.slice(0, 2).join(" · ") : "Experience";
-    const priceRaw = (exp && (typeof exp.price === 'number' || typeof exp.price === 'string')) ? Number(exp.price || 0) : 0;
-    const price = priceRaw ? "$" + priceRaw.toFixed(2) + " /person" : "";
-
-    var imgEl = El("img", { className: "w-full h-full object-cover group-hover:scale-105 transition duration-500", loading: "lazy" });
-    window.tstsSafeImg(imgEl, imgSrc, fallbackImg);
-
-    var card = El("div", {
-        className: "bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition cursor-pointer group",
-        onclick: function() { window.location.href = "experience.html?id=" + encodeURIComponent(expId); }
-    }, [
-        El("div", { className: "h-48 bg-gray-200 relative overflow-hidden" }, [
-            imgEl,
-            El("div", { className: "absolute top-3 right-3 bg-white/90 backdrop-blur rounded-full px-2 py-1 text-xs font-bold shadow-sm", textContent: rating })
-        ]),
-        El("div", { className: "p-4" }, [
-            El("h3", { className: "font-bold text-gray-900 mb-1 line-clamp-2", textContent: title, title: title }),
-            El("p", { className: "text-xs text-gray-500 mb-3", textContent: city + " • " + tag }),
-            El("div", { className: "flex justify-between items-center border-t border-gray-50 pt-3" }, [
-                El("span", { className: "font-bold text-gray-900", textContent: price }),
-                El("span", { className: "text-xs text-orange-600 font-bold uppercase tracking-wide group-hover:underline", textContent: "View" })
-            ])
-        ])
-    ]);
-    return card;
-}
+// sir's ruling 2026-08-15 ("delete it"): the old slim card renderer (renderCard) that the
+// 2026-08-09 rich-card order replaced was still sitting here with zero callers — dead code
+// on the frozen page. Removed permanently under sir's word; the row renders only through
+// window.tstsRenderExperienceCard (common.js).
 
 // --- INIT ---
 document.addEventListener("DOMContentLoaded", () => {
   renderWaysToConnectCarousel();
-  updateMaxDiscountBanner();
   loadHomeRecommendations();
-  loadHomeCurations();
 });

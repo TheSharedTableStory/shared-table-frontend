@@ -10,6 +10,7 @@
   var pageUrlEl = document.getElementById("reportPageUrl");
   var messageEl = document.getElementById("reportMessage");
   var msgCounter = document.getElementById("report-msg-counter");
+  var msgTotal = document.getElementById("report-msg-total");
   var phoneInput = document.getElementById("reportPhone");
   var submitBtn = document.getElementById("report-submit-btn");
   var nextBtn1 = document.getElementById("report-next-1");
@@ -20,6 +21,14 @@
       if (!window.tstsGetSession) throw new Error("missing_session_helper");
       var sess = await window.tstsGetSession({ force: true });
       if (sess && sess.ok && sess.user) return true;
+      // A rate-limit is not a signed-out user. tstsGetSession only protects against this when a
+      // good session is already cached, so a FIRST load that hits the limit used to throw a
+      // genuinely signed-in person out to the login page — while they were trying to report
+      // something. Wait and retry instead of evicting them.
+      if (sess && Number(sess.status) === 429) {
+        setAlert("error", "We're a bit busy right now. Give it a moment and refresh this page — nothing you typed is lost.");
+        return false;
+      }
     } catch (_) {}
     var returnTarget = String((location.pathname || "report.html") + (location.search || "")).replace(/^\//, "");
     var returnTo = encodeURIComponent(returnTarget || "report.html");
@@ -90,10 +99,16 @@
         cards.forEach(function (c) {
           c.classList.remove("border-tsts-clay", "bg-orange-50");
           c.classList.add("border-slate-200");
+          // F181: selection was conveyed by colour alone, so a screen reader could not tell
+          // which category was chosen on a moderation flow. Keep ARIA in step with the paint.
+          c.setAttribute("aria-pressed", "false");
         });
         card.classList.remove("border-slate-200");
         card.classList.add("border-tsts-clay", "bg-orange-50");
+        card.setAttribute("aria-pressed", "true");
         __selectedCategory = card.getAttribute("data-report-category") || "";
+        // WALK-P44-1: the category tag is part of what is sent, so the budget moves with it.
+        applyMessageBudget();
         if (nextBtn1) nextBtn1.disabled = false;
       });
     });
@@ -107,8 +122,59 @@
           if (radio.value === "phone") phoneInput.classList.remove("hidden");
           else phoneInput.classList.add("hidden");
         }
+        // WALK-P44-1: the contact note is part of what is sent, so the budget moves with it.
+        applyMessageBudget();
       });
     });
+  }
+
+  // WALK-P44-1: the platform stores at most 2,000 characters for a report, and this form used to
+  // let a person fill all 2,000 and THEN append the category tag and the contact note on top, so
+  // the combined text went over and the server's own safety-net trim silently cut the tail: the
+  // reporter's phone number. Reserving room for the tag and the note instead moved the loss onto
+  // the reporter's own words, which is worse, and the screen still promised 2,000 either way.
+  // Nothing is cut now and nothing is promised that is not true: the tag and the note are measured
+  // first, whatever is left is the real budget, the counter shows THAT number, the box stops at it,
+  // and if a change shrinks the budget under what is already typed the person is told, not trimmed.
+  var MESSAGE_CAP = 2000; // matches the platform's own cap for the stored report text
+
+  function categoryPrefix() {
+    return (__selectedCategory === "inaccurate") ? "[Category: Inaccurate or misleading information]\n" : "";
+  }
+
+  function contactSuffix() {
+    var radio = document.querySelector("input[name='reportContact']:checked");
+    var pref = radio ? radio.value : "";
+    if (pref !== "phone" || !phoneInput) return "";
+    var phone = String(phoneInput.value || "").trim();
+    return phone ? ("\n\n[Contact preference: phone, " + phone + "]") : "";
+  }
+
+  function messageBudget() {
+    var room = MESSAGE_CAP - categoryPrefix().length - contactSuffix().length;
+    return room < 0 ? 0 : room;
+  }
+
+  // The refusal used to name a phone number and a category tag every time, whether or not either
+  // was there, so a person who had given no number read that their number was taking up the room.
+  // This names only what really is.
+  function budgetReason() {
+    var hasTag = categoryPrefix().length > 0;
+    var hasPhone = contactSuffix().length > 0;
+    if (hasTag && hasPhone) return "Your phone number and the category tag are sent with this report";
+    if (hasPhone) return "Your phone number is sent with this report";
+    if (hasTag) return "The category tag is sent with this report";
+    return "Your description is sent with this report";
+  }
+
+  function applyMessageBudget() {
+    var room = messageBudget();
+    if (messageEl) messageEl.maxLength = room;
+    if (msgTotal) msgTotal.textContent = String(room);
+    if (messageEl && msgCounter) msgCounter.textContent = String(messageEl.value.length);
+    if (messageEl && messageEl.value.length > room) {
+      setAlert("error", budgetReason() + ", so there is room for " + room + " characters of your description. Please shorten it by " + (messageEl.value.length - room) + " characters.");
+    }
   }
 
   function initMessageCounter() {
@@ -117,6 +183,8 @@
         msgCounter.textContent = String(messageEl.value.length);
       });
     }
+    if (phoneInput) phoneInput.addEventListener("input", applyMessageBudget);
+    applyMessageBudget();
   }
 
   async function submitReport() {
@@ -126,22 +194,23 @@
       return;
     }
 
-    // Build category — map "inaccurate" to "other" for backend compat (backend only accepts 5 values)
+    // Build category, map "inaccurate" to "other" for backend compat (backend only accepts 5 values)
     var catMap = { safety: "safety", spam: "spam", harassment: "harassment", fraud: "fraud", inaccurate: "other", other: "other" };
     var category = catMap[__selectedCategory] || "other";
 
-    // Build message with extras
-    var fullMessage = msg;
-    var contactPref = "";
-    var contactRadio = document.querySelector("input[name='reportContact']:checked");
-    if (contactRadio) contactPref = contactRadio.value;
-    if (contactPref === "phone" && phoneInput) {
-      var phone = String(phoneInput.value || "").trim();
-      if (phone) fullMessage += "\n\n[Contact preference: phone — " + phone + "]";
+    // WALK-P44-1: the category tag and the contact note are measured FIRST and the description is
+    // fitted into what is left, never the other way round. Nothing a person deliberately chose to
+    // add is ever the part that goes missing, and if there is not enough room they are told so and
+    // the report is not sent, rather than being trimmed behind their back.
+    var prefix = categoryPrefix();
+    var suffix = contactSuffix();
+    var room = messageBudget();
+    if (msg.length > room) {
+      setAlert("error", budgetReason() + ", so there is room for " + room + " characters of your description. Please shorten it by " + (msg.length - room) + " characters and send it again.");
+      applyMessageBudget();
+      return;
     }
-    if (__selectedCategory === "inaccurate") {
-      fullMessage = "[Category: Inaccurate or misleading information]\n" + fullMessage;
-    }
+    var fullMessage = prefix + msg + suffix;
 
     var payload = {
       targetType: targetTypeEl ? String(targetTypeEl.value || "").trim() : "",
@@ -150,8 +219,9 @@
       message: fullMessage
     };
 
-    if (!payload.targetId) {
-      setAlert("error", "To report an issue, use the report button on the relevant experience or profile page.");
+    // A platform report carries no target by design; everything else must name one.
+    if (payload.targetType !== "platform" && !payload.targetId) {
+      warnIfNothingToReportAbout();
       return;
     }
 
@@ -172,7 +242,7 @@
 
       showStep(3);
     } catch (err) {
-      setAlert("error", (err && err.message) ? err.message : "Something went wrong. Please try again.");
+      setAlert("error", (err && err.message) ? err.message : "We couldn't send your report just now. Please try again.");
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
@@ -200,6 +270,65 @@
     });
   }
 
+  // A report has to be ABOUT something — the server needs the listing, person or booking being
+  // reported, OR the explicit "platform" type for a concern that is not tied to either. Reached
+  // from an experience or a profile, the target comes in on the URL. Reached from the footer link
+  // (which sits on every page) or from the help centre, nothing comes in — and the old behaviour
+  // let the reporter choose a category, write out what happened, press Submit, and only THEN be
+  // told to go and find a different button. There was no way at all to report the platform itself.
+  // Now the first question is what the report is about, and neither answer is a dead end.
+  function hasRealTarget() {
+    return !!(targetIdEl && /^[0-9a-fA-F]{24}$/.test(String(targetIdEl.value || "").trim()));
+  }
+
+  function warnIfNothingToReportAbout() {
+    if (hasRealTarget()) return;
+    setAlert(
+      "error",
+      "Tell us what this report is about first, so it reaches the right people."
+    );
+  }
+
+  function initAboutStep() {
+    var aboutBlock = document.getElementById("report-about");
+    var catBlock = document.getElementById("report-categories-block");
+    var specificHelp = document.getElementById("report-about-specific-help");
+    if (!aboutBlock || !catBlock) return;
+
+    // Arrived from a listing or a profile: the target is already known, nothing to ask.
+    if (hasRealTarget()) return;
+
+    aboutBlock.classList.remove("hidden");
+    catBlock.classList.add("hidden");
+    // The step marker at the top must agree with the question actually on screen. While the
+    // about-step is showing, step 1 IS "what is this about?"; it returns to the wizard's own
+    // wording the moment the reporter chooses. A label contradicting the heading under it is
+    // exactly the kind of small mismatch that reads as unfinished.
+    var step1Label = document.querySelector("[data-report-step-label='1']");
+    var step1LabelDefault = step1Label ? step1Label.textContent : "";
+    if (step1Label) step1Label.textContent = "1. What is this about?";
+
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-report-about]");
+      if (!btn) return;
+      var choice = btn.getAttribute("data-report-about");
+      if (choice === "specific") {
+        if (specificHelp) specificHelp.classList.remove("hidden");
+        return;
+      }
+      if (choice === "platform") {
+        // The server accepts this type with no target id; the report goes to the same
+        // moderation queue and the reporter gets the same reference back.
+        if (targetTypeEl) targetTypeEl.value = "platform";
+        if (targetIdEl) targetIdEl.value = "";
+        aboutBlock.classList.add("hidden");
+        catBlock.classList.remove("hidden");
+        if (step1Label && step1LabelDefault) step1Label.textContent = step1LabelDefault;
+        clearAlert();
+      }
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", async function () {
     if (!(await requireAuth())) return;
     fillFromUrl();
@@ -207,5 +336,6 @@
     initContactToggle();
     initMessageCounter();
     initNavigation();
+    initAboutStep();
   });
 })();

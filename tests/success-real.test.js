@@ -9,10 +9,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const SRC = readFileSync(resolve(__dirname, "..", "js", "success.js"), "utf-8");
+// UPDATED for gap 12 (sir's decision O-94, "fix it using Opus agent"): the copy routine now lives in js/common.js, so the real shared script is loaded here alongside success.js.
+const COMMON_SRC = readFileSync(resolve(__dirname, "..", "js", "common.js"), "utf-8");
 
 function buildDom() {
   document.body.innerHTML = `
-    <div id="loading-state"></div>
+    <div id="loading-state"><p></p></div>
     <div id="success-state" class="hidden">
       <img id="success-exp-image" alt="" />
       <h2 id="success-exp-title"></h2>
@@ -48,6 +50,8 @@ function loadSuccess(opts) {
   opts = opts || {};
   cleanupDocHandlers();
   buildDom();
+  // eslint-disable-next-line no-eval
+  (0, eval)(COMMON_SRC);
 
   Object.defineProperty(window, "location", {
     value: {
@@ -102,6 +106,10 @@ async function fireDOMReady() {
   for (let i = 0; i < 25; i++) await Promise.resolve();
 }
 
+// Accessor for tests that must start the handler WITHOUT awaiting it (the
+// transient-retry tests assert mid-flight state; awaiting would take ~90s).
+function __capturedDOMHandlerRef() { return __capturedDOMHandler; }
+
 describe("success — guards", () => {
   beforeEach(() => { vi.restoreAllMocks(); });
 
@@ -109,7 +117,9 @@ describe("success — guards", () => {
     loadSuccess({ search: "" });
     await fireDOMReady();
     expect(document.getElementById("error-state").classList.contains("hidden")).toBe(false);
-    expect(document.getElementById("error-message").textContent).toMatch(/missing booking information/i);
+    // UPDATED 2026-08-05: sir's ZERO-DEVELOPER-REMARKS copy replaced the jargon-y
+    // "missing booking information" with a human sentence telling the guest what to do.
+    expect(document.getElementById("error-message").textContent).toMatch(/doesn't carry your booking details/i);
   });
 });
 
@@ -174,25 +184,35 @@ describe("success — verify flow", () => {
     expect(document.getElementById("error-message").textContent).toMatch(/PAYMENT_PENDING/);
   });
 
-  test("verify returns status !== confirmed/paid → error", async () => {
+  // Behaviour change 2026-08-03 (owner, Item 2): a not-yet-final verify status and a
+  // 5xx are TRANSIENT — the page keeps the loading state with keeps-checking copy and
+  // auto-retries with backoff, instead of showing an error to a guest who just paid.
+  // Only 400/403/404 are final. These two tests assert the in-flight state without
+  // awaiting the retry loop (which would take ~90s of real timers).
+  test("verify returns status !== confirmed/paid → stays checking, no error", async () => {
     loadSuccess({
       search: "?sessionId=cs_test_3",
       authFetch: async () => ({
         ok: true, status: 200, json: async () => ({ ok: true, data: { status: "pending" } }),
       }),
     });
-    await fireDOMReady();
-    expect(document.getElementById("error-state").classList.contains("hidden")).toBe(false);
-    expect(document.getElementById("error-message").textContent).toMatch(/not confirmed/i);
+    if (typeof __capturedDOMHandlerRef() === "function") __capturedDOMHandlerRef()();
+    for (let i = 0; i < 25; i++) await Promise.resolve();
+    expect(document.getElementById("error-state").classList.contains("hidden")).toBe(true);
+    expect(document.getElementById("loading-state").classList.contains("hidden")).toBe(false);
+    expect(document.getElementById("loading-state").textContent).toMatch(/keeps checking/);
   });
 
-  test("HTTP non-ok on verify → error", async () => {
+  test("HTTP 500 on verify → stays checking, no error", async () => {
     loadSuccess({
       search: "?sessionId=cs_test_4",
       authFetch: async () => ({ ok: false, status: 500, json: async () => ({}) }),
     });
-    await fireDOMReady();
-    expect(document.getElementById("error-state").classList.contains("hidden")).toBe(false);
+    if (typeof __capturedDOMHandlerRef() === "function") __capturedDOMHandlerRef()();
+    for (let i = 0; i < 25; i++) await Promise.resolve();
+    expect(document.getElementById("error-state").classList.contains("hidden")).toBe(true);
+    expect(document.getElementById("loading-state").classList.contains("hidden")).toBe(false);
+    expect(document.getElementById("loading-state").textContent).toMatch(/keeps checking/);
   });
 
   test("my-bookings 401 → fallback summary (Booking confirmed)", async () => {

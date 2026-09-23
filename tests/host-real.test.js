@@ -58,11 +58,10 @@ function buildDom() {
       <p id="pricing-private-summary"></p>
       <p id="pricing-host-charge-note"></p>
       <p id="pricing-policy-reference"></p>
-      <button id="shortfall-refresh-btn"></button>
-      <div id="shortfall-loading" class="hidden"></div>
-      <div id="shortfall-empty" class="hidden"></div>
-      <div id="shortfall-error" class="hidden"></div>
-      <div id="shortfall-slot-list"></div>
+      <!-- 2026-09-07: five containers for a host funding screen used to be invented here. No page in the
+           site has ever carried them, and the screen that read them was an abandoned copy of the funding
+           tab on My Bookings. Both the copy and this fake markup are gone; the funding screen is tested
+           where it actually lives. -->
       <input id="experienceTimezone" />
       <input type="checkbox" id="bookingCutoffEnabled" />
       <input id="bookingCutoffHours" />
@@ -173,56 +172,45 @@ describe("host — auth gate", () => {
   });
 });
 
-describe("host — listings panel", () => {
+describe("host — listings management RELOCATED to My Experiences (sir's architecture)", () => {
   beforeEach(() => { vi.restoreAllMocks(); });
 
-  test("empty listings → 'my-listings-empty' revealed", async () => {
-    loadHost({
-      sessionHint: true,
-      session: async () => ({ ok: true, user: { id: "u" } }),
-      authFetch: async (url) => {
-        if (url === "/api/csrf") return { ok: true, status: 200, json: async () => ({ ok: true, data: { csrfToken: "x" } }) };
-        if (url === "/api/host/experiences") return { ok: true, status: 200, json: async () => ({ ok: true, data: { items: [] } }) };
-        return { ok: true, status: 200, json: async () => ({ ok: true, data: {} }) };
-      },
-    });
-    await flush();
-    expect(document.getElementById("my-listings-empty").classList.contains("hidden")).toBe(false);
-    expect(document.getElementById("my-listings-list").classList.contains("hidden")).toBe(true);
+  // UPDATED 2026-08-05 (owner-ordered dissection): the host page no longer carries a
+  // listings panel — listings management is the sir-LOCKED "My Hosted Experiences → My
+  // Listings" tab on my-bookings (locked 2026-06-12, "Lock the card"), rendered by
+  // my-bookings.js renderHostListingsSection. The three old tests asserted the removed
+  // panel against fixture-only DOM nodes host.js never touches.
+  test("the REAL host.html ships no legacy my-listings panel", () => {
+    const fs = require("fs");
+    const path = require("path");
+    const html = fs.readFileSync(path.resolve(__dirname, "..", "host.html"), "utf8");
+    expect(html.includes("my-listings-list")).toBe(false);
+    expect(html.includes("my-listings-empty")).toBe(false);
+    expect(html.includes("my-listings-error")).toBe(false);
   });
 
-  test("listings 401 → error message mapped to 'Authentication required'", async () => {
+  test("plain host-page load leaves the fixture's legacy nodes untouched (host.js no longer renders listings)", async () => {
     loadHost({
       sessionHint: true,
       session: async () => ({ ok: true, user: { id: "u" } }),
       authFetch: async (url) => {
         if (url === "/api/csrf") return { ok: true, status: 200, json: async () => ({ ok: true, data: { csrfToken: "x" } }) };
-        if (url === "/api/host/experiences") return { ok: false, status: 401, json: async () => ({ ok: false, error: "AUTH_REQUIRED" }) };
         return { ok: true, status: 200, json: async () => ({ ok: true, data: {} }) };
       },
     });
     await flush();
-    const errEl = document.getElementById("my-listings-error");
-    expect(errEl.classList.contains("hidden")).toBe(false);
-    expect(errEl.textContent).toMatch(/Authentication required/i);
-  });
-
-  test("listings populated → list rendered, list panel visible", async () => {
-    loadHost({
-      sessionHint: true,
-      session: async () => ({ ok: true, user: { id: "u" } }),
-      authFetch: async (url) => {
-        if (url === "/api/csrf") return { ok: true, status: 200, json: async () => ({ ok: true, data: { csrfToken: "x" } }) };
-        if (url === "/api/host/experiences") return { ok: true, status: 200, json: async () => ({ ok: true, data: { items: [
-          { _id: "exp1", title: "Lentil Sunday", price: 45, status: "ACTIVE" },
-          { _id: "exp2", title: "Pasta Night", price: 60, status: "PAUSED" },
-        ] } }) };
-        return { ok: true, status: 200, json: async () => ({ ok: true, data: {} }) };
-      },
-    });
-    await flush();
+    // The fixture still builds the legacy nodes; host.js must not populate or reveal them.
     const list = document.getElementById("my-listings-list");
-    expect(list.classList.contains("hidden")).toBe(false);
-    expect(list.children.length).toBeGreaterThan(0);
+    if (list) {
+      expect(list.children.length).toBe(0);
+      expect(list.classList.contains("hidden")).toBe(true);
+    }
+  });
+
+  test("the live renderer exists where sir locked it: my-bookings.js renderHostListingsSection", () => {
+    const fs = require("fs");
+    const path = require("path");
+    const mb = fs.readFileSync(path.resolve(__dirname, "..", "js", "my-bookings.js"), "utf8");
+    expect(/function renderHostListingsSection\(/.test(mb)).toBe(true);
   });
 });

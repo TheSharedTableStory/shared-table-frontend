@@ -54,8 +54,16 @@
     cloudinaryUrl = cleanUrl(BUILD_CLOUDINARY_URL);
   }
 
+  // Sign in with Apple (web) — public Services ID + return URL, NOT secrets.
+  // Empty until the Apple Developer Services ID is configured; login.js stays a
+  // placeholder while these are blank.
+  var appleServicesId = String(cfg.APPLE_SERVICES_ID || readMeta("tsts-apple-services-id") || "").trim();
+  var appleRedirectUri = cleanUrl(cfg.APPLE_REDIRECT_URI || readMeta("tsts-apple-redirect-uri"));
+
   window.__TSTS_RUNTIME__ = Object.freeze({
     apiBase: apiBase,
-    cloudinaryUrl: cloudinaryUrl
+    cloudinaryUrl: cloudinaryUrl,
+    appleServicesId: appleServicesId,
+    appleRedirectUri: appleRedirectUri
   });
 })();

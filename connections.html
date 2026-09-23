@@ -2,21 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' http://localhost:4000 https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/assets/logo-mark.png">
   <meta name="theme-color" content="#ea580c">
   <title>Fellow Travellers – The Shared Table Story</title>
-  <link rel="stylesheet" href="css/tailwind.css?v=20260317b">
-  <link rel="stylesheet" href="css/fonts.css?v=20260310d">
+  <link rel="stylesheet" href="css/tailwind.css?v=20260914a">
+  <link rel="stylesheet" href="css/fonts.css?v=20260810a">
 
   <link rel="manifest" href="manifest.json">
 </head>
 <body class="bg-tsts-cream text-slate-900 flex flex-col min-h-screen">
   <nav id="navbar-placeholder" role="navigation"></nav>
 
-  <main class="flex-grow container mx-auto px-4 py-10 max-w-5xl space-y-10" role="main">
+  <!-- sir 2026-08-16: nav-container width standard for all pages ("make it like explore") -->
+  <main class="flex-grow container mx-auto px-4 py-10 space-y-10" role="main">
     <header>
       <h1 class="text-3xl font-bold mb-2 heading-serif text-tsts-ink">Fellow Travellers</h1>
       <p class="text-gray-600">Connect with fellow travellers who share your taste. Built on trust, respect, and a love for good company.</p>
@@ -25,9 +26,9 @@
     <section class="bg-white rounded-3xl border border-gray-100 shadow-soft-card p-6">
       <h2 class="text-xl font-bold mb-4 heading-serif text-tsts-ink">Send a connection request</h2>
       <div>
-        <label class="block text-sm font-bold text-gray-700 mb-1" for="handle">Connect by @handle</label>
-        <input id="handle" type="text" placeholder="e.g. @aarav" class="w-full p-3 bg-gray-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" />
-        <p class="text-xs text-gray-500 mt-1">Enter the user's handle to send a connection request.</p>
+        <label class="block text-xs font-medium text-gray-700 mb-1" for="handle">Connect by @handle</label>
+        <input id="handle" type="text" placeholder="e.g. @mia" class="w-full p-3 bg-gray-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition text-sm" />
+        <p class="text-xs text-gray-500 mt-1">Enter their handle to send a connection request.</p>
       </div>
       <div class="mt-4 flex items-center gap-3">
         <button id="connect-btn" type="button" class="px-6 py-3 rounded-xl tsts-btn-primary font-bold transition">Connect</button>
@@ -52,7 +53,7 @@
           <button id="refresh-connections" type="button" class="text-sm font-bold text-orange-600 hover:underline">Refresh</button>
         </div>
         <input id="connections-search" type="text" placeholder="Looking for someone?" class="w-full p-3 bg-gray-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition text-sm mb-4" />
-        <div id="connections-search-empty" class="hidden text-center py-6 text-gray-500 text-sm">Hmm, no one by that name — check the spelling?</div>
+        <div id="connections-search-empty" class="hidden text-center py-6 text-gray-500 text-sm">No one by that name. Check the spelling, or search by their handle.</div>
         <div id="connections-loading" class="space-y-3"><div class="flex gap-3 items-center"><div class="skeleton h-10 w-10 rounded-full flex-shrink-0"></div><div class="flex-1 space-y-2"><div class="skeleton h-4 w-1/2"></div><div class="skeleton h-3 w-1/3"></div></div></div><div class="flex gap-3 items-center"><div class="skeleton h-10 w-10 rounded-full flex-shrink-0"></div><div class="flex-1 space-y-2"><div class="skeleton h-4 w-1/2"></div><div class="skeleton h-3 w-1/3"></div></div></div></div>
         <div id="connections-empty" class="hidden text-center py-8 text-gray-500">No connections yet.</div>
         <div id="connections-list" aria-live="polite" class="hidden space-y-3"></div>
@@ -62,7 +63,7 @@
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="bg-white rounded-3xl border border-gray-100 shadow-soft-card p-6">
         <div class="flex items-center justify-between gap-4 mb-4">
-          <h2 class="text-xl font-bold heading-serif text-tsts-ink">Sent Requests</h2>
+          <h2 class="text-xl font-bold heading-serif text-tsts-ink">Sent requests</h2>
           <button id="refresh-outgoing" type="button" class="text-sm font-bold text-orange-600 hover:underline">Refresh</button>
         </div>
         <div id="outgoing-empty" class="hidden text-center py-8 text-gray-500"></div>
@@ -72,7 +73,7 @@
 
       <div class="bg-white rounded-3xl border border-gray-100 shadow-soft-card p-6">
         <div class="flex items-center justify-between gap-4 mb-4">
-          <h2 class="text-xl font-bold heading-serif text-tsts-ink">Blocked Users</h2>
+          <h2 class="text-xl font-bold heading-serif text-tsts-ink">Blocked users</h2>
           <button id="refresh-blocked" type="button" class="text-sm font-bold text-orange-600 hover:underline">Refresh</button>
         </div>
         <div id="blocked-empty" class="hidden text-center py-8 text-gray-500"></div>
@@ -84,8 +85,8 @@
     <section class="bg-white rounded-3xl border border-gray-100 shadow-soft-card p-6">
       <div class="flex items-center justify-between gap-4 mb-4">
         <div>
-          <h2 class="text-xl font-bold heading-serif text-tsts-ink">Friends Feed</h2>
-          <p class="text-gray-500 text-sm mt-1">Opt-in only: bookings your accepted connections chose to share. Private to you.</p>
+          <h2 class="text-xl font-bold heading-serif text-tsts-ink">From your fellow travellers</h2>
+          <p class="text-gray-500 text-sm mt-1">Only the bookings your fellow travellers chose to share. Private to you.</p>
         </div>
         <button id="refresh-feed" type="button" class="text-sm font-bold text-orange-600 hover:underline">Refresh</button>
       </div>
@@ -95,7 +96,22 @@
       </div>
       <div id="feed-empty" class="hidden text-center py-8 text-gray-500">No shared bookings yet. Only accepted connections who opt in will appear here.</div>
       <div id="feed-error" class="hidden text-center py-6">
-        <p class="text-red-600 font-bold text-sm">Unable to load feed.</p>
+        <!-- Was "Unable to load feed." THREE faults, all fixed here:
+             (1) "feed" is not sir's word for this section — the heading directly above it reads
+                 "From your fellow travellers". That drift was corrected elsewhere on this page
+                 earlier and this hidden error state was missed.
+             (2) It gave no reason and no next step, which Rule 16 bans — every error a person
+                 reads must be actionable. Wording derived from the pattern already in this file
+                 ("We're a bit busy. Give it a moment and refresh."), so all five load failures on
+                 this page now speak with one voice.
+             (3) THE TREATMENT WAS AN ALARM. It was red + bold while its four siblings on the same
+                 page (requests, connections, sent, blocked) render calm grey — two different looks
+                 for one identical event, a transient load failure. sir already ruled on precisely
+                 this on unsubscribe.html: the all-red card was cut because "red stays on the small
+                 icon only". There is no icon on this line, so by that ruling it carries no red at
+                 all. Now matched to its four siblings: text-gray-500, normal weight, centred.
+                 The Retry button below is untouched. -->
+        <p class="text-gray-500 text-sm">We couldn't load what your fellow travellers have shared. Give it a moment and try again.</p>
         <button id="feed-retry-btn" type="button" class="mt-3 px-5 py-2 rounded-xl bg-tsts-ink text-white text-xs font-bold transition hover:opacity-90">Retry</button>
       </div>
       <div id="feed-list" aria-live="polite" class="hidden space-y-4"></div>
@@ -105,7 +121,7 @@
   <footer id="footer-placeholder" role="contentinfo"></footer>
 
   <script src="js/runtime-config.js?v=20260224a"></script>
-  <script src="js/common.js?v=20260316c"></script>
-  <script src="js/connections.js?v=20260305a"></script>
+  <script src="js/common.js?v=20260907a"></script>
+  <script src="js/connections.js?v=20260826a"></script>
 </body>
 </html>

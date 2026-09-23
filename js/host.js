@@ -3,6 +3,21 @@
     try { document.documentElement.removeAttribute("data-auth-pending"); } catch (_) {}
   }
 
+  // sir 2026-08-13 (timezone fix, all three files): the host form's "today" floor was the
+  // DEVICE's day — a host travelling ahead of Melbourne could not schedule Melbourne's own
+  // today, and one behind could pick a Melbourne day already over. The listings run in
+  // Melbourne, so the calendar floor reads Melbourne's clock. en-CA prints YYYY-MM-DD.
+  function melbourneTodayIso() {
+    try {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Australia/Melbourne", year: "numeric", month: "2-digit", day: "2-digit"
+      }).format(new Date());
+    } catch (_tzErr) {
+      var _d = new Date();
+      return new Date(_d.getTime() - _d.getTimezoneOffset() * 60000).toISOString().split("T")[0];
+    }
+  }
+
   function redirectToLogin() {
     var returnTo = encodeURIComponent(location.pathname + location.search);
     location.replace("login.html?returnTo=" + returnTo);
@@ -12,15 +27,84 @@
 	  const titleInput = document.getElementById("title");
 	  const descriptionInput = document.getElementById("description");
 	  const priceInput = document.getElementById("price");
+	  const currencyInput = document.getElementById("currency");
 	  const dateInput = document.getElementById("startDate");
 	  const endDateInput = document.getElementById("endDate");
+	  // Owner 2026-05-30 (date-picker rollout): wire both date inputs to the shared
+	  // Flatpickr wrapper from common.js so host start/end pickers match experience.html
+	  // exactly (brand palette, Mon-start, mobile native). endDate's minDate follows
+	  // startDate so the host can never pick an end date before the start.
+	  let startDatePicker = null;
+	  let endDatePicker = null;
+	  if (window.tstsDatePicker && dateInput) {
+	    startDatePicker = window.tstsDatePicker(dateInput, {
+	      // sir 2026-08-13: "today" here was the device's today — Melbourne's day now (see melbourneTodayIso).
+	      minDate: melbourneTodayIso(),
+	      onChange: function (selectedDates, dateStr) {
+	        if (endDatePicker && dateStr) {
+	          try { endDatePicker.set("minDate", dateStr); } catch (_e) { void _e; }
+	        }
+	      }
+	    });
+	  }
+	  if (window.tstsDatePicker && endDateInput) {
+	    endDatePicker = window.tstsDatePicker(endDateInput, { minDate: melbourneTodayIso() });
+	  }
 	  const timeInput = document.getElementById("startTime");
 	  const endTimeInput = document.getElementById("endTime");
+	  // Owner 2026-05-30 (date-picker rollout R3 audit): wire startTime + endTime
+	  // to Flatpickr time-only mode so the host gets the brand picker for time too
+	  // (otherwise Chrome's native HH:MM polyfill renders alongside Flatpickr dates
+	  // — inconsistent). dateFormat "H:i" (24h) matches the timeRe validation. The
+	  // visible altInput shows "h:i K" (e.g. "07:30 PM") for readability. endTime's
+	  // minTime tracks startTime so end <= start can't be picked.
+	  let startTimePicker = null;
+	  let endTimePicker = null;
+	  if (window.flatpickr && timeInput) {
+	    try {
+	      timeInput.setAttribute("type", "text");
+	      timeInput.setAttribute("readonly", "readonly");
+	      timeInput.setAttribute("autocomplete", "off");
+	      startTimePicker = window.flatpickr(timeInput, {
+	        noCalendar: true,
+	        enableTime: true,
+	        time_24hr: true,
+	        dateFormat: "H:i",
+	        altInput: true,
+	        altFormat: "h:i K",
+	        disableMobile: false,
+	        onChange: function (_selectedDates, dateStr) {
+	          if (endTimePicker && dateStr) {
+	            try { endTimePicker.set("minTime", dateStr); } catch (_e) { void _e; }
+	          }
+	        }
+	      });
+	    } catch (_e) { void _e; }
+	  }
+	  if (window.flatpickr && endTimeInput) {
+	    try {
+	      endTimeInput.setAttribute("type", "text");
+	      endTimeInput.setAttribute("readonly", "readonly");
+	      endTimeInput.setAttribute("autocomplete", "off");
+	      endTimePicker = window.flatpickr(endTimeInput, {
+	        noCalendar: true,
+	        enableTime: true,
+	        time_24hr: true,
+	        dateFormat: "H:i",
+	        altInput: true,
+	        altFormat: "h:i K",
+	        disableMobile: false
+	      });
+	    } catch (_e) { void _e; }
+	  }
 	  const locationInput = document.getElementById("city");
 	  const suburbInput = document.getElementById("suburb");
 	  const postcodeInput = document.getElementById("postcode");
 	  const addressLineInput = document.getElementById("addressLine");
 	  const addressNotesInput = document.getElementById("addressNotes");
+	  // Owner-spec 2026-05-03: state + country fields auto-filled from Places.
+	  const stateInput = document.getElementById("state");
+	  const countryInput = document.getElementById("country");
 	  const maxGuestsInput = document.getElementById("maxGuests");
 	  // availableDays is now a checkbox group, not a single text input
 	  const privateEnabledInput = document.getElementById("privateEnabled");
@@ -44,11 +128,6 @@
   const pricingPrivateSummaryEl = document.getElementById("pricing-private-summary");
   const pricingHostChargeNoteEl = document.getElementById("pricing-host-charge-note");
   const pricingPolicyReferenceEl = document.getElementById("pricing-policy-reference");
-  const shortfallRefreshBtn = document.getElementById("shortfall-refresh-btn");
-  const shortfallLoadingEl = document.getElementById("shortfall-loading");
-  const shortfallEmptyEl = document.getElementById("shortfall-empty");
-  const shortfallErrorEl = document.getElementById("shortfall-error");
-  const shortfallSlotListEl = document.getElementById("shortfall-slot-list");
   const timezoneInput = document.getElementById("experienceTimezone");
   const cutoffEnabledInput = document.getElementById("bookingCutoffEnabled");
   const cutoffHoursInput = document.getElementById("bookingCutoffHours");
@@ -57,6 +136,201 @@
   const cutoffLockedBanner = document.getElementById("cutoff-locked-banner");
   const requirementsInput = document.getElementById("requirements");
   const eventDurationMinutesInput = document.getElementById("eventDurationMinutes");
+  // Owner-approved 2026-05-02: Hours + Minutes inputs (Gareth feedback). Hidden
+  // eventDurationMinutes is computed from hours + minutes; existing logic that
+  // reads/writes that hidden field continues to work without change.
+  const eventDurationHoursInput = document.getElementById("eventDurationHours");
+  const eventDurationMinsInput  = document.getElementById("eventDurationMins");
+  const durationSummaryEl       = document.getElementById("duration-summary");
+  function syncDurationFromHoursMins() {
+    if (!eventDurationMinutesInput) return;
+    var h = eventDurationHoursInput ? parseInt(eventDurationHoursInput.value, 10) : 0;
+    var m = eventDurationMinsInput  ? parseInt(eventDurationMinsInput.value, 10)  : 0;
+    if (!Number.isFinite(h) || h < 0) h = 0;
+    if (!Number.isFinite(m) || m < 0) m = 0;
+    if (m > 59) m = 59;
+    var total = h * 60 + m;
+    eventDurationMinutesInput.value = total > 0 ? String(total) : "";
+    if (durationSummaryEl) {
+      if (total <= 0) {
+        durationSummaryEl.textContent = "Use this for each event instance. Start/end date and time above define the recurring schedule window.";
+      } else {
+        var label;
+        if (total < 60) label = total + " min";
+        else if (total === 60) label = "1 hr";
+        else if (total % 60 === 0) label = (total / 60) + " hr";
+        else label = h + " hr " + m + " min";
+        durationSummaryEl.textContent = "Each event runs " + label + ". Start/end date and time above define the recurring schedule window.";
+      }
+    }
+  }
+  // sir's ruling, 2026-08-22 (overturns BUG-074's "no free experiences" rule): price may be
+  // zero when the host funds the seat themselves or an admin waives the fee; only a negative
+  // price is invalid. Pure → unit-testable.
+  function isHostPriceRejected(price) {
+    return price < 0;
+  }
+  function seedDurationHoursMinsFromHidden() {
+    if (!eventDurationMinutesInput) return;
+    var raw = parseInt(eventDurationMinutesInput.value, 10);
+    if (!Number.isFinite(raw) || raw <= 0) return;
+    var h = Math.floor(raw / 60);
+    var m = raw % 60;
+    if (eventDurationHoursInput && !eventDurationHoursInput.value) eventDurationHoursInput.value = String(h);
+    if (eventDurationMinsInput  && !eventDurationMinsInput.value)  eventDurationMinsInput.value  = String(m);
+    syncDurationFromHoursMins();
+  }
+  if (eventDurationHoursInput) eventDurationHoursInput.addEventListener("input", syncDurationFromHoursMins);
+  if (eventDurationMinsInput)  eventDurationMinsInput.addEventListener("input",  syncDurationFromHoursMins);
+  // Initial seed for edit mode where hidden value pre-populates from server.
+  setTimeout(seedDurationHoursMinsFromHidden, 50);
+
+  // Owner-approved 2026-05-02 (Gareth): single combined Address search using
+  // Google Places Autocomplete. Picks fill City, Suburb, Postcode, Street.
+  // Manual edit of each field still works after auto-fill.
+  function initAddressAutocomplete() {
+    var input = document.getElementById("address-search");
+    if (!input) return;
+    if (!(window.google && window.google.maps && window.google.maps.places)) return false;
+    try {
+      var ac = new window.google.maps.places.Autocomplete(input, {
+        fields: ["address_components", "geometry", "formatted_address"],
+        // Owner 2026-05-24: opened to international locations (was AU-only) so hosts
+        // can list events anywhere; the listing currency auto-defaults from the
+        // selected country (see applyCurrencyDefaultFromCountry).
+        types: ["address"]
+      });
+      ac.addListener("place_changed", function() {
+        var place = ac.getPlace();
+        if (!place || !Array.isArray(place.address_components)) return;
+        var byType = {};
+        place.address_components.forEach(function(c) {
+          (c.types || []).forEach(function(t) { byType[t] = c; });
+        });
+        var streetNumber = byType.street_number ? byType.street_number.long_name : "";
+        var route        = byType.route ? byType.route.long_name : "";
+        var locality     = byType.locality ? byType.locality.long_name : (byType.postal_town ? byType.postal_town.long_name : "");
+        var subLocality  = byType.sublocality_level_1 ? byType.sublocality_level_1.long_name : (byType.sublocality ? byType.sublocality.long_name : "");
+        var postcode     = byType.postal_code ? byType.postal_code.long_name : "";
+        // Owner-spec 2026-05-03: also capture state (short_name e.g. "VIC") + country (long_name).
+        // Cards render `Suburb · City · STATE` so interstate listings (QLD vs VIC) are unambiguous.
+        // Country stored for future international expansion; not rendered today (TSTS is AU-only).
+        var stateShort   = byType.administrative_area_level_1 ? byType.administrative_area_level_1.short_name : "";
+        var countryName  = byType.country ? byType.country.long_name : "";
+        var streetLine   = (streetNumber ? streetNumber + " " : "") + route;
+        var cityField     = document.getElementById("city");
+        var suburbField   = document.getElementById("suburb");
+        var postcodeField = document.getElementById("postcode");
+        var addressField  = document.getElementById("addressLine");
+        var stateField    = document.getElementById("state");
+        var countryField  = document.getElementById("country");
+        if (cityField     && locality)    { cityField.value     = locality;    cityField.dispatchEvent(new Event("input", {bubbles:true})); }
+        if (suburbField   && subLocality) { suburbField.value   = subLocality; suburbField.dispatchEvent(new Event("input", {bubbles:true})); }
+        if (suburbField   && !subLocality && locality) { suburbField.value = locality; suburbField.dispatchEvent(new Event("input", {bubbles:true})); }
+        if (postcodeField && postcode)    { postcodeField.value = postcode;    postcodeField.dispatchEvent(new Event("input", {bubbles:true})); }
+        if (addressField  && streetLine)  { addressField.value  = streetLine;  addressField.dispatchEvent(new Event("input", {bubbles:true})); }
+        if (stateField    && stateShort)  { stateField.value    = stateShort;  stateField.dispatchEvent(new Event("input", {bubbles:true})); }
+        if (countryField  && countryName) { countryField.value  = countryName; countryField.dispatchEvent(new Event("input", {bubbles:true})); }
+      });
+      return true;
+    } catch (_acErr) {
+      try { console && console.warn && console.warn("[host] address autocomplete init failed:", _acErr); } catch (_logErr) { /* logger unavailable */ }
+      return false;
+    }
+  }
+  // Maps script loads async; poll briefly until ready.
+  var _acTries = 0;
+  (function tryInitAc() {
+    if (initAddressAutocomplete()) return;
+    if (_acTries++ < 20) setTimeout(tryInitAc, 250);
+  })();
+
+  // Owner 2026-05-24: default the listing currency from the event's country
+  // (Places fills `country`, which fires an "input" event we listen for) — unless
+  // the host manually changes the currency picker, in which case we leave it alone.
+  var __userTouchedCurrency = false;
+  var __COUNTRY_CCY = {
+    "australia": "AUD", "new zealand": "NZD",
+    "united states": "USD", "united states of america": "USD",
+    "united kingdom": "GBP", "canada": "CAD", "india": "INR", "japan": "JPY",
+    "germany": "EUR", "france": "EUR", "italy": "EUR", "spain": "EUR", "ireland": "EUR",
+    "netherlands": "EUR", "portugal": "EUR", "austria": "EUR", "belgium": "EUR",
+    "greece": "EUR", "finland": "EUR", "luxembourg": "EUR"
+  };
+  function applyCurrencyDefaultFromCountry() {
+    if (!currencyInput || __userTouchedCurrency) return;
+    var c = String((countryInput && countryInput.value) || "").trim().toLowerCase();
+    var ccy = __COUNTRY_CCY[c];
+    if (ccy) currencyInput.value = ccy;
+  }
+  if (currencyInput) currencyInput.addEventListener("change", function () { __userTouchedCurrency = true; });
+  if (countryInput) countryInput.addEventListener("input", applyCurrencyDefaultFromCountry);
+  applyCurrencyDefaultFromCountry();
+
+  // CONFIGURE-BEFORE-LIST: the picker shows only the currencies the admin has enabled
+  // (fetched from the canonical money config), not a hardcoded set. Falls back to the
+  // static <option>s already in the markup if the fetch fails.
+  var __CCY_SYMBOL = { aud: "A$", nzd: "NZ$", usd: "$", gbp: "£", eur: "€", cad: "CA$", inr: "₹", jpy: "¥", chf: "CHF", sgd: "S$" };
+  async function populateListingCurrencies() {
+    if (!currencyInput) return;
+    try {
+      var res = await window.authFetch("/api/pricing/listing-currencies", { method: "GET" });
+      var payload = await res.json();
+      var list = (payload && payload.data && Array.isArray(payload.data.currencies)) ? payload.data.currencies : [];
+      if (!list.length) return; // keep the static fallback options
+      var prev = String(currencyInput.value || "").toUpperCase();
+      while (currencyInput.firstChild) currencyInput.removeChild(currencyInput.firstChild);
+      list.forEach(function (c) {
+        var code = String((c && c.code) || "").toUpperCase();
+        if (!code) return;
+        var sym = __CCY_SYMBOL[code.toLowerCase()] || "";
+        var opt = document.createElement("option");
+        opt.value = code;
+        opt.textContent = (sym ? sym + " " : "") + code;
+        currencyInput.appendChild(opt);
+      });
+      // Restore prior selection if still available, else re-derive from country.
+      var codes = list.map(function (c) { return String((c && c.code) || "").toUpperCase(); });
+      if (prev && codes.indexOf(prev) >= 0) currencyInput.value = prev;
+      else { __userTouchedCurrency = false; applyCurrencyDefaultFromCountry(); }
+    } catch (e) { /* keep static fallback options */ }
+  }
+  populateListingCurrencies();
+
+  // Owner-spec 2026-05-03 (D-9 sub #5): expand-on-select for booking-type picker.
+  // Selected card shows the long helper (with trade-off line on Shared/Private,
+  // factual operating note on Both). Other cards collapse to short summary.
+  function refreshBookingModeCards() {
+    var picker = document.querySelector("[data-booking-mode-picker]");
+    if (!picker) return;
+    var cards = picker.querySelectorAll("[data-bm-card]");
+    cards.forEach(function (card) {
+      var input = card.querySelector('input[type="radio"]');
+      var shortEl = card.querySelector("[data-bm-short]");
+      var longEl = card.querySelector("[data-bm-long]");
+      if (!input || !shortEl || !longEl) return;
+      if (input.checked) {
+        card.classList.add("border-tsts-clay", "bg-orange-50/50");
+        card.classList.remove("border-slate-200", "bg-slate-50/50");
+        shortEl.classList.add("hidden");
+        shortEl.classList.remove("block");
+        longEl.classList.remove("hidden");
+        longEl.classList.add("block");
+      } else {
+        card.classList.remove("border-tsts-clay", "bg-orange-50/50");
+        card.classList.add("border-slate-200", "bg-slate-50/50");
+        shortEl.classList.remove("hidden");
+        shortEl.classList.add("block");
+        longEl.classList.add("hidden");
+        longEl.classList.remove("block");
+      }
+    });
+  }
+  // Wire change listeners + initial paint.
+  document.querySelectorAll('input[name="bookingMode"]').forEach(function (r) {
+    r.addEventListener("change", refreshBookingModeCards);
+  });
+  refreshBookingModeCards();
   const discountEnabledInput = document.getElementById("discountEnabled");
   const discountTiersContainer = document.getElementById("discount-tiers-container");
   const discountTiersList = document.getElementById("discount-tiers-list");
@@ -72,7 +346,13 @@
   function __updateDescCounter() {
     if (!descCounterEl || !descriptionInput) return;
     var len = String(descriptionInput.value || "").length;
-    descCounterEl.textContent = len + " / 1500";
+    // 2026-08-25: the counter already turned RED below 150, but never said WHAT 150 was — a host at
+    // 140 saw a red "140 / 1500" and no reason for it, then got refused on Next by a rule the page had
+    // never stated. The threshold is now named while it is unmet, in the same words the report form
+    // already uses ("at least N"). Above the minimum the counter stays exactly as it was.
+    descCounterEl.textContent = (len < 150)
+      ? (len + " / 1500 · at least 150")
+      : (len + " / 1500");
     if (len < 150) {
       descCounterEl.className = "text-xs text-red-500 mt-1 text-right";
     } else if (len > 1400) {
@@ -83,6 +363,12 @@
   }
   if (descriptionInput) {
     descriptionInput.addEventListener("input", __updateDescCounter);
+    // 2026-08-26: the counter named the 150 minimum correctly, but ONLY once the host typed —
+    // the listener was its only trigger on a NEW listing, so the form opened showing host.html's
+    // static "0 / 1500" in grey and the requirement stayed unstated until the first keystroke.
+    // That is the exact gap the minimum was added to close. Run it once at rest so the rule is
+    // on screen before the host writes a word. (Edit mode already called it at :1831.)
+    __updateDescCounter();
   }
 
   // --- AU Location Autocomplete ---
@@ -103,7 +389,7 @@
   function __filterCitySuggestions(val) {
     if (!cityDatalist || !__auLocations) return;
     var tok = String(val || "").trim().toLowerCase();
-    if (tok.length < 2) { cityDatalist.innerHTML = ""; return; }
+    if (tok.length < 2) { cityDatalist.textContent = ""; return; } // safety: clear without innerHTML
     var matches = [];
     for (var i = 0; i < __auLocations.length && matches.length < 15; i++) {
       var entry = __auLocations[i];
@@ -144,6 +430,20 @@
     __loadAuLocations();
   }
 
+  // Country-aware postcode validity — mirrors the server (__isValidPostcodeForCountry).
+  // AU (+ empty/unset, to preserve home-market behaviour) keeps the strict 4-digit rule;
+  // explicitly-international hosts get a permissive postal format (US/UK/CA/JP/EU).
+  function __isAuAddr(country) {
+    var c = String(country || "").trim().toLowerCase();
+    return c === "" || c === "australia" || c === "au" || c === "aus";
+  }
+  function __validPostcodeForCountry(pc, country) {
+    pc = String(pc || "").trim();
+    if (__isAuAddr(country)) return /^[0-9]{4}$/.test(pc);
+    if (pc === "") return true; // some countries have no postal code
+    return /^[A-Za-z0-9][A-Za-z0-9 \-]{0,11}$/.test(pc);
+  }
+
   function __validateCityPostcode(city, postcode) {
     // Returns true if valid or data not loaded; returns false if definite mismatch
     if (!__auLocations || __auLocations.length === 0) return true;
@@ -157,7 +457,7 @@
         if (__auLocations[i][2] === postcode) { found = true; break; }
       }
     }
-    if (!anyMatchForCity) return true; // unknown city — don't block
+    if (!anyMatchForCity) return true; // unknown city, don't block
     return found;
   }
 
@@ -247,12 +547,8 @@
   let activeRefundPolicy = null;
   let platformFeeRate = null; // null = policy not yet loaded from API
   let platformFeeBps = null;
-  let shortfallSlotsCache = [];
-  let shortfallRequestCounter = 0;
-  const shortfallPaymentInFlight = new Set();
-  const shortfallPaymentPendingWebhook = new Set();
 
-  // Toast feedback — uses the global tstsNotify (common.js) so messages always render
+  // Toast feedback, uses the global tstsNotify (common.js) so messages always render
   // in the bottom-right corner regardless of where the user is in the wizard.
   // The previous implementation prepended a notice to the form, which sat above wizard
   // step 1 and was invisible from the publish button on step 5.
@@ -266,6 +562,28 @@
 
   function hideNotice() {
     // No-op: tstsNotify toasts auto-dismiss after 5s.
+  }
+
+  // 2026-08-25: the toast is the ONLY error signal on this wizard and it erases itself after 5s,
+  // while the field itself was never marked at all — .focus() gives the ordinary orange focus ring,
+  // so a WRONG field looked identical to one the host had merely clicked into. Five seconds later
+  // there was no trace of the error anywhere on screen.
+  //
+  // This marks the offending field persistently and clears it the moment the host starts fixing it.
+  // Inline style on purpose: no stylesheet is touched, and it cannot fight the Tailwind classes on
+  // the input. aria-invalid is set so the failure is announced, not just coloured.
+  function __markFieldInvalid(el) {
+    if (!el) return;
+    try {
+      el.style.borderColor = "#f87171";
+      el.setAttribute("aria-invalid", "true");
+      var __clear = function () {
+        el.style.borderColor = "";
+        el.removeAttribute("aria-invalid");
+        el.removeEventListener("input", __clear);
+      };
+      el.addEventListener("input", __clear);
+    } catch (_e) { void _e; }
   }
 
   async function ensureCsrfCookieReady() {
@@ -327,35 +645,36 @@
     return Number.isFinite(n) ? n : null;
   }
 
-  function extractApiError(payload, fallbackMessage) {
-    const root = (payload && typeof payload === "object") ? payload : {};
-    const data = (root.data && typeof root.data === "object") ? root.data : root;
-    const code = String(data.error || data.code || root.error || root.code || "").trim().toUpperCase();
-    const message = String(data.message || root.message || fallbackMessage || "Request failed.").trim();
-    return { code: code, message: message };
-  }
-
-  function mapHostListingsError(payload, statusCode) {
-    const err = extractApiError(payload, "Failed to load listings. Please refresh.");
-    if (err.code === "AUTH_REQUIRED" || statusCode === 401) {
-      return "Authentication required. Please log in again.";
-    }
-    if (err.code === "HOST_ROLE_REQUIRED") {
-      return "Host role required. Complete host onboarding to access listings.";
-    }
-    return err.message || "Failed to load listings. Please refresh.";
-  }
-
   function toCents(raw) {
     const n = Number(raw);
     if (!Number.isFinite(n)) return null;
     return Math.round(n * 100);
   }
 
+  // Owner 2026-07-24 (sir: pages "in line with locked ones"): this HARDCODED "$…  AUD" even though the
+  // listing currency picker supports AUD/CAD/NZD/SGD/USD and SAVES the host's choice onto the listing
+  // (currency: currencyInput.value). A host listing in NZD/USD/CAD/SGD therefore saw the WRONG currency on
+  // their own per-guest price, platform fee, payout estimate, tier bands and private-table summary. Now reads
+  // the picker and renders the correct symbol, matching the Explore card's A$/NZ$/CA$ convention.
+  // The invalid-value placeholder was a bare ", " which rendered as a lone comma (seen live on
+  // #publish-success-price) — same dev-cruft anti-pattern already fixed in admin.js; now an em dash.
+  // Covers every option the #currency picker actually offers (AUD CAD CHF EUR GBP INR JPY NZD SGD USD).
+  // Anything unmapped falls back to a "CODE " prefix, which is unambiguous rather than a misleading "$".
+  const LISTING_CCY_SYMBOL = {
+    AUD: "A$", NZD: "NZ$", CAD: "CA$", SGD: "S$", USD: "$",
+    EUR: "€", GBP: "£", INR: "₹", JPY: "¥", CHF: "CHF "
+  };
+  function listingCurrencyCode() {
+    const raw = currencyInput ? String(currencyInput.value || "AUD") : "AUD";
+    const code = raw.trim().toUpperCase();
+    return code || "AUD";
+  }
   function formatMoneyFromCents(centsRaw) {
     const cents = Number(centsRaw);
     if (!Number.isFinite(cents)) return "—";
-    return "$" + (cents / 100).toFixed(2) + " AUD";
+    const code = listingCurrencyCode();
+    const symbol = LISTING_CCY_SYMBOL[code] || (code + " ");
+    return symbol + (cents / 100).toFixed(2);
   }
 
   function formatMoney(raw) {
@@ -449,12 +768,8 @@
     return Math.max(0, Math.round(fixedFee + (value * (bps / 10000))));
   }
 
-  function tierRangeLabel(tier) {
-    if (!tier || typeof tier !== "object") return "Not matched";
-    var minLabel = formatMoneyFromCents(toNonNegInt(tier.minValueCents, 0));
-    if (tier.maxValueCents == null) return minLabel + "+";
-    return minLabel + " to " + formatMoneyFromCents(toNonNegInt(tier.maxValueCents, 0));
-  }
+  // tierRangeLabel removed 2026-08-16 with the W3 jargon fix that orphaned it —
+  // sir's standing rule: dead code dies in the same change that replaces it.
 
   function computePublicPricingBreakdown(priceRaw) {
     const guestPriceCents = toCents(priceRaw);
@@ -483,15 +798,24 @@
   function resolveHostPayoutEstimate(price) {
     const b = computePublicPricingBreakdown(price);
     if (!b) return "—";
-    return formatMoneyFromCents(b.hostPayoutCents) + " (after platform fee, before host-funded discounts or recovery offsets)";
+    // sir 2026-08-16 ("Fix it", walk gap W3): plain words a host understands —
+    // "recovery offsets" is the fee engine's term, not a host's. Number unchanged.
+    return formatMoneyFromCents(b.hostPayoutCents) + " after the platform fee. Discounts you fund come out of this.";
   }
 
   function resolvePlatformFeeEstimate(price) {
     const b = computePublicPricingBreakdown(price);
     if (!b) return "—";
+    // sir 2026-08-16 ("Fix it", walk gap W3): the old line printed the fee engine's
+    // internals to the host — "−A$0.00 (0% + fixed tier component). Tier range
+    // unavailable". Zero fee now says so plainly; a real fee reads as one honest
+    // sentence with the exact per-guest amount. Tier vocabulary never renders.
+    if (!(Number(b.platformFeeCents) > 0)) {
+      return formatMoneyFromCents(0) + ". You keep the full guest price.";
+    }
     var pct = Number.isFinite(Number(b.platformFeeBps)) ? (Number(b.platformFeeBps) / 100).toFixed(2).replace(/\.00$/, "") : "0";
-    var tierText = b.tier ? ("Tier range: " + tierRangeLabel(b.tier)) : "Tier range unavailable";
-    return "-" + formatMoneyFromCents(b.platformFeeCents) + " (" + pct + "% + fixed tier component). " + tierText;
+    var pctPart = (Number(pct) > 0) ? (" (" + pct + "% of the guest price)") : "";
+    return formatMoneyFromCents(b.platformFeeCents) + " per guest" + pctPart;
   }
 
   function resolvePrivateSummary() {
@@ -564,7 +888,7 @@
 
   function syncPricingTransparency() {
     if (platformFeeRate === null) {
-      // Fee policy not yet loaded — show raw public price (fee-independent) and loading states
+      // Fee policy not yet loaded, show raw public price (fee-independent) and loading states
       const rawPrice = priceInput ? safeNum(priceInput.value) : null;
       const rawCents = toCents(rawPrice);
       if (pricingPublicPerGuestEl) {
@@ -597,7 +921,8 @@
       pricingPrivateSummaryEl.textContent = resolvePrivateSummary();
     }
     if (pricingHostChargeNoteEl) {
-      pricingHostChargeNoteEl.textContent = "Estimated payout shown above is after platform fee. Verified-event deduction (if approved) and recovery offsets are host-side payout deductions. No guest surcharge is applied for verification.";
+      // Owner-approved 2026-05-02: copy aligns with the inline 'How event verification works' steps.
+      pricingHostChargeNoteEl.textContent = "Estimated payout shown above is after platform fee. If your event becomes verified, the verified-event fee is added to the platform fee at that point and reflected in your payout.";
     }
     if (pricingPolicyReferenceEl) {
       pricingPolicyReferenceEl.textContent = "";
@@ -669,411 +994,11 @@
     syncPricingTransparency();
   }
 
-  function shortfallBadgeClass(state) {
-    var key = String(state || "").toUpperCase();
-    if (key === "APPROVED" || key === "FULLY_FUNDED") return "bg-emerald-100 text-emerald-700";
-    if (key === "UNDER_REVIEW" || key === "STAGE_A_DUE" || key === "STAGE_B_DUE" || key === "BOOKING_FROZEN_STAGE_B") return "bg-amber-100 text-amber-700";
-    if (key === "REJECTED") return "bg-red-100 text-red-700";
-    return "bg-slate-100 text-slate-700";
-  }
-
-  function shortfallStateLabel(state) {
-    var s = String(state || "none").toUpperCase();
-    var labels = {
-      "STAGE_A_DUE": "First payment due",
-      "STAGE_B_DUE": "Second payment due",
-      "APPROVED": "Approved",
-      "FULLY_FUNDED": "Fully funded",
-      "UNDER_REVIEW": "Under review",
-      "BOOKING_FROZEN_STAGE_B": "Bookings paused — second payment needed",
-      "REJECTED": "Not approved",
-      "NONE": "Pending"
-    };
-    return labels[s] || s.toLowerCase().replace(/_/g, " ");
-  }
-
-  function shortfallPaymentUiLabel(state) {
-    var s = String(state || "").toUpperCase();
-    if (s === "PAYMENT_IN_PROGRESS") return "Payment processing";
-    if (s === "PAYMENT_CONFIRMED_PENDING_WEBHOOK") return "Payment received — confirming";
-    if (s === "PAID") return "Paid";
-    return "Action needed";
-  }
-
-  function shortfallEffectiveUiState(slot) {
-    var slotId = String((slot && slot.slotId) || "");
-    if (shortfallPaymentInFlight.has(slotId)) return "PAYMENT_IN_PROGRESS";
-    if (shortfallPaymentPendingWebhook.has(slotId)) return "PAYMENT_CONFIRMED_PENDING_WEBHOOK";
-    return String((slot && slot.paymentUiState) || "PAYMENT_REQUIRED");
-  }
-
-  function nextShortfallStage(slot) {
-    var s = slot && typeof slot === "object" ? slot : {};
-    var stageARemaining = Number((s.stageA && s.stageA.remainingCents) || 0);
-    var stageBRemaining = Number((s.stageB && s.stageB.remainingCents) || 0);
-    var threshold = Number(s.thresholdSeatsSnapshot || 0);
-    var booked = Number(s.bookedSeats || 0);
-    if (stageARemaining > 0) return "A";
-    if (stageBRemaining > 0 && booked >= threshold) return "B";
-    return "";
-  }
-
-  function setShortfallUiState(mode, errorMessage) {
-    if (shortfallLoadingEl) shortfallLoadingEl.classList.add("hidden");
-    if (shortfallEmptyEl) shortfallEmptyEl.classList.add("hidden");
-    if (shortfallErrorEl) shortfallErrorEl.classList.add("hidden");
-    if (shortfallSlotListEl) {
-      shortfallSlotListEl.classList.add("hidden");
-      shortfallSlotListEl.textContent = "";
-    }
-    if (mode === "loading" && shortfallLoadingEl) shortfallLoadingEl.classList.remove("hidden");
-    if (mode === "empty" && shortfallEmptyEl) shortfallEmptyEl.classList.remove("hidden");
-    if (mode === "error" && shortfallErrorEl) {
-      shortfallErrorEl.classList.remove("hidden");
-      if (errorMessage) shortfallErrorEl.textContent = String(errorMessage);
-    }
-    if (mode === "ready" && shortfallSlotListEl) shortfallSlotListEl.classList.remove("hidden");
-  }
-
-  async function fetchShortfallStatus(opts) {
-    var options = opts && typeof opts === "object" ? opts : {};
-    var query = new URLSearchParams();
-    query.set("limit", String(options.limit || 150));
-    if (options.slotId) query.set("slotId", String(options.slotId));
-    var path = "/api/host/shortfall/status?" + query.toString();
-    var res = await window.authFetch(path, { method: "GET" });
-    var payload = await res.json().catch(function () { return {}; });
-    if (!res.ok || !payload || payload.ok !== true) {
-      var msg = String((payload && payload.message) || "Could not load shortfall status.");
-      throw new Error(msg);
-    }
-    var data = (payload && payload.data && typeof payload.data === "object") ? payload.data : payload;
-    var slots = Array.isArray(data.slots) ? data.slots : [];
-    return { slots: slots, meta: data };
-  }
-
-  async function requestFeeWaiver(slotId) {
-    if (!slotId) return;
-    var note = await window.tstsPrompt("Reason for fee reduction request", "", { minLength: 10, placeholder: "Explain why you're requesting a fee reduction for this experience." });
-    note = String(note || "").trim();
-    if (!note) return;
-    try {
-      var res = await window.authFetch("/api/host/shortfall/" + encodeURIComponent(slotId) + "/waiver-request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note: note })
-      });
-      var payload = await res.json().catch(function () { return {}; });
-      if (!res.ok || !payload || payload.ok !== true) throw new Error(String((payload && payload.message) || "We couldn't submit your request. Please try again."));
-      window.tstsNotify("Fee reduction request submitted.", "success");
-      await loadShortfallDashboard({ silent: true });
-    } catch (err) {
-      window.tstsNotify(String((err && err.message) || "We couldn't submit your request. Please try again."), "error");
-    }
-  }
-
-  function ensureShortfallPaymentModal() {
-    var overlay = document.getElementById("shortfall-payment-overlay");
-    if (overlay) {
-      return {
-        overlay: overlay,
-        titleEl: document.getElementById("shortfall-payment-title"),
-        metaEl: document.getElementById("shortfall-payment-meta"),
-        elementMount: document.getElementById("shortfall-payment-element"),
-        statusEl: document.getElementById("shortfall-payment-status"),
-        closeBtn: document.getElementById("shortfall-payment-close"),
-        submitBtn: document.getElementById("shortfall-payment-submit")
-      };
-    }
-    var El = window.tstsEl;
-    if (!El) return null;
-
-    overlay = El("div", {
-      id: "shortfall-payment-overlay",
-      className: "fixed inset-0 z-[1000] hidden items-center justify-center bg-slate-900/50 px-4"
-    });
-    var card = El("div", { className: "w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl space-y-4" });
-    var header = El("div", { className: "flex items-start justify-between gap-3" }, [
-      El("div", { className: "space-y-1" }, [
-        El("h3", { id: "shortfall-payment-title", className: "text-lg font-bold text-slate-900", textContent: "Make your payment" }),
-        El("p", { id: "shortfall-payment-meta", className: "text-xs text-slate-600", textContent: "" })
-      ]),
-      El("button", { id: "shortfall-payment-close", type: "button", className: "rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50", textContent: "Close" })
-    ]);
-    var mount = El("div", { id: "shortfall-payment-element", className: "rounded-xl border border-slate-200 p-3 bg-white" });
-    var status = El("p", { id: "shortfall-payment-status", className: "text-xs text-slate-600", textContent: "Complete this payment to continue." });
-    var actions = El("div", { className: "flex items-center justify-end gap-2" }, [
-      El("button", { id: "shortfall-payment-submit", type: "button", className: "inline-flex items-center rounded-xl bg-tsts-ink px-4 py-2 text-sm font-bold text-white hover:opacity-90", textContent: "Pay now" })
-    ]);
-    card.appendChild(header);
-    card.appendChild(mount);
-    card.appendChild(status);
-    card.appendChild(actions);
-    overlay.appendChild(card);
-    document.body.appendChild(overlay);
-
-    return {
-      overlay: overlay,
-      titleEl: document.getElementById("shortfall-payment-title"),
-      metaEl: document.getElementById("shortfall-payment-meta"),
-      elementMount: document.getElementById("shortfall-payment-element"),
-      statusEl: document.getElementById("shortfall-payment-status"),
-      closeBtn: document.getElementById("shortfall-payment-close"),
-      submitBtn: document.getElementById("shortfall-payment-submit")
-    };
-  }
-
-  async function pollShortfallSlotUntilWebhook(slotId, stage) {
-    var targetSlotId = String(slotId || "");
-    var targetStage = String(stage || "").toUpperCase();
-    for (var i = 0; i < 14; i++) {
-      await new Promise(function (resolve) { setTimeout(resolve, 2500); });
-      var loaded = await loadShortfallDashboard({ silent: true, slotId: targetSlotId });
-      var slots = loaded && Array.isArray(loaded.slots) ? loaded.slots : shortfallSlotsCache;
-      var current = null;
-      for (var j = 0; j < slots.length; j++) {
-        if (String(slots[j] && slots[j].slotId || "") === targetSlotId) { current = slots[j]; break; }
-      }
-      if (!current) continue;
-      var stageAPaid = Number((current.stageA && current.stageA.remainingCents) || 0) <= 0;
-      var stageBPaid = Number((current.stageB && current.stageB.remainingCents) || 0) <= 0;
-      if (targetStage === "A" && stageAPaid) return true;
-      if (targetStage === "B" && stageBPaid) return true;
-      if (String(current.fundingStatus || "").toUpperCase() === "FULLY_FUNDED") return true;
-    }
-    return false;
-  }
-
-  async function openShortfallPaymentFlow(slot, stage, paymentData) {
-    var modal = ensureShortfallPaymentModal();
-    if (!modal) throw new Error("Payment modal could not be initialized.");
-    var publishableKey = String((paymentData && paymentData.publishableKey) || "").trim();
-    if (!publishableKey) throw new Error("Stripe publishable key is missing.");
-    if (!(window.Stripe && typeof window.Stripe === "function")) throw new Error("Stripe SDK not available.");
-    var stripe = window.Stripe(publishableKey);
-    if (!stripe) throw new Error("Stripe could not initialize.");
-
-    var clientSecret = String((paymentData && paymentData.clientSecret) || "").trim();
-    if (!clientSecret) throw new Error("Payment intent secret missing.");
-
-    modal.titleEl.textContent = "Make " + (String(stage || "").toUpperCase() === "A" ? "first" : "second") + " payment";
-    modal.metaEl.textContent = String((slot && slot.experienceTitle) || "Experience") + " • " +
-      String((slot && slot.bookingDate) || "") + " " + String((slot && slot.timeSlot) || "") + " • " +
-      formatMoneyFromCents(Number((paymentData && paymentData.amountCents) || 0));
-    modal.statusEl.textContent = "Complete this payment to continue.";
-    modal.overlay.classList.remove("hidden");
-    modal.overlay.classList.add("flex");
-
-    var elements = stripe.elements({ clientSecret: clientSecret });
-    var paymentElement = elements.create("payment");
-    modal.elementMount.textContent = "";
-    paymentElement.mount(modal.elementMount);
-
-    var closed = false;
-    function closeModal() {
-      if (closed) return;
-      closed = true;
-      try { paymentElement.unmount(); } catch (_) {}
-      modal.overlay.classList.add("hidden");
-      modal.overlay.classList.remove("flex");
-      modal.elementMount.textContent = "";
-      modal.statusEl.textContent = "";
-      modal.submitBtn.disabled = false;
-    }
-
-    return await new Promise(function (resolve) {
-      modal.closeBtn.onclick = function () {
-        closeModal();
-        resolve(false);
-      };
-      modal.submitBtn.disabled = false;
-      modal.submitBtn.onclick = async function () {
-        modal.submitBtn.disabled = true;
-        modal.statusEl.textContent = "Processing your payment…";
-        var result = await stripe.confirmPayment({
-          elements: elements,
-          redirect: "if_required"
-        });
-        if (result && result.error) {
-          modal.statusEl.textContent = String(result.error.message || "Payment didn't go through. Please try again.");
-          modal.submitBtn.disabled = false;
-          return;
-        }
-        modal.statusEl.textContent = "Payment submitted — confirming. This may take a moment.";
-        resolve(true);
-        closeModal();
-      };
-    });
-  }
-
-  function renderShortfallSlots(slots) {
-    if (!shortfallSlotListEl) return;
-    shortfallSlotListEl.textContent = "";
-    var El = window.tstsEl;
-    var list = Array.isArray(slots) ? slots : [];
-    for (var i = 0; i < list.length; i++) {
-      var slot = list[i] && typeof list[i] === "object" ? list[i] : {};
-      var uiState = shortfallEffectiveUiState(slot);
-      var approvalState = String(slot.approvalState || "NONE").toUpperCase();
-      var fundingState = String(slot.fundingStatus || "NONE").toUpperCase();
-      var nextStage = nextShortfallStage(slot);
-
-      var header = El("div", { className: "flex flex-wrap items-center justify-between gap-2" }, [
-        El("div", { className: "space-y-1" }, [
-          El("h4", { className: "text-sm font-bold text-slate-900", textContent: String(slot.experienceTitle || "Experience") }),
-          El("p", { className: "text-xs text-slate-600", textContent: String(slot.bookingDate || "") + " • " + String(slot.timeSlot || "") })
-        ]),
-        El("div", { className: "flex flex-wrap items-center gap-2 text-[11px]" }, [
-          El("span", { className: "rounded-full px-2 py-1 font-bold " + shortfallBadgeClass(approvalState), textContent: "Status: " + shortfallStateLabel(approvalState) }),
-          El("span", { className: "rounded-full px-2 py-1 font-bold " + shortfallBadgeClass(fundingState), textContent: "Funding: " + shortfallStateLabel(fundingState) }),
-          El("span", { className: "rounded-full px-2 py-1 font-bold " + shortfallBadgeClass(uiState), textContent: shortfallPaymentUiLabel(uiState) })
-        ])
-      ]);
-
-      var seatsPanel = El("div", { className: "rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1 text-xs text-slate-700" }, [
-        El("p", { className: "font-bold uppercase tracking-wide text-slate-500", textContent: "Seats" }),
-        El("p", { textContent: "Seats booked: " + String(Number(slot.bookedSeats || 0)) }),
-        El("p", { textContent: "Total capacity: " + String(Number(slot.capacityTotalSnapshot || 0)) }),
-        El("p", { textContent: "First payment triggers at: " + String(Number(slot.thresholdSeatsSnapshot || 0)) + " seats" })
-      ]);
-      var fundingPanel = El("div", { className: "rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1 text-xs text-slate-700" }, [
-        El("p", { className: "font-bold uppercase tracking-wide text-slate-500", textContent: "Your payments" }),
-        El("p", { textContent: "Extra cost per guest: " + formatMoneyFromCents(Number(slot.shortfallPerSeatSnapshotCents || 0)) }),
-        El("p", { textContent: "First payment: " + formatMoneyFromCents(Number(slot.stageA && slot.stageA.paidCents || 0)) + " of " + formatMoneyFromCents(Number(slot.stageA && slot.stageA.dueCents || 0)) }),
-        El("p", { textContent: "Second payment: " + formatMoneyFromCents(Number(slot.stageB && slot.stageB.paidCents || 0)) + " of " + formatMoneyFromCents(Number(slot.stageB && slot.stageB.dueCents || 0)) })
-      ]);
-      var settlementPanel = El("div", { className: "rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1 text-xs text-slate-700" }, [
-        El("p", { className: "font-bold uppercase tracking-wide text-slate-500", textContent: "After the event" }),
-        El("p", { textContent: "Refund amount: " + formatMoneyFromCents(Number(slot.settlement && slot.settlement.refundablePrincipalCents || 0)) }),
-        El("p", { textContent: "Processing fee (5%): " + formatMoneyFromCents(Number(slot.settlement && slot.settlement.processingFeeCents || 0)) }),
-        El("p", { textContent: "You'll receive: " + formatMoneyFromCents(Number(slot.settlement && slot.settlement.netRefundCents || 0)) }),
-        El("p", { textContent: "Refund status: " + shortfallStateLabel(slot.settlement && slot.settlement.status || "none") })
-      ]);
-
-      var actions = El("div", { className: "flex flex-wrap items-center gap-2 pt-1" });
-      if (approvalState === "APPROVED" && slot.hostConfirmed !== true) {
-        var confirmBtn = El("button", { type: "button", className: "inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50", textContent: "Agree to payment terms" });
-        confirmBtn.addEventListener("click", (function (slotIdCopy) {
-          return async function () {
-            try {
-              var r = await window.authFetch("/api/host/shortfall/confirm", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ slotId: slotIdCopy })
-              });
-              var p = await r.json().catch(function () { return {}; });
-              if (!r.ok || !p || p.ok !== true) throw new Error(String((p && p.message) || "Something went wrong. Please try again."));
-              window.tstsNotify("Payment terms accepted.", "success");
-              await loadShortfallDashboard({ silent: true });
-            } catch (err) {
-              window.tstsNotify(String((err && err.message) || "Something went wrong. Please try again."), "error");
-            }
-          };
-        })(String(slot.slotId || "")));
-        actions.appendChild(confirmBtn);
-      }
-      if (approvalState === "APPROVED" && slot.hostConfirmed === true && nextStage) {
-        var payBtn = El("button", { type: "button", className: "inline-flex items-center rounded-xl bg-tsts-ink px-3 py-2 text-xs font-bold text-white hover:opacity-90", textContent: "Make " + (nextStage === "A" ? "first" : "second") + " payment" });
-        var slotId = String(slot.slotId || "");
-        if (shortfallPaymentInFlight.has(slotId)) {
-          payBtn.disabled = true;
-          payBtn.classList.add("opacity-60");
-          payBtn.textContent = "Payment processing";
-        }
-        payBtn.addEventListener("click", (function (slotCopy, stageCopy) {
-          return async function () {
-            var slotIdLocal = String((slotCopy && slotCopy.slotId) || "");
-            try {
-              shortfallPaymentInFlight.add(slotIdLocal);
-              renderShortfallSlots(shortfallSlotsCache);
-              var res = await window.authFetch("/api/host/shortfall/pay-intent", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ slotId: slotIdLocal, stage: stageCopy })
-              });
-              var payload = await res.json().catch(function () { return {}; });
-              if (!res.ok || !payload || payload.ok !== true) throw new Error(String((payload && payload.message) || "Could not initialize payment."));
-              var data = payload.data || {};
-              var submitted = await openShortfallPaymentFlow(slotCopy, stageCopy, data);
-              if (!submitted) return;
-              shortfallPaymentPendingWebhook.add(slotIdLocal);
-              renderShortfallSlots(shortfallSlotsCache);
-              var webhookApplied = await pollShortfallSlotUntilWebhook(slotIdLocal, stageCopy);
-              if (!webhookApplied) {
-                window.tstsNotify("Payment submitted. Confirmation may take a moment — try refreshing shortly.", "warning");
-              } else {
-                shortfallPaymentPendingWebhook.delete(slotIdLocal);
-                window.tstsNotify("Payment confirmed.", "success");
-              }
-              await loadShortfallDashboard({ silent: true });
-            } catch (err) {
-              window.tstsNotify(String((err && err.message) || "Payment didn't go through. Please try again."), "error");
-            } finally {
-              shortfallPaymentInFlight.delete(slotIdLocal);
-              renderShortfallSlots(shortfallSlotsCache);
-            }
-          };
-        })(slot, nextStage));
-        actions.appendChild(payBtn);
-      }
-      // Waiver section
-      var waiver = (slot && slot.waiver && typeof slot.waiver === "object") ? slot.waiver : {};
-      var waiverStatus = String(waiver.status || "none");
-      var stageADue = Number((slot.stageA && slot.stageA.dueCents) || 0);
-      var stageAPaid = Number((slot.stageA && slot.stageA.paidCents) || 0);
-      var canRequestWaiver = approvalState === "APPROVED" && (waiverStatus === "none" || waiverStatus === "rejected") && stageAPaid < stageADue;
-      if (canRequestWaiver) {
-        var waiverRequestBtn = El("button", { type: "button", className: "inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50", textContent: "Request fee reduction" });
-        waiverRequestBtn.addEventListener("click", (function (slotIdCopy) {
-          return async function () { await requestFeeWaiver(slotIdCopy); };
-        })(String(slot.slotId || "")));
-        actions.appendChild(waiverRequestBtn);
-      }
-      if (waiverStatus === "pending") {
-        actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-amber-100 text-amber-800", textContent: "Fee reduction request under review" }));
-      } else if (waiverStatus === "approved_full") {
-        actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-emerald-100 text-emerald-800", textContent: "Fee reduction approved — no additional payment needed" }));
-      } else if (waiverStatus === "approved_partial") {
-        actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-emerald-100 text-emerald-800", textContent: "Partial reduction approved — reduced amount applies" }));
-      } else if (waiverStatus === "rejected") {
-        actions.appendChild(El("span", { className: "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-slate-100 text-slate-600", textContent: "Fee reduction request was not approved" }));
-      }
-
-      if (actions.childNodes.length === 0) {
-        actions.appendChild(El("p", { className: "text-xs text-slate-500", textContent: "Nothing for you to do right now." }));
-      }
-
-      var card = El("article", { className: "rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-sm" }, [
-        header,
-        El("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, [seatsPanel, fundingPanel, settlementPanel]),
-        actions
-      ]);
-      shortfallSlotListEl.appendChild(card);
-    }
-  }
-
-  async function loadShortfallDashboard(opts) {
-    var options = (opts && typeof opts === "object") ? opts : {};
-    var reqId = ++shortfallRequestCounter;
-    if (!options.silent) setShortfallUiState("loading");
-    try {
-      var loaded = await fetchShortfallStatus({ limit: 150, slotId: options.slotId || "" });
-      if (reqId !== shortfallRequestCounter) return loaded;
-      var slots = Array.isArray(loaded.slots) ? loaded.slots : [];
-      shortfallSlotsCache = slots;
-      if (slots.length === 0) {
-        setShortfallUiState("empty");
-        return loaded;
-      }
-      setShortfallUiState("ready");
-      renderShortfallSlots(slots);
-      return loaded;
-    } catch (err) {
-      if (reqId !== shortfallRequestCounter) return { slots: [] };
-      setShortfallUiState("error", String((err && err.message) || "We couldn't load your funding details. Please try refreshing."));
-      return { slots: [] };
-    }
-  }
+  // 2026-09-07: the host funding screen that used to live here was removed. It had been ported to the
+  // My Bookings funding tab (the version sir approved), and the copy left behind here was never given any
+  // markup: every container it wrote into is absent from every page in the site, so no host ever saw it,
+  // while this page still asked the server for funding status on every load and threw the answer away.
+  // The pricing warning a host sees while setting the price is a different thing and is still above.
 
   function normalizeVerifiedStatus(v) {
     const s = String(v || "").trim().toLowerCase();
@@ -1150,19 +1075,24 @@
     }
   }
 
-  async function requestEventVerification(experienceId) {
+  async function requestEventVerification(experienceId, payload) {
     const id = String(experienceId || "").trim();
     if (!id) throw new Error("Experience id missing");
 
     const vr = await window.authFetch("/api/host/experiences/" + encodeURIComponent(id) + "/verified-opt-in", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({})
+      body: JSON.stringify(payload || {})
     });
     const vrRaw = await vr.json().catch(() => ({}));
     const vrPayload = (vrRaw && vrRaw.data) ? vrRaw.data : vrRaw;
     if (!vr.ok) {
-      throw new Error(String((vrPayload && vrPayload.message) || (vrRaw && vrRaw.message) || "Verification request failed."));
+      // Owner-approved 2026-08-04 (sir, Item 24): the backend's own sentence is carried
+      // on `humanMessage` so callers can show it WITHOUT ever risking exception text.
+      var __beMsg = String((vrPayload && vrPayload.message) || (vrRaw && vrRaw.message) || "").trim();
+      var __err = new Error(__beMsg || "verification request failed");
+      if (__beMsg) __err.humanMessage = __beMsg;
+      throw __err;
     }
     const updated = (vrPayload && vrPayload.experience) ? vrPayload.experience : vrPayload;
     currentVerifiedStatus = normalizeVerifiedStatus(updated && updated.verifiedStatus);
@@ -1170,6 +1100,84 @@
     syncVerifiedUi();
     syncPricingTransparency();
   }
+
+  // Owner-spec 2026-05-02, open the event-verification submission modal.
+  // Collects eventPlan + safetyMeasures + promiseOfFulfilment + capacityRationale,
+  // posts to /verified-opt-in, closes on success, surfaces backend validation errors.
+  function openEventVerificationModal(experienceId) {
+    const id = String(experienceId || "").trim();
+    if (!id) return;
+    const backdrop = document.getElementById("event-verification-modal-backdrop");
+    const modal    = document.getElementById("event-verification-modal");
+    const closeBtn = document.getElementById("event-verification-modal-close");
+    const cancelBtn = document.getElementById("ev-cancel");
+    const submitBtn = document.getElementById("ev-submit");
+    const errorEl  = document.getElementById("ev-error");
+    const planEl   = document.getElementById("ev-plan");
+    const safetyEl = document.getElementById("ev-safety");
+    const promiseEl = document.getElementById("ev-promise");
+    const capacityEl = document.getElementById("ev-capacity");
+    const insuranceEl = document.getElementById("ev-insurance");
+    const foodCertEl  = document.getElementById("ev-food-cert");
+    if (!backdrop || !modal || !submitBtn) return;
+
+    function open() {
+      backdrop.classList.remove("hidden");
+      modal.classList.remove("hidden");
+      document.body.style.overflow = "hidden";
+      if (errorEl) { errorEl.classList.add("hidden"); errorEl.textContent = ""; }
+    }
+    function close() {
+      backdrop.classList.add("hidden");
+      modal.classList.add("hidden");
+      document.body.style.overflow = "";
+    }
+    if (closeBtn)  closeBtn.onclick  = close;
+    if (cancelBtn) cancelBtn.onclick = close;
+    backdrop.onclick = close;
+
+    submitBtn.onclick = async function () {
+      if (errorEl) { errorEl.classList.add("hidden"); errorEl.textContent = ""; }
+      const submitPayload = {
+        eventPlan: String((planEl && planEl.value) || "").trim(),
+        safetyMeasures: String((safetyEl && safetyEl.value) || "").trim(),
+        promiseOfFulfilment: String((promiseEl && promiseEl.value) || "").trim(),
+        capacityRationale: String((capacityEl && capacityEl.value) || "").trim(),
+        insurancePolicyNumber: String((insuranceEl && insuranceEl.value) || "").trim(),
+        foodSafetyCert: String((foodCertEl && foodCertEl.value) || "").trim(),
+      };
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Submitting…";
+      try {
+        await requestEventVerification(id, submitPayload);
+        close();
+        if (window.tstsToast) window.tstsToast({ type: "success", message: "Verification request sent." });
+      } catch (err) {
+        // Owner 2026-06-12: never show raw schema field names to the host — map them to friendly labels.
+        const __EV_FIELD_LABELS = {
+          eventPlan: "Event plan",
+          safetyMeasures: "Safety measures",
+          promiseOfFulfilment: "Promise of fulfilment",
+          capacityRationale: "Capacity rationale",
+          insurancePolicyNumber: "Insurance policy number",
+          foodSafetyCert: "Food safety certificate",
+        };
+        const missing = err && Array.isArray(err.missing) ? err.missing : null;
+        const friendly = (missing && missing.length) ? missing.map(function (k) { return __EV_FIELD_LABELS[k] || k; }) : null;
+        // Owner-approved 2026-08-04 (sir, Item 24): the backend's sentence via
+        // humanMessage, never err.message (which may carry machine text).
+        const msg = (friendly && friendly.length)
+          ? "Please add a bit more detail to: " + friendly.join(", ") + "."
+          : String((err && err.humanMessage) || "We couldn't send your verification request just now. Please try again in a moment.");
+        if (errorEl) { errorEl.textContent = msg; errorEl.classList.remove("hidden"); }
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit for review";
+      }
+    };
+    open();
+  }
+  window.tstsOpenEventVerificationModal = openEventVerificationModal;
 
   if (verifiedRequestBtn) {
     verifiedRequestBtn.addEventListener("click", async function () {
@@ -1183,12 +1191,10 @@
       }
 
       if (isEditing && editId) {
-        try {
-          await requestEventVerification(editId);
-          showNotice("success", "Event verification request submitted.");
-        } catch (err) {
-          showNotice("error", String((err && err.message) || "Verification request failed."));
-        }
+        // Owner-spec 2026-05-02, open the submission modal instead of direct POST.
+        // (The dead direct-POST block that used to sit here behind a no-unreachable suppression
+        // is gone — it could never run, and it posted the same empty body that never worked.)
+        openEventVerificationModal(editId);
         return;
       }
 
@@ -1302,7 +1308,7 @@
   }
 
   // Client-side compression for files > 2 MB. Resizes longest side to 1920px and
-  // re-encodes to JPEG q80 — drops a 6 MB iPhone HEIC down to ~400 KB while
+  // re-encodes to JPEG q80, drops a 6 MB iPhone HEIC down to ~400 KB while
   // staying sharp on mobile + desktop. Returns the original file if compression
   // is unsupported or if the file is already small enough.
   function compressImageIfNeeded(file) {
@@ -1389,6 +1395,18 @@
       fd.append("signature", String(sig.signature));
       fd.append("api_key", String(sig.apiKey));
       fd.append("folder", String(sig.folder));
+      // The signature locks every constraint the server signed (resource_type,
+      // allowed_formats, max_bytes, unique_filename, overwrite, use_filename,
+      // strip_metadata, public_id_prefix, and type for the private-document folder).
+      // Echo every one of them back exactly as received, or the photo storage
+      // service recomputes a different signature than the one the server issued
+      // and refuses the photo outright.
+      var __sigPassthroughSkip = { timestamp: 1, signature: 1, apiKey: 1, cloudName: 1, folder: 1 };
+      Object.keys(sig || {}).forEach(function (k) {
+        if (!__sigPassthroughSkip[k] && sig[k] !== undefined && sig[k] !== null) {
+          fd.append(k, String(sig[k]));
+        }
+      });
       setUploadProgress(0, "Uploading photo…");
       xhr.send(fd);
     });
@@ -1421,21 +1439,52 @@
       if (descriptionInput) descriptionInput.value = exp.description || "";
       __updateDescCounter();
       if (priceInput) priceInput.value = exp.price != null ? String(exp.price) : "";
-      if (dateInput) dateInput.value = String(exp.startDate || exp.date || exp.experienceDate || "").slice(0, 10);
-      if (endDateInput) endDateInput.value = String(exp.endDate || "").slice(0, 10);
+      if (currencyInput && exp.currency) { currencyInput.value = String(exp.currency).toUpperCase(); __userTouchedCurrency = true; }
+      // Owner 2026-05-30: sync the Flatpickr visible alt input when pre-filling from an
+      // existing experience (programmatic .value = X doesn't update Flatpickr's display).
+      if (dateInput) {
+        const __sd = String(exp.startDate || exp.date || exp.experienceDate || "").slice(0, 10);
+        dateInput.value = __sd;
+        if (startDatePicker && __sd) { try { startDatePicker.setDate(__sd, false); } catch (_e) { void _e; } }
+      }
+      if (endDateInput) {
+        const __ed = String(exp.endDate || "").slice(0, 10);
+        endDateInput.value = __ed;
+        if (endDatePicker && __ed) { try { endDatePicker.setDate(__ed, false); } catch (_e2) { void _e2; } }
+      }
 
       const ts0 = (Array.isArray(exp.timeSlots) && exp.timeSlots[0]) ? String(exp.timeSlots[0]) : "";
       const tsParts = ts0.split("-");
       const derivedStart = (tsParts[0] || "").trim();
       const derivedEnd = (tsParts[1] || "").trim();
 
-      if (timeInput) timeInput.value = String(exp.startTime || exp.time || derivedStart || "").trim();
-      if (endTimeInput) endTimeInput.value = String(exp.endTime || derivedEnd || "").trim();
+      if (timeInput) {
+        const __st = String(exp.startTime || exp.time || derivedStart || "").trim();
+        timeInput.value = __st;
+        // Owner 2026-05-30 (date-picker rollout R3 audit): mirror the value into
+        // the Flatpickr alt-input so the visible chip syncs with the prefilled
+        // ISO source. Without this, the brand picker stays empty after edit.
+        if (startTimePicker && __st) { try { startTimePicker.setDate(__st, false); } catch (_e2) { void _e2; } }
+      }
+      if (endTimeInput) {
+        const __et = String(exp.endTime || derivedEnd || "").trim();
+        endTimeInput.value = __et;
+        if (endTimePicker && __et) { try { endTimePicker.setDate(__et, false); } catch (_e2) { void _e2; } }
+      }
       if (locationInput) locationInput.value = exp.city || exp.location || "";
       if (suburbInput) suburbInput.value = exp.suburb || "";
       if (postcodeInput) postcodeInput.value = exp.postcode || "";
       if (addressLineInput) addressLineInput.value = exp.addressLine || "";
       if (addressNotesInput) addressNotesInput.value = exp.addressNotes || "";
+      // Owner-spec 2026-05-03 (D-9): hydrate state, country, bookingMode on edit.
+      if (stateInput) stateInput.value = String(exp.state || "").toUpperCase();
+      if (countryInput) countryInput.value = exp.country || "Australia";
+      (function() {
+        var mode = String(exp.bookingMode || "shared").trim().toLowerCase();
+        if (["shared", "private", "both"].indexOf(mode) < 0) mode = "shared";
+        var radio = document.getElementById("bookingMode-" + mode);
+        if (radio) radio.checked = true;
+      })();
       if (maxGuestsInput) maxGuestsInput.value = (exp.maxGuests != null ? String(exp.maxGuests) : (exp.capacity != null ? String(exp.capacity) : ""));
       // Populate availableDays checkboxes from stored data
       (function () {
@@ -1476,8 +1525,34 @@
 
       if (existingImageUrl) setPreview(existingImageUrl);
 
-      if (submitBtn) submitBtn.textContent = "Save Changes";
-    } catch (_) {}
+      // Owner 2026-05-30 (P3 multi-image): hydrate the multi-photo grid from
+      // exp.images[] (or fall back to [exp.imageUrl] for legacy single-image
+      // listings). Each existing image lands as status="uploaded" so the publish
+      // flow doesn't try to re-upload them; the URL is already a Cloudinary one.
+      var existingImages = Array.isArray(exp.images) && exp.images.length
+        ? exp.images.slice(0, MAX_PHOTOS)
+        : (exp.imageUrl ? [exp.imageUrl] : []);
+      if (existingImages.length) {
+        photosState = existingImages.map(function (url) {
+          return {
+            id: __nextPhotoId(),
+            file: null,
+            previewUrl: url,
+            uploadedUrl: url,
+            status: "uploaded"
+          };
+        });
+        renderPhotosGrid();
+      }
+
+      // sir 2026-08-16: a DRAFT opened for editing has never been published — its CTA
+      // is "Publish". A live/paused listing being edited keeps "Save Changes".
+      if (submitBtn) submitBtn.textContent = (String((exp && exp.status) || "").toUpperCase() === "DRAFT") ? "Publish" : "Save Changes";
+    } catch (_loadEditModeErr) {
+      // Edit-mode hydration is best-effort: if the GET fails, fall back to the
+      // empty draft state. The publish-time validation still gates the save.
+      void _loadEditModeErr;
+    }
   }
 
   function clearImageInput() {
@@ -1491,42 +1566,317 @@
     }
   }
 
-  if (imageInput) {
-    imageInput.addEventListener("change", function () {
-      hideNotice();
-      const f = imageInput.files && imageInput.files[0];
-      if (!f) return;
-      var maxBytes = 10 * 1024 * 1024;
-      if (f.size > maxBytes) {
-        showNotice("error", "That photo is over 10 MB. Please choose a smaller file.");
-        clearImageInput();
-        return;
+  // ═════════════════════════════════════════════════════════════════════════
+  // Multi-photo state + rendering (owner 2026-05-30, P3 multi-image pipeline).
+  // The host can attach up to 3 photos. The first photo is the cover (shown on
+  // Explore + booking confirmation). Photos can be reordered (drag-and-drop on
+  // desktop, ↑/↓ arrows everywhere) and deleted individually. Each photo lives
+  // in `photosState` as one of:
+  //   { id, file?, previewUrl, uploadedUrl?, status }
+  // status ∈ { 'pending' | 'uploading' | 'uploaded' | 'failed' }
+  // 'pending'  = newly attached, not yet uploaded
+  // 'uploaded' = either a fresh upload returned a Cloudinary URL, or this is
+  //              an existing image hydrated from exp.images[] on edit-mode
+  // ═════════════════════════════════════════════════════════════════════════
+  // Owner 2026-06-01: raised from 3 to 6 — sir's call after I argued 3 was too
+  // few for the marketplace category (Airbnb 5-7 recommended, Vrbo 10+). 6
+  // covers the 6 narrative elements (food, space, host face, vibe, detail,
+  // group) without overwhelming the carousel. Minimum 1 photo required.
+  var MAX_PHOTOS = 6;
+  var photosState = [];
+  var __photoIdCounter = 0;
+  function __nextPhotoId() { __photoIdCounter += 1; return "ph-" + __photoIdCounter; }
+
+  // Validate one File against host requirements before adding to state. Returns
+  // a string error code on failure, or null on success.
+  function __validatePhotoFile(f) {
+    if (!f) return "missing";
+    var maxBytes = 10 * 1024 * 1024; // 10 MB hard cap, matches helper-text
+    if (f.size > maxBytes) return "too_large";
+    if (f.type && f.type.indexOf("image/") !== 0) return "wrong_type";
+    var t = String(f.type || "").toLowerCase();
+    // Accept JPEG, PNG, WebP — matches the backend's signed allowed_formats.
+    if (t !== "image/jpeg" && t !== "image/png" && t !== "image/webp" && t !== "") {
+      return "wrong_type";
+    }
+    return null;
+  }
+
+  // Append newly-selected files to photosState until MAX_PHOTOS is reached.
+  // Returns the number actually added (so the caller can show "added 2 of 3").
+  function addPhotosFromFiles(fileList) {
+    if (!fileList || !fileList.length) return 0;
+    hideNotice();
+    var added = 0;
+    var skippedTooLarge = 0;
+    var skippedWrongType = 0;
+    for (var i = 0; i < fileList.length; i += 1) {
+      if (photosState.length >= MAX_PHOTOS) break;
+      var f = fileList[i];
+      var err = __validatePhotoFile(f);
+      if (err === "too_large") { skippedTooLarge += 1; continue; }
+      if (err === "wrong_type") { skippedWrongType += 1; continue; }
+      var previewUrl = "";
+      try { previewUrl = URL.createObjectURL(f); } catch (_objErr) { previewUrl = ""; }
+      photosState.push({
+        id: __nextPhotoId(),
+        file: f,
+        previewUrl: previewUrl,
+        uploadedUrl: null,
+        status: "pending"
+      });
+      added += 1;
+    }
+    if (skippedTooLarge > 0) {
+      showNotice("error", skippedTooLarge + " photo" + (skippedTooLarge > 1 ? "s were" : " was") + " over 10 MB and skipped. Please choose smaller files.");
+    } else if (skippedWrongType > 0) {
+      showNotice("error", skippedWrongType + " file" + (skippedWrongType > 1 ? "s were" : " was") + " not a supported image (JPG, PNG, or WebP) and skipped.");
+    }
+    renderPhotosGrid();
+    clearImageInput();
+    return added;
+  }
+
+  function removePhoto(id) {
+    var before = photosState.length;
+    photosState = photosState.filter(function (p) {
+      if (p.id !== id) return true;
+      // Revoke the blob URL so we don't leak memory on long edit sessions.
+      if (p.previewUrl && typeof URL !== "undefined" && URL.revokeObjectURL && /^blob:/.test(p.previewUrl)) {
+        try { URL.revokeObjectURL(p.previewUrl); } catch (_revokeErr) { /* best-effort */ }
       }
-      if (f.type && f.type.indexOf("image/") !== 0) {
-        showNotice("error", "That doesn't look like an image file. Try a JPG, PNG, or WebP.");
-        clearImageInput();
-        return;
+      return false;
+    });
+    if (photosState.length !== before) renderPhotosGrid();
+  }
+
+  function movePhoto(id, direction) {
+    var idx = -1;
+    for (var i = 0; i < photosState.length; i += 1) {
+      if (photosState[i].id === id) { idx = i; break; }
+    }
+    if (idx < 0) return;
+    var target = idx + (direction === "up" ? -1 : 1);
+    if (target < 0 || target >= photosState.length) return;
+    var tmp = photosState[idx];
+    photosState[idx] = photosState[target];
+    photosState[target] = tmp;
+    renderPhotosGrid();
+  }
+
+  // Owner 2026-06-01: host explicitly picks the cover by tapping "Make cover"
+  // on any non-first tile. The chosen photo gets spliced to position 0; the
+  // rest shift down by one. Backend's auto-pick (imageUrl = images[0]) keeps
+  // working unchanged — the cover is always the first array element.
+  function makeCover(id) {
+    var idx = -1;
+    for (var i = 0; i < photosState.length; i += 1) {
+      if (photosState[i].id === id) { idx = i; break; }
+    }
+    if (idx <= 0) return; // already cover, or not found
+    var picked = photosState.splice(idx, 1)[0];
+    photosState.unshift(picked);
+    renderPhotosGrid();
+  }
+
+  // Render the photo grid. Slot 0 is the cover; other slots get up/down arrows
+  // + "Make cover" action. Empty slots render an "Add" tile.
+  function renderPhotosGrid() {
+    var grid = document.getElementById("photos-grid");
+    if (!grid) return;
+    // Security-rule compliance 2026-08-05 (owner T0: never innerHTML): DOM-safe clear.
+    grid.replaceChildren();
+    for (var slot = 0; slot < MAX_PHOTOS; slot += 1) {
+      var photo = photosState[slot];
+      var tile = document.createElement("div");
+      // Owner 2026-05-30 (P3): aspect-square is purged from the compiled
+      // Tailwind, so set aspect-ratio inline.
+      tile.className = "relative rounded-xl overflow-hidden border-2";
+      tile.style.aspectRatio = "1";
+      if (photo) {
+        tile.className += " border-tsts-soft bg-white";
+        tile.dataset.photoId = photo.id;
+        tile.draggable = true;
+        // Thumb image
+        var img = document.createElement("img");
+        img.src = photo.previewUrl || photo.uploadedUrl || "";
+        img.alt = "Photo " + (slot + 1);
+        img.className = "w-full h-full object-cover";
+        img.loading = "lazy";
+        tile.appendChild(img);
+        // Cover badge on the first slot — owner 2026-05-30 (P3 visual fix):
+        // top-2/left-2 purged from Tailwind build; set position inline.
+        if (slot === 0) {
+          var coverBadge = document.createElement("span");
+          coverBadge.className = "absolute bg-orange-500 text-white text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md shadow-sm";
+          coverBadge.style.top = "8px";
+          coverBadge.style.left = "8px";
+          coverBadge.textContent = "Cover";
+          tile.appendChild(coverBadge);
+        }
+        // Status overlay for uploading/failed
+        if (photo.status === "uploading") {
+          var upOv = document.createElement("div");
+          upOv.className = "absolute inset-0 bg-black/40 flex items-center justify-center";
+          var upTxt = document.createElement("span");
+          upTxt.className = "text-white text-xs font-semibold";
+          upTxt.textContent = "Uploading…";
+          upOv.appendChild(upTxt);
+          tile.appendChild(upOv);
+        } else if (photo.status === "failed") {
+          var failOv = document.createElement("div");
+          failOv.className = "absolute inset-0 bg-red-600/70 flex items-center justify-center";
+          var failTxt = document.createElement("span");
+          failTxt.className = "text-white text-xs font-semibold";
+          failTxt.textContent = "Upload failed";
+          failOv.appendChild(failTxt);
+          tile.appendChild(failOv);
+        }
+        // Bottom control row: ↑ ↓ ×
+        var controls = document.createElement("div");
+        controls.className = "absolute bottom-0 left-0 right-0 flex items-center justify-between px-1.5 py-1.5 bg-gradient-to-t from-black/60 to-transparent";
+        var navWrap = document.createElement("div");
+        navWrap.className = "flex items-center gap-1";
+        // Up arrow (hidden on first slot)
+        var upBtn = document.createElement("button");
+        upBtn.type = "button";
+        upBtn.title = "Move up";
+        upBtn.dataset.action = "up";
+        upBtn.dataset.photoId = photo.id;
+        upBtn.className = "h-6 w-6 rounded-md bg-white/90 text-gray-800 text-xs font-bold hover:bg-white flex items-center justify-center" + (slot === 0 ? " invisible" : "");
+        upBtn.textContent = "↑";
+        navWrap.appendChild(upBtn);
+        // Down arrow (hidden on last filled slot)
+        var downBtn = document.createElement("button");
+        downBtn.type = "button";
+        downBtn.title = "Move down";
+        downBtn.dataset.action = "down";
+        downBtn.dataset.photoId = photo.id;
+        var isLast = slot === photosState.length - 1;
+        downBtn.className = "h-6 w-6 rounded-md bg-white/90 text-gray-800 text-xs font-bold hover:bg-white flex items-center justify-center" + (isLast ? " invisible" : "");
+        downBtn.textContent = "↓";
+        navWrap.appendChild(downBtn);
+        // Make cover — owner 2026-06-01. Only on non-first tiles. Tapping moves
+        // this photo to position 0 and the existing cover shifts down.
+        if (slot !== 0) {
+          var coverBtn = document.createElement("button");
+          coverBtn.type = "button";
+          coverBtn.title = "Make this the cover photo";
+          coverBtn.dataset.action = "make-cover";
+          coverBtn.dataset.photoId = photo.id;
+          coverBtn.className = "h-6 px-2 rounded-md bg-white/90 text-orange-600 text-[10px] font-bold hover:bg-white flex items-center justify-center";
+          coverBtn.textContent = "Make cover";
+          navWrap.appendChild(coverBtn);
+        }
+        controls.appendChild(navWrap);
+        // Delete
+        var delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.title = "Remove";
+        delBtn.dataset.action = "delete";
+        delBtn.dataset.photoId = photo.id;
+        delBtn.className = "h-6 w-6 rounded-md bg-white/90 text-red-600 text-xs font-bold hover:bg-white flex items-center justify-center";
+        delBtn.textContent = "×";
+        controls.appendChild(delBtn);
+        tile.appendChild(controls);
+      } else {
+        // Empty slot — "Add" tile. Only the first empty slot is clickable; the rest
+        // render as muted "+" placeholders so the picker isn't triggered N times.
+        var firstEmpty = photosState.length === slot;
+        if (firstEmpty) {
+          tile.className += " border-dashed border-gray-300 hover:bg-gray-50 transition cursor-pointer flex items-center justify-center";
+          tile.dataset.action = "add";
+          var addLabel = document.createElement("div");
+          addLabel.className = "text-center px-2";
+          var addPlus = document.createElement("div");
+          addPlus.className = "text-3xl text-gray-400 leading-none";
+          addPlus.textContent = "+";
+          var addTxt = document.createElement("p");
+          addTxt.className = "text-xs text-gray-500 mt-1";
+          addTxt.textContent = "Add photo";
+          addLabel.appendChild(addPlus);
+          addLabel.appendChild(addTxt);
+          tile.appendChild(addLabel);
+        } else {
+          tile.className += " border-dashed border-gray-200 bg-gray-50/50";
+        }
       }
-      try {
-        const localUrl = URL.createObjectURL(f);
-        setPreview(localUrl);
-      } catch (e) {
-        // setPreview is best-effort; the FileReader fallback below still populates the thumbnail
+      grid.appendChild(tile);
+    }
+  }
+
+  // Delegate clicks within the grid to add / delete / up / down handlers.
+  (function wirePhotosGrid() {
+    var grid = document.getElementById("photos-grid");
+    if (!grid || !imageInput) return;
+    grid.addEventListener("click", function (e) {
+      var t = e.target;
+      // Climb to the nearest action carrier (button or tile).
+      while (t && t !== grid && !(t.dataset && t.dataset.action)) {
+        t = t.parentNode;
       }
-      var reader = new FileReader();
-      reader.onload = function (e) {
-        var previewImg = document.getElementById("upload-preview-img");
-        if (previewImg) previewImg.src = e.target.result;
-      };
-      reader.onerror = function () { /* thumbnail is best-effort, submit-time validation still gates */ };
-      reader.readAsDataURL(f);
-      var meta = document.getElementById("upload-preview-meta");
-      if (meta) {
-        var sizeStr = formatFileSize(f.size);
-        meta.textContent = String(f.name || "photo") + (sizeStr ? " · " + sizeStr : "");
+      if (!t || t === grid) return;
+      var action = t.dataset.action;
+      var photoId = t.dataset.photoId || "";
+      if (action === "add") {
+        try { imageInput.click(); } catch (_clickErr) { /* picker open is best-effort */ }
+      } else if (action === "delete" && photoId) {
+        removePhoto(photoId);
+      } else if ((action === "up" || action === "down") && photoId) {
+        movePhoto(photoId, action);
+      } else if (action === "make-cover" && photoId) {
+        makeCover(photoId);
       }
     });
+    // HTML5 drag-and-drop: drag a filled tile onto another tile to swap places.
+    // Mobile users use the ↑/↓ arrows; drag-and-drop is desktop-first sugar.
+    var draggedId = null;
+    grid.addEventListener("dragstart", function (e) {
+      var tile = e.target && e.target.closest ? e.target.closest("[data-photo-id]") : null;
+      if (!tile) return;
+      draggedId = tile.dataset.photoId || null;
+      if (e.dataTransfer) {
+        try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", draggedId || ""); } catch (_dtErr) { /* dataTransfer set is best-effort */ }
+      }
+      tile.style.opacity = "0.4";
+    });
+    grid.addEventListener("dragend", function (e) {
+      var tile = e.target && e.target.closest ? e.target.closest("[data-photo-id]") : null;
+      if (tile) tile.style.opacity = "";
+      draggedId = null;
+    });
+    grid.addEventListener("dragover", function (e) {
+      if (!draggedId) return;
+      e.preventDefault();
+      if (e.dataTransfer) try { e.dataTransfer.dropEffect = "move"; } catch (_doErr) { /* dropEffect set is best-effort */ }
+    });
+    grid.addEventListener("drop", function (e) {
+      if (!draggedId) return;
+      e.preventDefault();
+      var targetTile = e.target && e.target.closest ? e.target.closest("[data-photo-id]") : null;
+      if (!targetTile) return;
+      var targetId = targetTile.dataset.photoId;
+      if (!targetId || targetId === draggedId) return;
+      var fromIdx = -1, toIdx = -1;
+      for (var i = 0; i < photosState.length; i += 1) {
+        if (photosState[i].id === draggedId) fromIdx = i;
+        if (photosState[i].id === targetId) toIdx = i;
+      }
+      if (fromIdx < 0 || toIdx < 0) return;
+      var moving = photosState.splice(fromIdx, 1)[0];
+      photosState.splice(toIdx, 0, moving);
+      renderPhotosGrid();
+    });
+  })();
+
+  // Replace the legacy single-photo file-input handler with the multi-photo one.
+  if (imageInput) {
+    imageInput.addEventListener("change", function () {
+      addPhotosFromFiles(imageInput.files);
+    });
   }
+  // Paint the empty initial grid so the user sees three "Add" slots on load.
+  renderPhotosGrid();
 
   // Enforce category selection cap (max 2)
   try {
@@ -1575,10 +1925,10 @@
   }
   syncCutoffUi();
 
-  // DATE-GUARD-001: Prevent past-date selection (local timezone)
+  // DATE-GUARD-001: Prevent past-date selection.
+  // sir 2026-08-13: "past" judged by MELBOURNE's calendar, not the device's (see melbourneTodayIso).
   (function () {
-    var _d = new Date();
-    var _today = new Date(_d.getTime() - _d.getTimezoneOffset() * 60000).toISOString().split("T")[0];
+    var _today = melbourneTodayIso();
     if (dateInput) dateInput.min = _today;
     if (endDateInput) endDateInput.min = _today;
   })();
@@ -1605,6 +1955,13 @@
         const postcode = postcodeInput ? String(postcodeInput.value || "").trim() : "";
         const addressLine = addressLineInput ? String(addressLineInput.value || "").trim() : "";
         const addressNotes = addressNotesInput ? String(addressNotesInput.value || "").trim() : "";
+        // Owner-spec 2026-05-03 (D-9): publish-flow variables for state, country, bookingMode.
+        const state = stateInput ? String(stateInput.value || "").trim().toUpperCase() : "";
+        const country = countryInput ? String(countryInput.value || "").trim() : "";
+        const bookingMode = (function() {
+          var sel = document.querySelector('input[name="bookingMode"]:checked');
+          return sel ? String(sel.value || "shared").trim().toLowerCase() : "shared";
+        })();
         const capacity = maxGuestsInput ? safeNum(maxGuestsInput.value) : null;
         const availableDays = Array.from(document.querySelectorAll('input[name="availableDays"]:checked')).map(function (cb) { return cb.value; });
         const tags = getSelectedTags();
@@ -1616,7 +1973,7 @@
         const requirements = requirementsInput ? String(requirementsInput.value || "").trim() : "";
         const eventDurationMinutes = eventDurationMinutesInput ? (parseInt(eventDurationMinutesInput.value, 10) || null) : null;
 
-        if (!title || !description || price == null || !startDate || !endDate || !startTime || !endTime || !city || !suburb || !postcode || !addressLine || capacity == null) {
+        if (!title || !description || price == null || !startDate || !endDate || !startTime || !endTime || !city || !suburb || !addressLine || capacity == null) {
           showNotice("error", "Please fill all required fields.");
           return;
         }
@@ -1625,7 +1982,9 @@
           if (titleInput) titleInput.focus();
           return;
         }
-        if (price < 0) {
+        // sir's ruling, 2026-08-22: price may be zero (host-funded or admin-waived); only
+        // negative is invalid.
+        if (isHostPriceRejected(price)) {
           showNotice("error", "Price can't be negative.");
           if (priceInput) priceInput.focus();
           return;
@@ -1648,8 +2007,8 @@
           showNotice("error", "Please select at least one category (up to 2).");
           return;
         }
-        if (!/^[0-9]{4}$/.test(postcode)) {
-          showNotice("error", "Postcode must be 4 digits.");
+        if (!__validPostcodeForCountry(postcode, countryInput && countryInput.value)) {
+          showNotice("error", __isAuAddr(countryInput && countryInput.value) ? "Postcode must be 4 digits." : "Enter a valid postcode for the event's country.");
           return;
         }
         // AU city-postcode cross-check (informational warning, does not block)
@@ -1708,14 +2067,14 @@
           const stageADueCents = shortfallPerSeatCents * thresholdSeats;
           const stageBDueCents = shortfallPerSeatCents * Math.max(0, Number(capacity) - thresholdSeats);
           const proceed = await window.tstsConfirm(
-            "Heads up — this experience has higher platform costs.\n\n" +
+            "Heads up, this experience has higher platform costs.\n\n" +
             "Each guest pays: " + formatMoneyFromCents(deficitBreakdown.guestPriceCents) + "\n" +
             "Platform cost per guest: " + formatMoneyFromCents(deficitBreakdown.platformFeeCents) + "\n" +
             "Extra cost you'll cover: " + formatMoneyFromCents(shortfallPerSeatCents) + " per guest\n\n" +
             "You'll make two payments as seats fill:\n" +
             "First payment (" + formatMoneyFromCents(stageADueCents) + ") when " + thresholdSeats + " seats are booked.\n" +
             "Second payment (" + formatMoneyFromCents(stageBDueCents) + ") when remaining seats fill.\n\n" +
-            "After the event, the amount (minus 5% processing fee) is refunded to you.\n\nPublish this experience?",
+            "After the event, the amount (minus a processing fee) is refunded to you.\n\nPublish this experience?",
             { confirmText: "Publish", destructive: true }
           );
           if (!proceed) {
@@ -1724,51 +2083,74 @@
           }
         }
 
-        // Cover photo is mandatory. Real hosts (3 of 3 of one host's events) ended up
-        // with empty images because the previous "Publish Anyway" bypass let them
-        // proceed silently. Gate the publish hard.
-        const hasImage = (imageInput && imageInput.files && imageInput.files.length > 0) || !!existingImageUrl;
-        if (!hasImage) {
-          showNotice("error", "Please add a cover photo before publishing — it's required so guests can see what your experience looks like.");
+        // Owner 2026-05-30 (P3 multi-image): require AT LEAST 1 photo in the
+        // multi-photo state. The host can have up to 3, first = cover. Hard-gate.
+        if (photosState.length === 0) {
+          showNotice("error", "Please add at least one photo before publishing. The first photo is your cover and is required so guests can see what your experience looks like.");
           if (submitBtn) submitBtn.disabled = false;
-          if (imageInput) imageInput.click();
+          var emptyAddTile = document.querySelector('#photos-grid [data-action="add"]');
+          if (emptyAddTile && typeof emptyAddTile.click === "function") emptyAddTile.click();
           return;
         }
 
-        let imageUrl = existingImageUrl || "";
-
-        // If user selected a new image, upload it. Hard-fail the publish on upload error
-        // so we never persist an experience with empty images. The previous fallback
-        // saved the experience with imageUrl="" and showed only an error toast.
-        if (imageInput && imageInput.files && imageInput.files.length > 0) {
-          const file = imageInput.files[0];
+        // Upload every photo whose status is still 'pending'. Run in parallel.
+        // Any failure aborts the publish so we never persist a partial gallery.
+        var pending = photosState.filter(function (p) { return p.status === "pending"; });
+        if (pending.length > 0) {
+          showNotice("info", "Uploading " + pending.length + " photo" + (pending.length > 1 ? "s" : "") + "…");
+          // Mark all pending as uploading so the grid shows the overlay.
+          pending.forEach(function (p) { p.status = "uploading"; });
+          renderPhotosGrid();
           try {
-            showNotice("info", "Uploading photo…");
-            imageUrl = await uploadImage(file);
-            showNotice("success", "Photo uploaded.");
+            await Promise.all(pending.map(async function (p) {
+              try {
+                var url = await uploadImage(p.file);
+                p.uploadedUrl = url;
+                p.status = "uploaded";
+              } catch (uploadErr) {
+                p.status = "failed";
+                throw uploadErr;
+              }
+            }));
+            renderPhotosGrid();
+            showNotice("success", pending.length + " photo" + (pending.length > 1 ? "s" : "") + " uploaded.");
           } catch (err) {
-            showNotice("error", "Photo upload failed. Please check your connection and try again — your experience has not been published yet.");
+            renderPhotosGrid();
+            showNotice("error", "One or more photos failed to upload. Please remove the failed tile or retry. Your experience has not been published yet.");
             if (submitBtn) submitBtn.disabled = false;
             return;
           }
         }
-        if (!imageUrl) {
-          showNotice("error", "Please add a cover photo before publishing.");
+
+        // Collect URLs in their current order. First = cover.
+        var orderedImageUrls = photosState
+          .filter(function (p) { return p.status === "uploaded" && p.uploadedUrl; })
+          .map(function (p) { return p.uploadedUrl; });
+        if (orderedImageUrls.length === 0) {
+          showNotice("error", "Please add at least one photo before publishing.");
           if (submitBtn) submitBtn.disabled = false;
-          if (imageInput) imageInput.click();
           return;
         }
+        var imageUrl = orderedImageUrls[0]; // legacy var kept for downstream references
 
         const body = {
           title,
           description,
           requirements,
           price,
+          // Listing currency from the picker (configure-before-list; defaults from the
+          // event country, host can override). Must be sent on PUBLISH, not only the
+          // draft auto-save — else the host's chosen currency is dropped and the listing
+          // silently falls back to AUD. Backend clamps to the admin-enabled set.
+          currency: currencyInput ? String(currencyInput.value || "AUD").trim().toUpperCase() : "AUD",
           city,
           suburb,
           postcode,
           addressLine,
           addressNotes,
+          state,
+          country,
+          bookingMode,
           capacity: Math.max(1, Math.floor(Number(capacity))),
           startDate,
           endDate,
@@ -1787,8 +2169,9 @@
           }
           body.weeklySchedule = ws;
         }
-        if (imageUrl) body.images = [imageUrl];
-        else body.images = [];
+        // Owner 2026-05-30 (P3 multi-image): send the full ordered array.
+        // Backend auto-sets imageUrl = images[0] as the cover (server.js:18242).
+        body.images = orderedImageUrls.length ? orderedImageUrls : [];
         if (privateEnabled) {
           body.privatePrice = Number(privatePrice);
           body.privateCapacity = Math.max(1, Math.floor(Number(privateCapacity)));
@@ -1826,11 +2209,20 @@
           if (errCode === "CUTOFF_EDIT_LOCKED") {
             if (cutoffLockedBanner) cutoffLockedBanner.classList.remove("hidden");
           } else if (errCode === "CAPACITY_EXCEEDS_BUFFER_LIMIT" || errCode === "CAPACITY_BELOW_BOOKED") {
-            if (window.tstsNotify) window.tstsNotify(String(payload.message || errCode), "warning");
+            // Owner-approved 2026-08-03 (sir, Item 7A): the code must never reach a host,
+            // even if the backend one day stops sending its own sentence.
+            var capCopy = (errCode === "CAPACITY_BELOW_BOOKED")
+              ? "You can't set capacity below the seats guests have already booked."
+              : "That capacity is higher than this experience allows. Please choose a smaller number.";
+            if (window.tstsNotify) window.tstsNotify(String((payload && payload.message) || capCopy), "warning");
+            return; // the toast above already said it — the banner below would say it twice
           } else if (errCode === "INVALID_TIMEZONE") {
-            if (window.tstsNotify) window.tstsNotify("Invalid timezone selected.", "warning");
+            // "Invalid timezone selected." told a host nothing they could act on, and it also
+            // stacked a second message under the first.
+            if (window.tstsNotify) window.tstsNotify("We couldn't read the time zone for this experience. Please pick the city's time zone again.", "warning");
+            return;
           }
-          showNotice("error", String((payload && payload.message) || "Failed to save experience. Please try again."));
+          showNotice("error", String((payload && payload.message) || "We couldn't save your experience just now. Your details are still here, so please try again."));
           return;
         }
         if (cutoffLockedBanner) cutoffLockedBanner.classList.add("hidden");
@@ -1838,6 +2230,14 @@
         const savedExp = (payload && payload.experience) ? payload.experience : ((payload && payload.data) ? payload.data : payload);
         const savedExperienceId = String((savedExp && (savedExp._id || savedExp.id)) || editId || "").trim();
         const wantsVerified = !!pendingEventVerificationRequest;
+        // 2026-08-21: this used to POST the verification request with an EMPTY body the moment the
+        // listing saved. The route requires an event plan, safety measures, a promise of fulfilment
+        // and a capacity rationale — so it failed every single time, and the host, who had never
+        // been shown anywhere to write those, read "Please add a bit more detail to: Event plan,
+        // Safety measures…". The early return then swallowed the success card, the form reset and
+        // the funding refresh as well. The edit path already opens a modal that collects exactly
+        // those fields; the create path now opens the same one, AFTER the success card renders.
+        var __openVerificationModalFor = "";
         if (
           wantsVerified &&
           savedExperienceId &&
@@ -1845,15 +2245,10 @@
           currentVerifiedStatus !== "pending" &&
           normalizeHostVerificationStatus(hostVerificationStatus) === "verified"
         ) {
-          try {
-            await requestEventVerification(savedExperienceId);
-          } catch (err) {
-            showNotice("error", "Experience saved, but verification request failed: " + String((err && err.message) || "Unknown error"));
-            return;
-          }
+          __openVerificationModalFor = savedExperienceId;
         }
 
-        // Reset form state but DON'T toast — the success card below is the visible feedback.
+        // Reset form state but DON'T toast, the success card below is the visible feedback.
         isEditing = false;
         editId = null;
         existingImageUrl = null;
@@ -1869,10 +2264,14 @@
         __showWizardStep(1);
         // Show the post-publish success card (replaces the form on screen).
         renderPublishSuccessCard(savedExp);
-        await loadHostListings();
-        await loadShortfallDashboard({ silent: true });
+        // Good news first, then the questions: the host asked for event verification while filling
+        // the wizard, so now collect what the reviewers actually need.
+        if (__openVerificationModalFor) {
+          pendingEventVerificationRequest = false;
+          openEventVerificationModal(__openVerificationModalFor);
+        }
       } catch (_) {
-        showNotice("error", "Something went wrong. Please try again.");
+        showNotice("error", "We couldn't publish your experience just now. Your details are still here, so please try again.");
       } finally {
         if (submitBtn) submitBtn.disabled = false;
       }
@@ -1881,7 +2280,7 @@
 
   // Replaces the wizard form with a status-aware success card after a successful publish.
   // For ACTIVE: "Your experience is live!" with View / Share / Edit / Publish another.
-  // For PENDING_REVIEW: "We're taking a quick look — usually live within 24h" with Edit / Publish another.
+  // For PENDING_REVIEW: "We're taking a quick look, usually live within 24h" with Edit / Publish another.
   // No internal status names ever surface to the host.
   function renderPublishSuccessCard(savedExp) {
     var card = document.getElementById("publish-success-card");
@@ -1906,7 +2305,7 @@
       if (iconWrap) { iconWrap.classList.remove("bg-emerald-100"); iconWrap.classList.add("bg-amber-100"); }
       if (iconI) { iconI.className = "fas fa-clock text-2xl text-amber-600"; }
       if (heading) heading.textContent = "We're taking a quick look at your experience";
-      if (sub) sub.textContent = "A team member will check your listing — usually within 24 hours, often much sooner. We'll email you the moment it's live on Explore.";
+      if (sub) sub.textContent = "A team member will check your listing, usually within 24 hours, often much sooner. We'll email you the moment it's live on Explore.";
     } else {
       if (iconWrap) { iconWrap.classList.add("bg-emerald-100"); iconWrap.classList.remove("bg-amber-100"); }
       if (iconI) { iconI.className = "fas fa-check text-2xl text-emerald-600"; }
@@ -1916,8 +2315,11 @@
 
     var titleEl = document.getElementById("publish-success-title");
     if (titleEl) titleEl.textContent = title;
+    // sir's ruling, 2026-08-22: price === 0 is a real, valid listing (host-funded or
+    // admin-waived), not an unreachable state — show "Free" rather than "A$0.00 / guest".
     var priceEl = document.getElementById("publish-success-price");
-    if (priceEl) priceEl.textContent = price > 0 ? ("$" + price.toFixed(2) + " / guest") : "Free event";
+    // Owner 2026-07-24: currency-aware like the rest of the pricing step.
+    if (priceEl) priceEl.textContent = (Number(price) === 0) ? "Free" : (formatMoneyFromCents(Math.round(Number(price || 0) * 100)) + " / guest");
     var whenEl = document.getElementById("publish-success-when");
     if (whenEl) {
       var whenStr = startDate || "";
@@ -1953,7 +2355,7 @@
       if (!queued && publicUrl) {
         shareBtn.classList.remove("hidden");
         shareBtn.onclick = function () {
-          var shareData = { title: title, text: "I'm hosting on The Shared Table Story — would you like to join?", url: publicUrl };
+          var shareData = { title: title, text: "I'm hosting on The Shared Table Story, would you like to join?", url: publicUrl };
           if (navigator.share) {
             navigator.share(shareData).catch(function () { /* user cancelled or share failed; copy fallback below covers this */ });
           } else if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1961,7 +2363,13 @@
               if (window.tstsNotify) window.tstsNotify("Link copied to clipboard.", "success");
             });
           } else {
-            window.prompt("Copy this link to share:", publicUrl);
+            // Owner-approved 2026-08-03 (sir, Item 7B): the undesigned browser prompt is
+            // replaced by the site's own dialog with the link ready to copy.
+            if (window.tstsPrompt) {
+              window.tstsPrompt("Copy this link to share your experience", publicUrl, { confirmText: "Done", cancelText: "Close" });
+            } else if (window.tstsNotify) {
+              window.tstsNotify("Copy this link to share: " + publicUrl, "info");
+            }
           }
         };
       } else {
@@ -1989,263 +2397,6 @@
     catch (e) { window.scrollTo(0, 0); }
   }
 
-  function renderListingCard(exp) {
-    var El = window.tstsEl;
-    var id = String((exp && (exp._id || exp.id)) || "");
-    var rawTitle = String((exp && exp.title) || "Untitled");
-    var status = String((exp && exp.status) || "ACTIVE");
-    // User-facing labels — never expose internal status names
-    var labels = { ACTIVE: "Live on Explore", PAUSED: "Paused", DRAFT: "Draft", PENDING_REVIEW: "Awaiting review", DELETED_SOFT: "Deleted" };
-    var badgeClasses = {
-      ACTIVE: "bg-green-100 text-green-800",
-      PAUSED: "bg-yellow-100 text-yellow-800",
-      DRAFT: "bg-gray-100 text-gray-600",
-      PENDING_REVIEW: "bg-amber-100 text-amber-800",
-      DELETED_SOFT: "bg-red-100 text-red-800"
-    };
-    var badgeEl = El("span", { className: "inline-block rounded-full px-2 py-0.5 text-xs font-semibold " + (badgeClasses[status] || "bg-gray-100 text-gray-600"), textContent: labels[status] || status });
-    var titleEl = El("span", { className: "font-semibold text-gray-900 text-sm truncate", textContent: rawTitle });
-
-    var actionBtns = [];
-    function makeBtn(label, cls, action) {
-      var btn = El("button", { type: "button", className: "text-xs px-3 py-1.5 rounded-lg transition " + cls, textContent: label });
-      btn.addEventListener("click", function () {
-        if (action === "edit") loadListingForEdit(id);
-        else if (action === "delete") doDeleteExperience(id, rawTitle);
-        else doStatusAction(id, action);
-      });
-      return btn;
-    }
-    if (status === "ACTIVE") {
-      actionBtns.push(makeBtn("Edit", "border border-gray-300 text-gray-600 hover:bg-gray-50", "edit"));
-      actionBtns.push(makeBtn("Pause", "border border-orange-300 text-orange-700 hover:bg-orange-50", "pause"));
-      actionBtns.push(makeBtn("Delete Experience", "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100", "delete"));
-    } else if (status === "PAUSED") {
-      actionBtns.push(makeBtn("Resume", "bg-green-600 text-white hover:bg-green-700", "resume"));
-      actionBtns.push(makeBtn("Edit", "border border-gray-300 text-gray-600 hover:bg-gray-50", "edit"));
-      actionBtns.push(makeBtn("Delete Experience", "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100", "delete"));
-    } else if (status === "DRAFT" || status === "PENDING_REVIEW") {
-      actionBtns.push(makeBtn("Edit", "border border-gray-300 text-gray-600 hover:bg-gray-50", "edit"));
-      actionBtns.push(makeBtn("Delete Experience", "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100", "delete"));
-    }
-
-    // For DRAFT events that were rejected, show the admin's reason inline so the host
-    // knows exactly what to fix before resubmitting. statusReason is set by the
-    // backend reject endpoint.
-    var rejectionReasonEl = null;
-    var statusReasonRaw = String((exp && exp.statusReason) || "").trim();
-    var isRejectedDraft = (status === "DRAFT" && statusReasonRaw && statusReasonRaw !== "approved_by_admin");
-    if (isRejectedDraft) {
-      rejectionReasonEl = El("div", { className: "mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900" }, [
-        El("p", { className: "font-bold" }, [El("i", { className: "fas fa-info-circle mr-1" }), document.createTextNode("A team member asked for a small change before this goes live:")]),
-        El("p", { className: "mt-1" }, statusReasonRaw)
-      ]);
-    }
-
-    var headerRow = El("div", { className: "flex items-center justify-between gap-4" }, [
-      El("div", { className: "flex items-center gap-3 min-w-0" }, [titleEl, badgeEl]),
-      El("div", { className: "flex items-center gap-2 flex-shrink-0" }, actionBtns)
-    ]);
-
-    var children = [headerRow];
-    if (rejectionReasonEl) children.push(rejectionReasonEl);
-
-    var li = El("div", { className: "rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm" }, children);
-    return li;
-  }
-
-  async function loadHostListings() {
-    var loadingEl = document.getElementById("my-listings-loading");
-    var emptyEl = document.getElementById("my-listings-empty");
-    var errorEl = document.getElementById("my-listings-error");
-    var listEl = document.getElementById("my-listings-list");
-    if (!listEl) return;
-    if (loadingEl) loadingEl.classList.remove("hidden");
-    if (emptyEl) emptyEl.classList.add("hidden");
-    if (errorEl) errorEl.classList.add("hidden");
-    listEl.classList.add("hidden");
-    listEl.textContent = "";
-    try {
-      var res = await window.authFetch("/api/host/experiences");
-      var data = await res.json().catch(function () { return {}; });
-      if (!res.ok) {
-        throw new Error(mapHostListingsError(data, res.status));
-      }
-      var unwrapped = (data && data.data !== undefined) ? data.data : data;
-      var exps = Array.isArray(unwrapped && unwrapped.items)
-        ? unwrapped.items
-        : (Array.isArray(unwrapped) ? unwrapped : (unwrapped && unwrapped.experiences ? unwrapped.experiences : []));
-      if (loadingEl) loadingEl.classList.add("hidden");
-      if (!exps || exps.length === 0) {
-        if (emptyEl) emptyEl.classList.remove("hidden");
-        return;
-      }
-      exps.forEach(function (exp) { listEl.appendChild(renderListingCard(exp)); });
-      listEl.classList.remove("hidden");
-    } catch (err) {
-      if (loadingEl) loadingEl.classList.add("hidden");
-      if (errorEl) {
-        errorEl.textContent = String((err && err.message) || "Failed to load listings. Please refresh.");
-        errorEl.classList.remove("hidden");
-      }
-    }
-  }
-
-  async function doStatusAction(id, action) {
-    try {
-      var res = await window.authFetch("/api/experiences/" + encodeURIComponent(id) + "/status", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: action })
-      });
-      var payload = await res.json().catch(function () { return {}; });
-      if (!res.ok) {
-        if (window.tstsNotify) window.tstsNotify(String((payload && payload.message) || "Action failed. Please try again."), "error");
-        return;
-      }
-      await loadHostListings();
-      await loadShortfallDashboard({ silent: true });
-    } catch (_) {
-      if (window.tstsNotify) window.tstsNotify("Action failed. Please try again.", "error");
-    }
-  }
-
-  // B1+B2: Delete experience with booking check + consent modal
-  async function doDeleteExperience(id, title) {
-    try {
-      // Check for confirmed bookings first
-      var bRes = await window.authFetch("/api/host/bookings/" + encodeURIComponent(id));
-      var bData = await bRes.json().catch(function () { return {}; });
-      var bookings = [];
-      if (bRes.ok && bData && bData.data) {
-        var raw = bData.data;
-        bookings = Array.isArray(raw.bookings) ? raw.bookings : (Array.isArray(raw) ? raw : []);
-      }
-      var confirmed = bookings.filter(function (b) {
-        var s = String((b && b.status) || "").toLowerCase();
-        return s === "confirmed" || s === "pending_payment";
-      });
-
-      if (confirmed.length === 0) {
-        // No active bookings — simple confirm
-        var ok = await window.tstsConfirm("Are you sure you want to delete this experience? It will be permanently removed.");
-        if (!ok) return;
-      } else {
-        // Has active bookings — consent modal with penalty details
-        var totalCents = 0;
-        confirmed.forEach(function (b) {
-          var amt = 0;
-          if (b.pricingSnapshot && Number.isFinite(Number(b.pricingSnapshot.totalCents))) amt = Number(b.pricingSnapshot.totalCents);
-          else if (b.feeBreakdown && Number.isFinite(Number(b.feeBreakdown.totalCents))) amt = Number(b.feeBreakdown.totalCents);
-          else if (Number.isFinite(Number(b.amountCents))) amt = Number(b.amountCents);
-          totalCents += amt;
-        });
-        var recoveryCents = Math.max(0, Math.round(totalCents * 0.05));
-        var recoveryDollars = (recoveryCents / 100).toFixed(2);
-
-        var msg = "This experience has " + confirmed.length + " confirmed booking(s). " +
-          "Deleting it will cancel all guest bookings, issue full refunds, " +
-          "and apply a 5% cancellation charge ($" + recoveryDollars + ") deducted from your future payouts. " +
-          "By proceeding, you confirm you understand and accept these terms.";
-
-        var ok2 = await window.tstsConfirm(msg, { confirmText: "Delete and Refund Guests", cancelText: "Cancel", destructive: true });
-        if (!ok2) return;
-      }
-
-      // OTP dual-auth verification for experience deletion
-      var otpToken = await window.tstsOtpVerify("experience_delete", {
-        message: "To confirm listing deletion, verify your identity.",
-        actionLabel: "Verify & Delete",
-        meta: { experienceId: id }
-      });
-      if (!otpToken) return;
-
-      // Proceed with delete
-      var dRes = await window.authFetch("/api/experiences/" + encodeURIComponent(id), {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ otpToken: otpToken })
-      });
-      var dData = await dRes.json().catch(function () { return {}; });
-      if (!dRes.ok) {
-        if (window.tstsNotify) window.tstsNotify(String((dData && dData.message) || "Delete failed. Please try again."), "error");
-        return;
-      }
-      if (window.tstsNotify) window.tstsNotify("Experience deleted.", "success");
-      await loadHostListings();
-      await loadShortfallDashboard({ silent: true });
-    } catch (err) {
-      if (window.tstsNotify) window.tstsNotify("Delete failed. Please try again.", "error");
-    }
-  }
-
-  async function loadListingForEdit(id) {
-    try {
-      var res = await window.authFetch("/api/experiences/" + encodeURIComponent(id));
-      if (!res.ok) { if (window.tstsNotify) window.tstsNotify("Could not load listing.", "error"); return; }
-      var expRaw = await res.json().catch(function () { return null; });
-      if (!expRaw) { if (window.tstsNotify) window.tstsNotify("Could not load listing.", "error"); return; }
-      var exp = (expRaw && expRaw.data) ? expRaw.data : expRaw;
-      isEditing = true;
-      editId = id;
-      existingImageUrl = exp.imageUrl || "";
-      currentVerifiedStatus = exp.verifiedStatus || "none";
-      if (titleInput) titleInput.value = String(exp.title || "");
-      if (descriptionInput) descriptionInput.value = String(exp.description || "");
-      __updateDescCounter();
-      if (priceInput) priceInput.value = String(exp.price != null ? exp.price : "");
-      if (dateInput) dateInput.value = String(exp.startDate || "");
-      if (endDateInput) endDateInput.value = String(exp.endDate || "");
-      if (timeInput) timeInput.value = String(exp.startTime || "");
-      if (endTimeInput) endTimeInput.value = String(exp.endTime || "");
-      if (locationInput) locationInput.value = String(exp.city || "");
-      if (suburbInput) suburbInput.value = String(exp.suburb || "");
-      if (postcodeInput) postcodeInput.value = String(exp.postcode || "");
-      if (addressLineInput) addressLineInput.value = String(exp.addressLine || "");
-      if (addressNotesInput) addressNotesInput.value = String(exp.addressNotes || "");
-      if (maxGuestsInput) maxGuestsInput.value = String(exp.maxGuests != null ? exp.maxGuests : "");
-      if (requirementsInput) requirementsInput.value = String(exp.requirements || "");
-      if (eventDurationMinutesInput) eventDurationMinutesInput.value = exp.eventDurationMinutes != null ? String(exp.eventDurationMinutes) : "";
-      // Populate availableDays checkboxes from stored data
-      (function () {
-        var rawDays = Array.isArray(exp.availableDays) ? exp.availableDays : parseAvailableDays(exp.availableDays);
-        var daySet = new Set(rawDays.map(function (d) { return String(d || "").trim(); }));
-        var cbs = document.querySelectorAll('input[name="availableDays"]');
-        for (var i = 0; i < cbs.length; i++) { cbs[i].checked = daySet.has(cbs[i].value); }
-      })();
-      var tagCheckboxes = document.querySelectorAll('input[name="tags"]');
-      var expTags = Array.isArray(exp.tags) ? exp.tags : [];
-      tagCheckboxes.forEach(function (cb) { cb.checked = expTags.includes(cb.value); });
-      syncTagLimitUI();
-      var hasPrivate = !!(exp.privatePrice && Number(exp.privatePrice) > 0);
-      if (privateEnabledInput) privateEnabledInput.checked = hasPrivate;
-      syncPrivateConfigUi();
-      if (hasPrivate) {
-        if (privatePriceInput) privatePriceInput.value = String(exp.privatePrice || "");
-        if (privateCapacityInput) privateCapacityInput.value = String(exp.privateCapacity || "");
-        if (privateIncludedGuestsInput) privateIncludedGuestsInput.value = String(exp.privateIncludedGuests || "");
-        if (privateExtraGuestPriceInput) privateExtraGuestPriceInput.value = String(exp.privateExtraGuestPrice || "");
-      }
-      // Hydrate booking controls
-      if (timezoneInput) timezoneInput.value = exp.timezone || "Australia/Melbourne";
-      if (cutoffEnabledInput) cutoffEnabledInput.checked = (exp.bookingCutoffEnabled !== false);
-      if (cutoffHoursInput) cutoffHoursInput.value = String(Math.round((exp.bookingCutoffMinutes || 1440) / 60));
-      syncCutoffUi();
-
-      // Hydrate group discount tiers
-      populateDiscountTiersFromExp(exp);
-
-      var hiddenId = document.getElementById("editing-experience-id");
-      if (hiddenId) hiddenId.value = id;
-      if (submitBtn) submitBtn.textContent = "Save Changes";
-      syncVerifiedUi();
-      syncPricingTransparency();
-      __showWizardStep(1);
-    } catch (_) {
-      if (window.tstsNotify) window.tstsNotify("Could not load listing for editing.", "error");
-    }
-  }
-
   var createNewBtn = document.getElementById("create-new-listing-btn");
   if (createNewBtn) {
     createNewBtn.addEventListener("click", function () {
@@ -2263,12 +2414,6 @@
       syncPricingTransparency();
       hideNotice();
       if (form) form.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }
-
-  if (shortfallRefreshBtn) {
-    shortfallRefreshBtn.addEventListener("click", function () {
-      loadShortfallDashboard({ silent: false });
     });
   }
 
@@ -2310,14 +2455,14 @@
   function __validateWizardStep(step) {
     if (step === 1) {
       var t = titleInput ? String(titleInput.value || "").trim() : "";
-      if (!t) { showNotice("error", "Please enter a title for your experience."); if (titleInput) titleInput.focus(); return false; }
+      if (!t) { showNotice("error", "Please enter a title for your experience."); __markFieldInvalid(titleInput); if (titleInput) titleInput.focus(); return false; }
       var tags = getSelectedTags();
       if (!tags || tags.length < 1) { showNotice("error", "Please select at least one category."); return false; }
       var desc = descriptionInput ? String(descriptionInput.value || "").trim() : "";
-      if (!desc || desc.length < 150) { showNotice("error", "Description must be at least 150 characters."); if (descriptionInput) descriptionInput.focus(); return false; }
-      if (desc.length > 1500) { showNotice("error", "Description must be under 1500 characters."); if (descriptionInput) descriptionInput.focus(); return false; }
+      if (!desc || desc.length < 150) { showNotice("error", "Description must be at least 150 characters."); __markFieldInvalid(descriptionInput); if (descriptionInput) descriptionInput.focus(); return false; }
+      if (desc.length > 1500) { showNotice("error", "Description must be under 1500 characters."); __markFieldInvalid(descriptionInput); if (descriptionInput) descriptionInput.focus(); return false; }
       var req = requirementsInput ? String(requirementsInput.value || "").trim() : "";
-      if (!req) { showNotice("error", "Please fill in what guests should know before attending."); if (requirementsInput) requirementsInput.focus(); return false; }
+      if (!req) { showNotice("error", "Please fill in what guests should know before attending."); __markFieldInvalid(requirementsInput); if (requirementsInput) requirementsInput.focus(); return false; }
       return true;
     }
     if (step === 2) {
@@ -2326,7 +2471,8 @@
       var suburb = suburbInput ? String(suburbInput.value || "").trim() : "";
       if (!suburb) { showNotice("error", "Please enter a suburb."); if (suburbInput) suburbInput.focus(); return false; }
       var pc = postcodeInput ? String(postcodeInput.value || "").trim() : "";
-      if (!pc || !/^[0-9]{4}$/.test(pc)) { showNotice("error", "Postcode must be 4 digits."); if (postcodeInput) postcodeInput.focus(); return false; }
+      var __pcCountry = countryInput && countryInput.value;
+      if (!__validPostcodeForCountry(pc, __pcCountry) || (__isAuAddr(__pcCountry) && !pc)) { showNotice("error", __isAuAddr(__pcCountry) ? "Postcode must be 4 digits." : "Enter a valid postcode for the event's country."); if (postcodeInput) postcodeInput.focus(); return false; }
       var addr = addressLineInput ? String(addressLineInput.value || "").trim() : "";
       if (!addr) { showNotice("error", "Please enter a street address."); if (addressLineInput) addressLineInput.focus(); return false; }
       var sd = dateInput ? String(dateInput.value || "").trim() : "";
@@ -2348,7 +2494,7 @@
     }
     if (step === 3) {
       var price = priceInput ? safeNum(priceInput.value) : null;
-      if (price == null || price <= 0) { showNotice("error", "Please enter a valid price."); if (priceInput) priceInput.focus(); return false; }
+      if (price == null || price < 0) { showNotice("error", "Please enter a valid price."); if (priceInput) priceInput.focus(); return false; }
       var mg = maxGuestsInput ? safeNum(maxGuestsInput.value) : null;
       if (mg == null || mg < 1) { showNotice("error", "Please enter max guests (at least 1)."); if (maxGuestsInput) maxGuestsInput.focus(); return false; }
       var ad = document.querySelectorAll('input[name="availableDays"]:checked');
@@ -2367,11 +2513,18 @@
     function addRow(label, value) {
       el.appendChild(El("div", { className: "flex justify-between py-2 border-b border-slate-100 text-sm" }, [
         El("span", { className: "text-slate-500 flex-shrink-0", textContent: label }),
-        El("span", { className: "font-medium text-slate-800 text-right max-w-[60%]", style: "overflow-wrap:break-word", textContent: String(value || "\u2014") })
+        // tstsEl's guard THROWS on string styles (dev) \u2014 this line killed the whole
+        // review summary and with it the create-mode footer. Object form is the
+        // guard-safe contract (common.js style handler iterates object keys).
+        El("span", { className: "font-medium text-slate-800 text-right max-w-[60%]", style: { overflowWrap: "break-word" }, textContent: String(value || "\u2014") })
       ]));
     }
     addRow("Title", titleInput ? titleInput.value : "");
-    addRow("Category", getSelectedTags().join(", ") || "None");
+    // sir's zero-jargon law: a host reads "Food & Gatherings", never the machine
+    // slug "food-gatherings". Same canonical map every other surface uses.
+    addRow("Category", getSelectedTags().map(function (t) {
+      return window.tstsCategoryLabel ? window.tstsCategoryLabel(t) : t;
+    }).join(", ") || "None");
     var descVal = descriptionInput ? String(descriptionInput.value || "").trim() : "";
     addRow("Description", descVal.length > 100 ? descVal.substring(0, 100) + "\u2026" : descVal);
     var reqVal = requirementsInput ? String(requirementsInput.value || "").trim() : "";
@@ -2381,18 +2534,21 @@
     addRow("Postcode", postcodeInput ? postcodeInput.value : "");
     addRow("Address", addressLineInput ? addressLineInput.value : "");
     if (addressNotesInput && addressNotesInput.value) addRow("Address notes", addressNotesInput.value);
-    addRow("Dates", (dateInput ? dateInput.value : "") + " to " + (endDateInput ? endDateInput.value : ""));
-    addRow("Time", (timeInput ? timeInput.value : "") + " \u2013 " + (endTimeInput ? endTimeInput.value : ""));
+    // sir 2026-08-16 ("Fix it", walk gap W5): the host read their own listing back in
+    // raw machine shapes ("2026-08-22 to 2026-11-28", "09:00 - 12:00") while every
+    // guest surface renders friendly AU formats. Display only \u2014 values unchanged.
+    addRow("Dates", __friendlyReviewDate(dateInput ? dateInput.value : "") + " to " + __friendlyReviewDate(endDateInput ? endDateInput.value : ""));
+    addRow("Time", __friendlyReviewTime(timeInput ? timeInput.value : "") + " \u2013 " + __friendlyReviewTime(endTimeInput ? endTimeInput.value : ""));
     addRow("Duration", eventDurationMinutesInput && eventDurationMinutesInput.value ? eventDurationMinutesInput.value + " min" : "");
     addRow("Timezone", timezoneInput ? timezoneInput.value : "");
-    addRow("Price", priceInput && priceInput.value ? "$" + priceInput.value + " AUD" : "");
+    addRow("Price", priceInput && priceInput.value ? (priceInput.value + " " + (currencyInput ? String(currencyInput.value || "AUD") : "AUD")) : "");
     addRow("Max guests", maxGuestsInput ? maxGuestsInput.value : "");
     var days = [];
     try { days = Array.from(document.querySelectorAll('input[name="availableDays"]:checked')).map(function (cb) { return cb.value; }); } catch (_) {}
     addRow("Available days", days.join(", ") || "None");
     var cutoffOn = cutoffEnabledInput ? cutoffEnabledInput.checked : true;
     addRow("Booking cutoff", cutoffOn ? ((cutoffHoursInput ? cutoffHoursInput.value : "24") + "h before start") : "Open until start");
-    var hasImg = (imageInput && imageInput.files && imageInput.files.length > 0) || !!existingImageUrl;
+    var hasImg = photosState.length > 0 || !!existingImageUrl;
     addRow("Cover photo", hasImg ? "Added" : "None");
     var privOn = privateEnabledInput ? privateEnabledInput.checked : false;
     addRow("Private booking", privOn ? "Enabled" : "Disabled");
@@ -2411,8 +2567,24 @@
         postcode: postcodeInput ? String(postcodeInput.value || "").trim() : "",
         addressLine: addressLineInput ? String(addressLineInput.value || "").trim() : "",
         addressNotes: addressNotesInput ? String(addressNotesInput.value || "").trim() : "",
+        // Owner-spec 2026-05-03: state + country submitted alongside existing fields.
+        state: stateInput ? String(stateInput.value || "").trim().toUpperCase() : "",
+        country: countryInput ? String(countryInput.value || "").trim() : "",
+        // Owner 2026-05-24: listing currency (defaults from country, host can override).
+        currency: currencyInput ? String(currencyInput.value || "AUD").trim().toUpperCase() : "AUD",
+        // Owner-spec 2026-05-03 (D-9 step 7): bookingMode picked from radio group.
+        bookingMode: (function() {
+          var sel = document.querySelector('input[name="bookingMode"]:checked');
+          return sel ? String(sel.value || "shared").trim().toLowerCase() : "shared";
+        })(),
         tags: getSelectedTags(),
-        status: "DRAFT"
+        // sir's ruling 2026-08-16 ("Yes — draft until explicit Publish"): this auto-save
+        // always sent status:"DRAFT", but the backend overwrote it and the listing went
+        // PUBLICLY LIVE mid-wizard (walk-proven: booked before the host saw Review).
+        // draft:true is the honoured flag — the server keeps the listing a private
+        // DRAFT on both create (POST) and every later auto-save (PUT).
+        status: "DRAFT",
+        draft: true
       };
       var price = priceInput ? safeNum(priceInput.value) : null;
       if (price != null && price > 0) body.price = price;
@@ -2437,6 +2609,19 @@
       body.bookingCutoffEnabled = cutoffEnabledInput ? cutoffEnabledInput.checked : true;
       body.bookingCutoffMinutes = cutoffHoursInput ? Math.max(0, parseInt(cutoffHoursInput.value, 10) || 0) * 60 : 1440;
       body.dynamicDiscounts = buildDynamicDiscountsFromForm();
+      // Discoverability taxonomies + instant book (owner-approved 2026-05-02, full filter wiring).
+      ["vibe", "dietary", "accessibility", "cuisine", "languages", "occasion"].forEach(function (k) {
+        try {
+          var picked = Array.from(document.querySelectorAll('[data-host-tax-chip-active="' + k + '"]')).map(function (el) { return el.getAttribute("data-tax-value"); }).filter(Boolean);
+          body[k] = picked;
+        } catch (_) { body[k] = []; }
+      });
+      var __ib = document.getElementById("host-instant-book");
+      body.instantBook = !!(__ib && __ib.checked);
+      // Mirror eventDurationMinutes onto durationMinutes (canonical filter field). Use the same numeric value.
+      if (typeof body.eventDurationMinutes === "number" && body.eventDurationMinutes > 0) {
+        body.durationMinutes = body.eventDurationMinutes;
+      }
       var url = isEditing && editId ? "/api/experiences/" + encodeURIComponent(editId) : "/api/experiences";
       var method = isEditing && editId ? "PUT" : "POST";
       var __expIdemKey2 = (!(isEditing && editId) && window.tstsIdempotencyKey) ? window.tstsIdempotencyKey(submitBtn) : "";
@@ -2455,10 +2640,34 @@
           editId = savedId;
           var hiddenId = document.getElementById("editing-experience-id");
           if (hiddenId) hiddenId.value = savedId;
-          if (submitBtn) submitBtn.textContent = "Save Changes";
+          // sir 2026-08-16: the auto-save only ever creates/keeps a private DRAFT, so a
+          // never-published listing's CTA reads "Publish" — never "Save Changes" (the
+          // walk found a brand-new listing wearing an edit label with no publish moment).
+          if (submitBtn) submitBtn.textContent = "Publish";
         }
       }
     } catch (_) { /* Silent best-effort */ }
+  }
+
+  // sir 2026-08-16 ("Fix it", walk gap W5): every date and time a host reads back must be in
+  // friendly Australian format, never the raw machine shape. Declared once, here, and used by
+  // both the review panel above and the duplicate-listing warning below — a function declaration
+  // is available to the whole of this file, so there must never be a second copy of either.
+  function __friendlyReviewDate(iso) {
+    var raw = String(iso || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    try {
+      if (window.tstsFormatDateShort) return window.tstsFormatDateShort(new Date(raw + "T00:00:00"));
+    } catch (_fmtErr) { void _fmtErr; }
+    return raw;
+  }
+  function __friendlyReviewTime(hhmm) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || "").trim());
+    if (!m) return String(hhmm || "");
+    var h = parseInt(m[1], 10);
+    var period = h >= 12 ? "PM" : "AM";
+    var h12 = h % 12; if (h12 === 0) h12 = 12;
+    return h12 + ":" + m[2] + " " + period;
   }
 
   async function __checkDuplicateListing() {
@@ -2489,7 +2698,7 @@
           var El = window.tstsEl;
           if (El) {
             dupeNotice.textContent = "";
-            var text1 = document.createTextNode("You already have \u201c" + String(exp.title || "Untitled") + "\u201d scheduled for " + sd + " at " + st + ". ");
+            var text1 = document.createTextNode("You already have \u201c" + String(exp.title || "Untitled") + "\u201d scheduled for " + __friendlyReviewDate(sd) + " at " + __friendlyReviewTime(st) + ". ");
             var link = El("a", {
               href: "host.html?edit=" + encodeURIComponent(expId),
               className: "underline font-bold text-orange-700 hover:text-orange-900"
@@ -2554,12 +2763,242 @@
     }
     await loadEditMode();
     await loadHostVerificationStatus();
+    // Owner 2026-06-12: deep-link target for the host dashboard "Get verified" CTA. When the URL carries
+    // verify=1 on an edit, open the event-verification form automatically. The button's own click handler
+    // enforces the preconditions (host must be verified; listing not already verified/pending) and shows
+    // the correct notice otherwise — so we reuse it rather than calling the modal directly.
+    try {
+      var __vparams = new URLSearchParams(location.search || "");
+      if (__vparams.get("verify") === "1" && isEditing && editId && verifiedRequestBtn) {
+        verifiedRequestBtn.click();
+      }
+    } catch (_ve) { void _ve; }
     await loadActivePolicySnapshot();
     syncPricingTransparency();
-    await loadHostListings();
-    await loadShortfallDashboard({ silent: false });
+    await loadHostTaxonomies();
     unmaskAuthGate();
   })().catch(function () {
     unmaskAuthGate();
   });
+
+  // Owner-approved 2026-05-02: dynamic taxonomy chips driven by /api/taxonomies (admin-editable).
+  async function loadHostTaxonomies() {
+    try {
+      var res = await fetch((window.__TSTS_RUNTIME__ && window.__TSTS_RUNTIME__.apiBase ? window.__TSTS_RUNTIME__.apiBase : "") + "/api/taxonomies", { method: "GET" });
+      if (!res || !res.ok) return;
+      var payload = await res.json();
+      var taxonomies = (payload && payload.data) || {};
+      ["vibe", "dietary", "accessibility", "cuisine", "languages", "occasion"].forEach(function (key) {
+        var wrap = document.querySelector('[data-host-tax-chips="' + key + '"]');
+        if (!wrap) return;
+        wrap.textContent = "";
+        var items = Array.isArray(taxonomies[key]) ? taxonomies[key] : [];
+        if (items.length === 0) {
+          wrap.appendChild(window.tstsEl("p", { className: "text-xs text-slate-400" }, ["No options yet, admin can add them in Filter Taxonomies."]));
+          return;
+        }
+        items.forEach(function (it) {
+          var btn = window.tstsEl("button", {
+            type: "button",
+            className: "px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition",
+            "data-tax-key": key,
+            "data-tax-value": it.value,
+            "aria-pressed": "false"
+          }, [it.label]);
+          btn.addEventListener("click", function () {
+            var on = btn.getAttribute("data-host-tax-chip-active") === key;
+            if (on) {
+              btn.removeAttribute("data-host-tax-chip-active");
+              btn.setAttribute("aria-pressed", "false");
+              btn.className = "px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:border-orange-500 transition";
+            } else {
+              btn.setAttribute("data-host-tax-chip-active", key);
+              btn.setAttribute("aria-pressed", "true");
+              btn.className = "px-3 py-1.5 bg-orange-600 border border-orange-600 text-white rounded-full text-xs font-bold transition";
+            }
+          });
+          wrap.appendChild(btn);
+        });
+      });
+      // Pre-select stored values when editing an existing experience.
+      try {
+        var hiddenId = document.getElementById("editing-experience-id");
+        var editId = hiddenId ? String(hiddenId.value || "").trim() : "";
+        if (editId) {
+          var rExp = await window.authFetch("/api/experiences/" + encodeURIComponent(editId), { method: "GET" });
+          if (rExp && rExp.ok) {
+            var pExp = await rExp.json();
+            var exp = (pExp && pExp.data) || pExp || {};
+            ["vibe", "dietary", "accessibility", "cuisine", "languages", "occasion"].forEach(function (key) {
+              var picked = Array.isArray(exp[key]) ? exp[key] : [];
+              picked.forEach(function (val) {
+                var chip = document.querySelector('[data-tax-key="' + key + '"][data-tax-value="' + String(val).replace(/"/g, '\\"') + '"]');
+                if (chip && !chip.getAttribute("data-host-tax-chip-active")) chip.click();
+              });
+            });
+            var ib = document.getElementById("host-instant-book");
+            if (ib) ib.checked = !!exp.instantBook;
+          }
+        }
+      } catch (_) { /* edit-mode pre-select is best-effort */ }
+    } catch (_) { /* taxonomy load is non-fatal, host can still save without these */ }
+  }
+
+  // Owner-spec 2026-05-04 (D-10 chunk 7): host evidence-submission form.
+  // Surfaces when URL has ?evidence=<reportId>. Loads report context, validates
+  // user input, uploads optional files via Cloudinary, posts to backend.
+  (function initEvidenceForm() {
+    var qsEv = (function () {
+      try { return new URLSearchParams(window.location.search).get("evidence"); }
+      catch (_qsErr) { void _qsErr; return null; }
+    })();
+    if (!qsEv || !/^[a-fA-F0-9]{24}$/.test(qsEv)) return;
+
+    var sec = document.getElementById("evidence-section");
+    var formWrap = document.getElementById("create-experience-form");
+    var wizardProgress = document.getElementById("wizard-progress");
+    var hostHeading = (sec && sec.parentElement) ? sec.parentElement.querySelector("h1.heading-serif") : null;
+    var hostSub = (hostHeading && hostHeading.nextElementSibling && hostHeading.nextElementSibling.matches("p")) ? hostHeading.nextElementSibling : null;
+    if (!sec) return;
+
+    // Hide the create-experience wizard while host is in evidence mode.
+    if (formWrap) formWrap.classList.add("hidden");
+    if (wizardProgress) wizardProgress.classList.add("hidden");
+    if (hostHeading) hostHeading.classList.add("hidden");
+    if (hostSub) hostSub.classList.add("hidden");
+    sec.classList.remove("hidden");
+
+    var ctxId = document.getElementById("evidence-report-id");
+    var ctxNote = document.getElementById("evidence-reviewer-note");
+    var ctxDeadline = document.getElementById("evidence-deadline");
+    var alreadySubmitted = document.getElementById("evidence-already-submitted");
+    var formEl = document.getElementById("evidence-form");
+    var textEl = document.getElementById("evidence-text");
+    var counterEl = document.getElementById("evidence-text-counter");
+    var filesInput = document.getElementById("evidence-files");
+    var filesStatus = document.getElementById("evidence-files-status");
+    var errEl = document.getElementById("evidence-error");
+    var successEl = document.getElementById("evidence-success");
+    var cancelBtn = document.getElementById("evidence-cancel");
+    var submitBtn = document.getElementById("evidence-submit");
+
+    function showErr(msg) {
+      if (!errEl) return;
+      errEl.textContent = String(msg || "That didn't go through. Please try again.");
+      errEl.classList.remove("hidden");
+    }
+    function clearErr() { if (errEl) errEl.classList.add("hidden"); }
+
+    function fmtDate(iso) {
+      if (!iso) return "";
+      try {
+        return new Date(iso).toLocaleString("en-AU", {
+          weekday: "short", day: "numeric", month: "short",
+          year: "numeric", hour: "numeric", minute: "2-digit"
+        });
+      } catch (_fmtErr) { void _fmtErr; return String(iso); }
+    }
+
+    if (textEl && counterEl) {
+      var updateCounter = function () {
+        counterEl.textContent = String((textEl.value || "").length);
+      };
+      textEl.addEventListener("input", updateCounter);
+      updateCounter();
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", function () {
+        // Strip the ?evidence param and reload the standard host form.
+        try {
+          var u = new URL(window.location.href);
+          u.searchParams.delete("evidence");
+          window.location.href = u.pathname + (u.search ? u.search : "");
+        } catch (_navErr) { void _navErr; window.location.href = "/host.html"; }
+      });
+    }
+
+    // Load the report context (read-only).
+    (async function loadContext() {
+      try {
+        var r = await window.authFetch("/api/host/reports/" + encodeURIComponent(qsEv) + "/evidence", { method: "GET" });
+        if (!r || !r.ok) {
+          var msg = "We could not load this report. The link may have expired or you may not have access.";
+          try {
+            var body = await r.json();
+            if (body && body.message) msg = body.message;
+          } catch (_jsonErr) { void _jsonErr; }
+          showErr(msg);
+          if (formEl) formEl.classList.add("hidden");
+          return;
+        }
+        var data = await r.json();
+        var d = (data && data.data) ? data.data : data;
+        if (ctxId) ctxId.textContent = String(d.id || "");
+        if (ctxNote) ctxNote.textContent = String(d.adminReason || "(no note from reviewer)");
+        if (ctxDeadline) ctxDeadline.textContent = fmtDate(d.evidenceDeadline);
+
+        if (d.hostEvidenceSubmittedAt) {
+          if (alreadySubmitted) alreadySubmitted.classList.remove("hidden");
+          if (formEl) formEl.classList.add("hidden");
+        }
+      } catch (e) {
+        showErr("We could not load this report. Please try again or reply to the email you received.");
+        if (formEl) formEl.classList.add("hidden");
+      }
+    })();
+
+    if (formEl) {
+      formEl.addEventListener("submit", async function (ev) {
+        ev.preventDefault();
+        clearErr();
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Submitting..."; }
+
+        var text = String((textEl && textEl.value) || "").trim();
+        if (!text) {
+          showErr("Please share your account of what happened. Even a few sentences help our team make a fair decision.");
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Submit response"; }
+          return;
+        }
+
+        // Optional file uploads via existing uploadImage() helper (Cloudinary).
+        var files = (filesInput && filesInput.files) ? Array.from(filesInput.files) : [];
+        files = files.slice(0, 8);
+        var urls = [];
+        for (var i = 0; i < files.length; i++) {
+          try {
+            if (filesStatus) filesStatus.textContent = "Uploading file " + (i + 1) + " of " + files.length + "...";
+            var url = await uploadImage(files[i]);
+            urls.push(url);
+          } catch (upErr) {
+            showErr("File upload failed. You can submit text only, or reply to the email with attachments.");
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Submit response"; }
+            return;
+          }
+        }
+        if (filesStatus) filesStatus.textContent = "";
+
+        try {
+          var res = await window.authFetch("/api/host/reports/" + encodeURIComponent(qsEv) + "/evidence", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: text, files: urls })
+          });
+          if (!res || !res.ok) {
+            var emsg = "We could not save your response. Please try again or reply to the email.";
+            try { var eb = await res.json(); if (eb && eb.message) emsg = eb.message; } catch (_jsonErr2) { void _jsonErr2; }
+            showErr(emsg);
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Submit response"; }
+            return;
+          }
+          if (formEl) formEl.classList.add("hidden");
+          if (successEl) successEl.classList.remove("hidden");
+          window.scrollTo({ top: sec.offsetTop, behavior: "smooth" });
+        } catch (e) {
+          showErr("We could not save your response. Please try again or reply to the email.");
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Submit response"; }
+        }
+      });
+    }
+  })();
 })();

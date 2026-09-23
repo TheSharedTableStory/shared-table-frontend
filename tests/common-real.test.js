@@ -1,7 +1,7 @@
 // REAL coverage for js/common.js — loads the actual production script
 // into jsdom and exercises the window.tsts* helpers. No inline mocks.
 
-import { describe, test, expect, beforeAll } from "vitest";
+import { describe, test, expect, beforeAll, beforeEach, afterEach, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -160,5 +160,133 @@ describe("tstsSafeImg", () => {
     const img = document.createElement("img");
     window.tstsSafeImg(img, "", "https://fallback.com/x.jpg");
     expect(img.src).toBe("https://fallback.com/x.jpg");
+  });
+});
+
+// Cookie banner rebuild, 2026-08-23 (sir's go-ahead, approval-log entry same date): real
+// per-category consent replacing the old single accepted/not-accepted flag.
+describe("tstsGetCookieConsent", () => {
+  beforeEach(() => { localStorage.clear(); });
+
+  test("returns null when nothing stored", () => {
+    expect(window.tstsGetCookieConsent()).toBeNull();
+  });
+
+  test("returns null for a legacy bare-string value (not a real category choice)", () => {
+    localStorage.setItem("tsts_cookie_consent", "all");
+    expect(window.tstsGetCookieConsent()).toBeNull();
+  });
+
+  test("returns the parsed object for a valid consent record", () => {
+    localStorage.setItem("tsts_cookie_consent", JSON.stringify({ necessary: true, functional: false, analytics: true, ts: "2026-08-23T00:00:00.000Z" }));
+    const consent = window.tstsGetCookieConsent();
+    expect(consent).toEqual({ necessary: true, functional: false, analytics: true, ts: "2026-08-23T00:00:00.000Z" });
+  });
+
+  test("returns null for an object missing necessary:true (malformed record)", () => {
+    localStorage.setItem("tsts_cookie_consent", JSON.stringify({ functional: true, analytics: true }));
+    expect(window.tstsGetCookieConsent()).toBeNull();
+  });
+});
+
+describe("injectCookieBanner — real DOM interaction, every branch", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    document.body.innerHTML = "";
+    document.body.style.paddingBottom = "";
+  });
+
+  function getBannerButtons() {
+    // The banner is the only fixed-position bar this function appends directly to <body>.
+    return Array.from(document.querySelectorAll("body > div button"));
+  }
+
+  test("renders all four real choices when no consent is stored", () => {
+    globalThis.injectCookieBanner();
+    const labels = getBannerButtons().map((b) => b.textContent);
+    expect(labels).toEqual(["Adjust", "Decline All", "Accept All", "×"]);
+  });
+
+  test("does not render again when a valid consent record already exists", () => {
+    localStorage.setItem("tsts_cookie_consent", JSON.stringify({ necessary: true, functional: true, analytics: true }));
+    globalThis.injectCookieBanner();
+    expect(document.querySelectorAll("body > div").length).toBe(0);
+  });
+
+  test("Accept All sets every category true", () => {
+    globalThis.injectCookieBanner();
+    const btn = getBannerButtons().find((b) => b.textContent === "Accept All");
+    btn.click();
+    expect(window.tstsGetCookieConsent()).toMatchObject({ necessary: true, functional: true, analytics: true });
+  });
+
+  test("Decline All keeps Necessary on, turns everything else off", () => {
+    globalThis.injectCookieBanner();
+    const btn = getBannerButtons().find((b) => b.textContent === "Decline All");
+    btn.click();
+    expect(window.tstsGetCookieConsent()).toMatchObject({ necessary: true, functional: false, analytics: false });
+  });
+
+  test("× (dismiss) still means accepted — sir's 2026-08-09 ruling, unchanged by this rebuild", () => {
+    globalThis.injectCookieBanner();
+    const btn = getBannerButtons().find((b) => b.textContent === "×");
+    btn.click();
+    expect(window.tstsGetCookieConsent()).toMatchObject({ necessary: true, functional: true, analytics: true });
+  });
+
+  test("Adjust reveals per-category toggles with Necessary locked, Save records exactly what was toggled", () => {
+    globalThis.injectCookieBanner();
+    getBannerButtons().find((b) => b.textContent === "Adjust").click();
+
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    expect(checkboxes.length).toBe(2); // Functional, Analytics — Necessary has no toggle, it's locked on
+    checkboxes[1].click(); // turn Analytics on, leave Functional off
+
+    const saveBtn = document.querySelector('[data-action="save"]');
+    expect(saveBtn.textContent).toBe("Save Preferences");
+    saveBtn.click();
+
+    expect(window.tstsGetCookieConsent()).toMatchObject({ necessary: true, functional: false, analytics: true });
+  });
+
+  test("Adjust → Back returns to the three-choice view without recording anything", () => {
+    globalThis.injectCookieBanner();
+    getBannerButtons().find((b) => b.textContent === "Adjust").click();
+    document.querySelector('[data-action="back"]').click();
+    const labels = getBannerButtons().map((b) => b.textContent);
+    expect(labels).toEqual(["Adjust", "Decline All", "Accept All", "×"]);
+    expect(window.tstsGetCookieConsent()).toBeNull();
+  });
+});
+
+describe("__trackAnalytics — gated on real Analytics consent (2026-08-23)", () => {
+  const realFetch = window.fetch;
+
+  beforeEach(() => {
+    localStorage.clear();
+    window.API_BASE = "https://api.example.com";
+    window.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({}) }));
+  });
+
+  afterEach(() => {
+    window.fetch = realFetch;
+  });
+
+  test("does not call fetch when no consent is stored", () => {
+    window.__trackAnalytics("explore:view", "engagement", {});
+    expect(window.fetch).not.toHaveBeenCalled();
+  });
+
+  test("does not call fetch when consent exists but analytics is false", () => {
+    localStorage.setItem("tsts_cookie_consent", JSON.stringify({ necessary: true, functional: true, analytics: false }));
+    window.__trackAnalytics("explore:view", "engagement", {});
+    expect(window.fetch).not.toHaveBeenCalled();
+  });
+
+  test("calls fetch when analytics consent is true", () => {
+    localStorage.setItem("tsts_cookie_consent", JSON.stringify({ necessary: true, functional: false, analytics: true }));
+    window.__trackAnalytics("explore:view", "engagement", { resultCount: 3 });
+    expect(window.fetch).toHaveBeenCalledTimes(1);
+    expect(window.fetch.mock.calls[0][0]).toBe("https://api.example.com/api/analytics/track");
   });
 });

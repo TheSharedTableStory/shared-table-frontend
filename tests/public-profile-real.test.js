@@ -159,13 +159,17 @@ describe("public-profile — render", () => {
     expect(document.getElementById("profile-content").classList.contains("hidden")).toBe(false);
   });
 
-  test("location missing → falls back to 'Global'", async () => {
+  // Behavior change (sir's ruling 2026-08-13): no invented "Global" copy — a host with no
+  // location gets the line HIDDEN until their real location (or listing cities) is known.
+  test("location missing → line hidden, no invented 'Global' copy", async () => {
     loadPublicProfile({
       search: "?id=h",
       authFetch: async () => ({ ok: true, status: 200, json: async () => ({ ok: true, data: { user: { name: "X" } } }) }),
     });
     await fireDOMReady();
-    expect(document.getElementById("host-location").textContent).toMatch(/Global/);
+    const locEl = document.getElementById("host-location");
+    expect(locEl.textContent).toBe("");
+    expect(locEl.classList.contains("hidden")).toBe(true);
   });
 
   test("hostVerificationStatus='verified' (string form) still shows badge", async () => {

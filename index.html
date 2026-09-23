@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' http://localhost:4000 https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 	    <title>The Shared Table Story - Real-World Connection</title>
@@ -22,8 +22,8 @@
 	    <meta name="twitter:description" content="Connect with locals through food, stories, and real-world moments.">
 	    <meta name="twitter:image" content="https://www.thesharedtablestory.com/assets/og-image.jpg?v=20260401">
 
-    <link rel="stylesheet" href="css/tailwind.css?v=20260317b">
-    <link rel="stylesheet" href="css/fonts.css?v=20260310d">
+    <link rel="stylesheet" href="css/tailwind.css?v=20260914a">
+    <link rel="stylesheet" href="css/fonts.css?v=20260810a">
     
 
 
@@ -68,36 +68,49 @@
 	                <p class="text-gray-600 max-w-2xl mx-auto">Choose the kind of experience you're in the mood for.</p>
 	            </div>
 	            
-	            <div class="flex flex-col items-center gap-3 mb-6">
-	                <p class="text-xs text-gray-600 text-center max-w-2xl">Real people. Real moments. Your seat is waiting.</p>
-	                <div class="flex items-center justify-center gap-2">
-	                    <button id="ways-to-connect-prev" type="button" aria-label="Previous categories" class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 text-gray-800 hover:border-orange-500 hover:text-orange-600 transition shadow-sm">
-	                        <i class="fas fa-chevron-left" aria-hidden="true"></i>
-	                    </button>
-                    <button id="ways-to-connect-next" type="button" aria-label="Next categories" class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 text-gray-800 hover:border-orange-500 hover:text-orange-600 transition shadow-sm">
-                        <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                    </button>
-                    <a href="explore.html" class="hidden md:inline-flex items-center gap-2 text-sm font-bold text-orange-600 hover:underline">View all</a>
-                </div>
-            </div>
+            <style>
+              .tsts-carousel-wrap{position:relative;}
+              /* sir 2026-08-09: "same galss shape and never cross the left and right borders".
+                 The white disc that sat here had no approval anywhere on this platform, and the one
+                 white 40x40 sir was ever shown (P4 hero, 2026-06-01, v1) he rejected — it took eight
+                 iterations to reach the glass circle. P4's .tsts-glass-circle is white-at-18% built
+                 for icons on a PHOTO, so it would read white-on-white against this cream section;
+                 this is the same shape, same 36px, same hairline border, tinted in ink so it carries
+                 on a light ground. At 36px with a 24px inset the disc stays wholly inside the
+                 carousel and never straddles the left or right edge. */
+              /* sir's P4 lock, matched fully: tsts-glass-circle PLUS tsts-glass-faint. The faint
+                 variant exists because the frost turns the disc into a solid grey plate over a photo
+                 (sir's own note in fonts.css) — blur off, 5% fill, so the card image shows through
+                 and only the hairline border and the white arrow carry it. */
+              .tsts-cat-nav-btn{position:absolute;top:30%;transform:translateY(-50%);z-index:50;opacity:0;width:36px;height:36px;border-radius:9999px;background-color:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.3);color:#ffffff;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;text-shadow:0 1px 3px rgba(0,0,0,0.45);transition:opacity .2s ease,transform .2s ease;}
+              .tsts-carousel-wrap:hover .tsts-cat-nav-btn{opacity:1;}
+              .tsts-cat-nav-btn:hover{transform:translateY(-50%) scale(1.1);}
+              .tsts-cat-nav-btn:focus-visible{opacity:1;outline:2px solid #ea580c;outline-offset:2px;}
+              .tsts-cat-nav-prev{left:24px;}
+              .tsts-cat-nav-next{right:24px;}
+              @media (max-width:767px){.tsts-cat-nav-btn{display:none !important;}}
+            </style>
 
-            <div id="ways-to-connect-carousel" class="tsts-carousel flex gap-6 overflow-x-auto pb-4 scrollbar-hide" aria-label="Category carousel" tabindex="0">
-                <!-- Populated by js/index.js (DOM-safe) -->
+            <div class="tsts-carousel-wrap">
+                <button id="ways-to-connect-prev" type="button" aria-label="Previous categories" class="tsts-cat-nav-btn tsts-cat-nav-prev inline-flex items-center justify-center">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                </button>
+                <button id="ways-to-connect-next" type="button" aria-label="Next categories" class="tsts-cat-nav-btn tsts-cat-nav-next inline-flex items-center justify-center">
+                    <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                </button>
+                <div id="ways-to-connect-carousel" class="tsts-carousel flex gap-6 overflow-x-auto pb-4 scrollbar-hide" aria-label="Category carousel" tabindex="0">
+                    <!-- Populated by js/index.js (DOM-safe) -->
+                </div>
             </div>
         </div>
     </section>
 
-<section id="home-curations" class="hidden py-12 px-4 bg-white">
-  <div class="max-w-7xl mx-auto">
-    <p id="max-discount-banner" class="text-center text-sm text-orange-600 font-medium mb-8"></p>
-    <div class="text-center mb-10">
-      <h2 class="text-3xl font-bold mb-4 heading-serif text-tsts-ink">Shortcuts for you</h2>
-    </div>
-    <div id="home-curations-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
-  </div>
-</section>
+    <!-- sir's ruling 2026-08-10: a savings strip lived here that had NEVER rendered — its
+         numbers could not compute, so it hid itself on every load and sir froze the page
+         without ever seeing it. sir: unapproved-because-unseen code has no place on a
+         frozen page. Removed; the page renders pixel-identical to sir's approval. -->
 
-    <section id="home-recommend" class="hidden py-12 px-4 bg-gray-50">
+    <section id="home-recommend" class="hidden px-4 bg-gray-50" style="padding-block:2.1rem">
         <div class="max-w-7xl mx-auto">
             <div class="text-center mb-10">
                 <h2 class="text-3xl font-bold mb-4 heading-serif text-tsts-ink">Recommended For You</h2>
@@ -107,9 +120,9 @@
         </div>
     </section>
 
-    <section class="py-16 px-4 bg-white border-b border-gray-100">
+    <section class="px-4 bg-white border-b border-gray-100" style="padding-block:2.1rem">
         <div class="max-w-6xl mx-auto text-center">
-            <h2 class="text-3xl font-bold mb-12 heading-serif text-tsts-ink">How It Works</h2>
+            <h2 class="text-3xl font-bold mb-8 heading-serif text-tsts-ink">How It Works</h2>
             <div class="grid md:grid-cols-3 gap-8">
                 <div class="p-6">
                     <div class="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center text-orange-600 text-2xl mb-6 mx-auto">
@@ -136,7 +149,7 @@
         </div>
     </section>
 
-    <section class="py-16 px-4 bg-white">
+    <section class="px-4 bg-white" style="padding-block:2.1rem">
         <div class="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-stretch">
             <div class="order-2 md:order-1">
                 <img src="/assets/community.jpg" loading="lazy"
@@ -173,7 +186,7 @@
     <footer id="footer-placeholder" role="contentinfo"></footer>
 
     <script src="js/runtime-config.js?v=20260224a"></script>
-  <script src="js/common.js?v=20260316c"></script>
-    <script src="js/index.js?v=20260317b"></script>
+  <script src="js/common.js?v=20260907a"></script>
+    <script src="js/index.js?v=20260815a"></script>
 </body>
 </html>

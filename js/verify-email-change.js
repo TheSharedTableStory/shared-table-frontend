@@ -15,7 +15,11 @@
     hide(loadingEl);
     hide(successEl);
     show(errorEl);
-    try { if (errorMsgEl) errorMsgEl.textContent = String(msg || "Confirmation failed."); } catch (_) {}
+    // The old default here was a bare "Confirmation failed." — no reason, no next step. Every live
+    // caller below passes a real sentence, so it was unreachable today, but it stays a landmine for
+    // the next caller that forgets. Defaulting to the same sentence the other paths use means this
+    // screen can never render a system phrase, whoever calls it.
+    try { if (errorMsgEl) errorMsgEl.textContent = String(msg || "We couldn't confirm this email change. Open the link from your email again, or start the change from your profile."); } catch (_) {}
   }
 
   function setSuccess(email) {
@@ -68,7 +72,14 @@
     var token = parseHash();
 
     if (!token) {
-      setError("Missing confirmation token. Please open the link from your email again.");
+      // "token" is developer shorthand and the reader has no idea what is missing or whose fault
+      // it is. The unsubscribe page next door already says this properly; match it.
+      // Seen on screen 2026-08-22: this sentence OPENED with "This link didn't work." — which is
+      // word-for-word the <h1> directly above it, so the reader was told the same thing twice
+      // before reaching the part that helps. The heading states the problem; the body's job is
+      // the next step. Caused by editing the heading and the body separately and never viewing
+      // them together.
+      setError("Open the confirmation link straight from your email, and it will bring you back here.");
       return;
     }
 
@@ -98,20 +109,24 @@
           return;
         }
 
-        var msg = "Confirmation failed.";
+        // A bare "Confirmation failed." tells the reader nothing they can act on. The server sends its
+        // own sentence when it has one; this is the fallback for when it does not.
+        var msg = "We couldn't confirm this email change. Open the link from your email again, or start the change from your profile.";
         try {
           msg = (payload && payload.message) ? String(payload.message) : msg;
         } catch (_) {}
         setError(msg);
       })
       .catch(function () {
-        setError("Confirmation failed due to a network error. Please try again.");
+        // Was "We couldn't reach us just now." — not a sentence anyone would say. Found by reading
+        // the file end to end rather than grepping the one string I came here to change.
+        setError("We couldn't reach the site just now. Check your connection and open the link again.");
       });
   }
 
   try {
     confirm();
   } catch (_) {
-    setError("Confirmation failed.");
+    setError("We couldn't confirm this email change. Open the link from your email again, or start the change from your profile.");
   }
 })();

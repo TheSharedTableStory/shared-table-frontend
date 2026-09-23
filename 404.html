@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' http://localhost:4000 https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" href="/assets/logo-mark.png">
   <meta name="theme-color" content="#ea580c">
   <title>Page Not Found – The Shared Table Story</title>
-  <link rel="stylesheet" href="css/tailwind.css?v=20260317b">
-  <link rel="stylesheet" href="css/fonts.css?v=20260310d">
+  <link rel="stylesheet" href="css/tailwind.css?v=20260914a">
+  <link rel="stylesheet" href="css/fonts.css?v=20260810a">
 
 <link rel="manifest" href="manifest.json">
 </head>
@@ -17,7 +17,14 @@
   <nav id="navbar-placeholder" role="navigation"></nav>
 
   <main class="flex-grow flex flex-col justify-center items-center text-center px-4 py-12" role="main">
-    <h1 class="text-4xl md:text-6xl font-bold mb-4 text-tsts-ink heading-serif">404</h1>
+    <!-- Was the bare status code "404". sir's Rule 16 bans technical jargon on ANY user-visible
+         surface, and an HTTP status code is exactly that — it was the only one left in a house
+         style that otherwise speaks in words. Derived, not authored: the site's own error pages
+         already state the problem plainly in the heading ("This link didn't work" on unsubscribe
+         and verify-email-change) and explain underneath. This page's body already carries sir's
+         voice ("wandered off the map… this table hasn't been set yet"), so only the heading moved
+         into the established pattern. Size, weight, serif face and spacing all unchanged. -->
+    <h1 class="text-4xl md:text-6xl font-bold mb-4 text-tsts-ink heading-serif">We couldn't find that page</h1>
     <p class="text-xl text-gray-500 mb-8 max-w-md">Looks like you've wandered off the map. This table hasn't been set yet.</p>
 
     <div class="flex flex-col md:flex-row gap-4">
@@ -32,6 +39,6 @@
 
   <footer id="footer-placeholder" role="contentinfo"></footer>
   <script src="js/runtime-config.js?v=20260224a"></script>
-  <script src="js/common.js?v=20260316c"></script>
+  <script src="js/common.js?v=20260907a"></script>
 </body>
 </html>

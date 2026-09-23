@@ -258,7 +258,7 @@
 
         setUploadStatus("success", "Profile picture updated.");
       } catch (_) {
-        setUploadStatus("error", "Something went wrong. Please try again.");
+        setUploadStatus("error", "We couldn't upload that picture. Please try again.");
       } finally {
         uploadBtn.disabled = false;
       }
@@ -268,24 +268,66 @@
   if (form) {
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
-      const name = nameInput ? String(nameInput.value || "").trim() : "";
-      const mobileLocal = mobileInput ? String(mobileInput.value || "").trim() : "";
-      const countryCode = mobileCountryCode ? (mobileCountryCode.value || "+61") : "+61";
-      const mobile = mobileLocal ? countryCode + mobileLocal.replace(/^0/, "") : "";
-      const bio = bioInput ? String(bioInput.value || "").trim() : "";
-      const location = locationInput ? String(locationInput.value || "").trim() : "";
-      const handle = handleInput ? String(handleInput.value || "").trim() : "";
+      // BUG-172 (2026-05-19): build a DELTA body — only send a field when its
+      // input EXISTS and its value actually CHANGED vs the loaded snapshot.
+      // The old code sent every field (and "" for any absent input), so a
+      // partial/lazy-rendered form OVERWROTE saved bio/location/handle/mobile
+      // with "". Server PUT /api/auth/update is hasOwnProperty-gated, so an
+      // omitted key is left untouched. Intentional clears (input present,
+      // emptied by the user) still differ from the snapshot -> still sent, so
+      // clearing a field deliberately still works (the inferior "treat empty
+      // as undefined" option would have broken that).
+      const snap = getStoredUser() || {};
+      const body = {};
+      if (nameInput) {
+        const v = String(nameInput.value || "").trim();
+        if (v !== String(snap.name || "")) body.name = v;
+      }
+      if (mobileInput) {
+        const mobileLocal = String(mobileInput.value || "").trim();
+        const countryCode = mobileCountryCode ? (mobileCountryCode.value || "+61") : "+61";
+        const v = mobileLocal ? countryCode + mobileLocal.replace(/^0/, "") : "";
+        if (v !== String(snap.mobile || "")) body.mobile = v;
+      }
+      if (bioInput) {
+        const v = String(bioInput.value || "").trim();
+        if (v !== String(snap.bio || "")) body.bio = v;
+      }
+      if (locationInput) {
+        const v = String(locationInput.value || "").trim();
+        if (v !== String(snap.location || "")) body.location = v;
+      }
+      if (handleInput) {
+        const v = String(handleInput.value || "").trim();
+        if (v !== String(snap.handle || "")) body.handle = v;
+      }
+      if (allowHandleSearchToggle) {
+        const v = !!allowHandleSearchToggle.checked;
+        if (v !== !!snap.allowHandleSearch) body.allowHandleSearch = v;
+      }
+      if (shareToFriendsToggle) {
+        const v = !!shareToFriendsToggle.checked;
+        if (v !== !!snap.showExperiencesToFriends) body.showExperiencesToFriends = v;
+      }
+      if (recommendationEmailToggle) {
+        const v = !recommendationEmailToggle.checked;
+        if (v !== !!snap.recommendationEmailOptOut) body.recommendationEmailOptOut = v;
+      }
+      if (publicProfileToggle) {
+        const v = !!publicProfileToggle.checked;
+        if (v !== !!snap.publicProfile) body.publicProfile = v;
+      }
 
-      const allowHandleSearch = !!(allowHandleSearchToggle && allowHandleSearchToggle.checked);
-      const showExperiencesToFriends = !!(shareToFriendsToggle && shareToFriendsToggle.checked);
-      const recommendationEmailOptOut = !(recommendationEmailToggle && recommendationEmailToggle.checked);
-      const publicProfile = !!(publicProfileToggle && publicProfileToggle.checked);
+      if (Object.keys(body).length === 0) {
+        setUploadStatus("success", "No changes to save.");
+        return;
+      }
 
       try {
         const res = await window.authFetch("/api/auth/update", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, mobile, bio, location, handle, allowHandleSearch, showExperiencesToFriends, recommendationEmailOptOut, publicProfile })
+          body: JSON.stringify(body)
         });
 
         if (handleUnauthorized(res)) return;
@@ -296,7 +338,9 @@
 
         setUploadStatus("success", "Profile updated.");
         loadMe();
-      } catch (_) {}
+      } catch (_netErr) {
+        setUploadStatus("error", "Failed to save profile. Please try again.");
+      }
     });
   }
 
@@ -390,7 +434,10 @@
   var notifPrefsList = document.getElementById("notif-prefs-list");
   var notifPrefsStatus = document.getElementById("notif-prefs-status");
 
-  var NOTIF_KEYS = ["bookingConfirmations","bookingReminders","newReviews","communityActivity","hostDigest","promotional"];
+  // 2026-09-07: "bookingConfirmations" was taken out of this list. The switch for it is gone from the page,
+  // because the Privacy Policy says a booking confirmation is always sent and cannot be turned off, and the
+  // platform does send it either way. Leaving the key here would look for a control that no longer exists.
+  var NOTIF_KEYS = ["bookingReminders","newReviews","communityActivity","hostDigest","promotional"];
 
   function showNotifPrefs(which) {
     [notifPrefsLoading, notifPrefsError, notifPrefsList].forEach(function (el) { if (el) el.classList.add("hidden"); });
@@ -549,7 +596,7 @@
         else if (payload && payload.message) msg = String(payload.message);
         setCpStatus("error", msg);
       } catch (_) {
-        setCpStatus("error", "Something went wrong. Please try again.");
+        setCpStatus("error", "We couldn't change your password just now. Please try again.");
       } finally {
         cpBtn.disabled = false;
       }
@@ -591,10 +638,29 @@
       var data = payload.data;
       var bookings = Array.isArray(data.bookings) ? data.bookings : [];
       var experiences = Array.isArray(data.experiences) ? data.experiences : [];
+      var reviewsWritten = Array.isArray(data.reviewsWritten) ? data.reviewsWritten : [];
+      var connections = Array.isArray(data.connections) ? data.connections : [];
+      var waitlistEntries = Array.isArray(data.waitlistEntries) ? data.waitlistEntries : [];
+      var shortfallPayments = Array.isArray(data.shortfallPayments) ? data.shortfallPayments : [];
+      var attendanceIncidents = Array.isArray(data.attendanceIncidents) ? data.attendanceIncidents : [];
+      var reportsFiled = Array.isArray(data.reportsFiled) ? data.reportsFiled : [];
+      var privateRequestMessages = Array.isArray(data.privateRequestMessages) ? data.privateRequestMessages : [];
       if (dataCategoriesEl) dataCategoriesEl.textContent = "";
       appendDataCategory("Profile", "Your name, handle, profile photo, and bio");
-      appendDataCategory("Bookings", bookings.length > 0 ? (String(bookings.length) + " records") : "No bookings stored.");
-      appendDataCategory("Hosted listings", experiences.length > 0 ? (String(experiences.length) + " records") : "No hosted listings stored.");
+      // SR-5 (sir's fix-all order 2026-08-20): "1 records" → singular/plural agree.
+      appendDataCategory("Bookings", bookings.length > 0 ? (String(bookings.length) + (bookings.length === 1 ? " record" : " records")) : "No bookings stored.");
+      appendDataCategory("Hosted listings", experiences.length > 0 ? (String(experiences.length) + (experiences.length === 1 ? " record" : " records")) : "No hosted listings stored.");
+      // 2026-09-07: the download now carries seven more kinds of record, so the list above the
+      // button names them too. A person must be able to see, before pressing it, everything the
+      // file will contain.
+      appendDataCategory("Reviews you wrote", reviewsWritten.length > 0 ? (String(reviewsWritten.length) + (reviewsWritten.length === 1 ? " record" : " records")) : "No reviews stored.");
+      appendDataCategory("Your connections", connections.length > 0 ? (String(connections.length) + (connections.length === 1 ? " record" : " records")) : "No connections stored.");
+      appendDataCategory("Waitlist entries", waitlistEntries.length > 0 ? (String(waitlistEntries.length) + (waitlistEntries.length === 1 ? " record" : " records")) : "No waitlist entries stored.");
+      appendDataCategory("Notification preferences", "Included in your download.");
+      appendDataCategory("Extra payments you made as a host", shortfallPayments.length > 0 ? (String(shortfallPayments.length) + (shortfallPayments.length === 1 ? " record" : " records")) : "No extra payments stored.");
+      appendDataCategory("Attendance reports for events you hosted", attendanceIncidents.length > 0 ? (String(attendanceIncidents.length) + (attendanceIncidents.length === 1 ? " record" : " records")) : "No attendance reports stored.");
+      appendDataCategory("Reports you filed", reportsFiled.length > 0 ? (String(reportsFiled.length) + (reportsFiled.length === 1 ? " record" : " records")) : "No reports stored.");
+      appendDataCategory("Messages you sent about a private booking", privateRequestMessages.length > 0 ? (String(privateRequestMessages.length) + (privateRequestMessages.length === 1 ? " message" : " messages")) : "No messages stored.");
       if (exportedAtEl) {
         var exportedAt = "";
         try { if (window.tstsFormatDateShort) exportedAt = window.tstsFormatDateShort(data.exportedAt); } catch (_) {}
@@ -611,7 +677,9 @@
         if (version) {
           var effective = "";
           try { if (window.tstsFormatDateShort) effective = window.tstsFormatDateShort(policy.effectiveFrom); } catch (_) {}
-          retentionMetaEl.textContent = effective ? ("Current policy: " + version + " (effective " + effective + ").") : ("Current policy: " + version + ".");
+          // Audit alignment (sir's rule: machine values never render — the harness policy version
+          // is a raw ISO timestamp): the screen speaks the effective date; the version stays in data.
+          retentionMetaEl.textContent = effective ? ("Current policy effective " + effective + ".") : "";
         }
       }
     } catch (_) {}
@@ -651,7 +719,7 @@
   if (deleteBtn) {
     deleteBtn.addEventListener("click", async function () {
       var confirmed = await window.tstsConfirm(
-        "Deleting your account is permanent. All your data, bookings, reviews, and connections will be removed. This cannot be undone.",
+        "Deleting your account is permanent. Any seat you are still holding for a table that has not happened yet will be cancelled, and whatever the cancellation policy gives back is returned to the card you paid with. We will email you what was cancelled and what is coming back. Your data, bookings, reviews and connections will be removed, and this cannot be undone.",
         { destructive: true, confirmText: "Delete My Account", cancelText: "Cancel" }
       );
       if (!confirmed) return;
@@ -691,5 +759,177 @@
   loadMe().then(function () {
     loadNotificationPreferences();
     loadDataSection();
+    loadHostVerificationSection();
   });
+
+  // Owner-spec 2026-05-02, Host verification (KYC) section.
+  // Reads current status, surfaces it to the host, lets them upload an ID document
+  // (and optional address proof) to a private Cloudinary folder, then POSTs the
+  // resulting URLs to /api/host/verification/request.
+  async function loadHostVerificationSection() {
+    const section = document.getElementById("host-verification-section");
+    if (!section) return;
+    const statusLine = document.getElementById("host-verification-status-line");
+    const card       = document.getElementById("host-verification-card");
+    const submitBtn  = document.getElementById("kyc-submit-btn");
+    const idTypeEl   = document.getElementById("kyc-id-type");
+    const idFileEl   = document.getElementById("kyc-id-file");
+    const addrFileEl = document.getElementById("kyc-addr-file");
+    const errorEl    = document.getElementById("kyc-error");
+    const progressEl = document.getElementById("kyc-progress");
+    if (!submitBtn || !idTypeEl || !idFileEl || !addrFileEl) return;
+
+    function showError(msg) {
+      if (!errorEl) return;
+      errorEl.textContent = String(msg || "");
+      errorEl.classList.remove("hidden");
+    }
+    function clearError() {
+      if (!errorEl) return;
+      errorEl.textContent = "";
+      errorEl.classList.add("hidden");
+    }
+    function showProgress(msg) {
+      if (!progressEl) return;
+      progressEl.textContent = String(msg || "");
+      progressEl.classList.remove("hidden");
+    }
+    function clearProgress() {
+      if (!progressEl) return;
+      progressEl.textContent = "";
+      progressEl.classList.add("hidden");
+    }
+
+    function setStatusUI(status, payload) {
+      const s = String(status || "none").toLowerCase();
+      if (!statusLine || !card) return;
+      if (s === "verified") {
+        statusLine.textContent = "You're a verified host. The badge appears on your listings.";
+        card.classList.add("hidden");
+      } else if (s === "requested" || s === "under_review") {
+        statusLine.textContent = "We're reviewing your verification. We'll write to you once it's decided.";
+        card.classList.add("hidden");
+      } else if (s === "rejected") {
+        const note = (payload && payload.note) ? (", " + String(payload.note)) : "";
+        statusLine.textContent = "Your verification was rejected" + note + ". You can re-submit below.";
+        card.classList.remove("hidden");
+      } else if (s === "revoked") {
+        const note = (payload && payload.revokedReason) ? (", " + String(payload.revokedReason)) : "";
+        statusLine.textContent = "Your verified status was revoked" + note + ". You can submit a fresh request below.";
+        card.classList.remove("hidden");
+      } else {
+        statusLine.textContent = "Submit a quick ID check to earn the Verified host badge on your listings.";
+        card.classList.remove("hidden");
+      }
+    }
+
+    async function fetchStatus() {
+      try {
+        const res = await window.authFetch("/api/host/verification/status", { method: "GET" });
+        let body = null;
+        try { body = await res.json(); } catch (eParse) { void eParse; body = null; }
+        if (!res.ok || !body || body.ok !== true) return;
+        const hv = (body.data && body.data.hostVerification) || {};
+        setStatusUI(hv.status, hv);
+
+        // 2026-08-25: NO ID DOCUMENT SHOULD LEAVE THE DEVICE FOR A REQUEST THAT CANNOT BE GRANTED.
+        // The submit handler uploads the ID and proof of address to storage FIRST and only then calls
+        // the endpoint — which refuses with NO_LISTINGS unless a listing already exists. So an account
+        // with no listing was handing over identity documents for a request that was always going to
+        // fail. The status endpoint now reports the same condition (canRequestHostVerification, using
+        // the identical query as the refusal), and the form is closed before any upload can start.
+        // The sentence shown is the server's own refusal message, not a new one.
+        if (body.data && body.data.canRequestHostVerification === false) {
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.setAttribute("title", "Create at least one listing before requesting host verification.");
+          }
+          if (statusLine) {
+            statusLine.textContent = "Create at least one listing before requesting host verification.";
+          }
+        }
+      } catch (eFetch) {
+        void eFetch;
+      }
+    }
+    await fetchStatus();
+
+    async function uploadOne(file, folder) {
+      const sigRes = await window.authFetch("/api/uploads/cloudinary-signature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder: folder })
+      });
+      let sigBody = null;
+      try { sigBody = await sigRes.json(); } catch (eS) { void eS; sigBody = null; }
+      if (!sigRes.ok || !sigBody || sigBody.ok !== true) {
+        throw new Error("Could not get upload signature.");
+      }
+      const sd = sigBody.data || {};
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("api_key", String(sd.apiKey || ""));
+      fd.append("timestamp", String(sd.timestamp || ""));
+      fd.append("signature", String(sd.signature || ""));
+      fd.append("folder", String(sd.folder || folder));
+      if (sd.type) fd.append("type", String(sd.type));
+      const upUrl = "https://api.cloudinary.com/v1_1/" + encodeURIComponent(String(sd.cloudName || "")) + "/auto/upload";
+      const upRes = await fetch(upUrl, { method: "POST", body: fd });
+      if (!upRes.ok) throw new Error("Upload failed.");
+      const upBody = await upRes.json();
+      return String(upBody.secure_url || upBody.url || "");
+    }
+
+    submitBtn.addEventListener("click", async function () {
+      clearError();
+      clearProgress();
+      const idType = String(idTypeEl.value || "").trim();
+      if (!idType) { showError("Choose an ID type."); return; }
+      const idFile = idFileEl.files && idFileEl.files[0];
+      if (!idFile) { showError("Add your ID document."); return; }
+      const addrFile = addrFileEl.files && addrFileEl.files[0];
+      const totalBytes = (idFile.size || 0) + (addrFile ? (addrFile.size || 0) : 0);
+      const MAX = 5 * 1024 * 1024;
+      if (totalBytes > MAX) { showError("Documents must be under 5 MB total."); return; }
+
+      submitBtn.disabled = true;
+      const originalLabel = submitBtn.textContent;
+      submitBtn.textContent = "Uploading…";
+      try {
+        showProgress("Uploading ID document…");
+        const idUrl = await uploadOne(idFile, "kyc-private");
+        let addrUrl = "";
+        if (addrFile) {
+          showProgress("Uploading proof of address…");
+          addrUrl = await uploadOne(addrFile, "kyc-private");
+        }
+        showProgress("Sending for review…");
+        const res = await window.authFetch("/api/host/verification/request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            idType: idType,
+            idDocumentUrl: idUrl,
+            proofOfAddressUrl: addrUrl,
+            fileBytes: totalBytes
+          })
+        });
+        let body = null;
+        try { body = await res.json(); } catch (eR) { void eR; body = null; }
+        if (!res.ok || !body || body.ok !== true) {
+          const msg = (body && body.message) ? body.message : "Could not submit for review.";
+          throw new Error(msg);
+        }
+        clearProgress();
+        if (window.tstsToast) window.tstsToast({ type: "success", message: "Sent for review." });
+        await fetchStatus();
+      } catch (err) {
+        clearProgress();
+        showError((err && err.message) ? err.message : "Submission failed.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalLabel;
+      }
+    });
+  }
 })();

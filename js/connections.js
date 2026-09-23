@@ -21,6 +21,13 @@
       if (!window.tstsGetSession) throw new Error("missing_session_helper");
       const sess = await window.tstsGetSession({ force: true });
       if (sess && sess.ok && sess.user) return true;
+      // A rate-limit is not a signed-out user. tstsGetSession only protects against this when a
+      // good session is already cached, so a FIRST load that hits the limit used to throw a
+      // genuinely signed-in person out to the login page. Wait and retry instead of evicting them.
+      if (sess && Number(sess.status) === 429) {
+        try { if (window.tstsNotify) window.tstsNotify("We're a bit busy. Give it a moment and refresh.", "warning"); } catch (_nErr) { void _nErr; }
+        return false;
+      }
     } catch (_) {}
     const returnTo = encodeURIComponent("connections.html");
     location.href = "login.html?returnTo=" + returnTo;
@@ -123,7 +130,7 @@
       showReq(reqList);
     } catch (_) {
       if (reqEmpty) {
-        reqEmpty.textContent = "Unable to load requests.";
+        reqEmpty.textContent = "We couldn't load your requests just now. Give it a moment and try again.";
         showReq(reqEmpty);
       }
     }
@@ -149,10 +156,16 @@
     var El = window.tstsEl;
     list.forEach(function(c) {
       var userId = (c.user && (c.user._id || c.user.id)) || "";
-      var wrap = El("div", { className: "p-4 rounded-xl border border-gray-100 bg-white flex items-center justify-between gap-3" }, [
+      // 2026-08-26: at 390px EVERY name in this list was unreadable — "Sarah Mitchell" cut to
+      // "Sarah Mi…", and even "Mei Lin" (seven characters) cut to "Mei …", while "View profile"
+      // wrapped onto two lines. The row was a single flex line, and the two action controls carried
+      // no flex-shrink-0, so they held their full width and starved the name column. Names are the
+      // entire content of a connections list. The row now stacks on small screens and only becomes
+      // a single justified line from `sm` up, where there is room for it.
+      var wrap = El("div", { className: "p-4 rounded-xl border border-gray-100 bg-white flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between" }, [
         userRowEl(c.user),
-        El("div", { className: "flex items-center gap-2" }, [
-          El("a", { className: "text-sm font-bold text-orange-600 hover:underline", href: "public-profile.html?id=" + encodeURIComponent(userId), textContent: "View profile" }),
+        El("div", { className: "flex items-center gap-2 shrink-0" }, [
+          El("a", { className: "text-sm font-bold text-orange-600 hover:underline whitespace-nowrap", href: "public-profile.html?id=" + encodeURIComponent(userId), textContent: "View profile" }),
           El("button", { className: "px-3 py-2 rounded-lg border border-red-200 bg-white text-xs font-bold text-red-600 hover:bg-red-50", "data-action": "remove", "data-userid": userId, textContent: "Remove" })
         ])
       ]);
@@ -190,7 +203,7 @@
     } catch (_) {
       __connCache = [];
       if (connEmpty) {
-        connEmpty.textContent = "Unable to load connections.";
+        connEmpty.textContent = "We couldn't load your fellow travellers just now. Give it a moment and try again.";
         showConn(connEmpty);
       }
     }
@@ -228,12 +241,14 @@
       if (!res.ok) throw new Error((data && data.message) ? data.message : ((connRaw && connRaw.message) ? connRaw.message : "Connect failed"));
 
       const st = String(data.status || "");
-      if (st) setStatus("Connection request sent!", "success");
-      else setStatus("Connection request sent!", "success");
+      setStatus("Connection request sent!", "success");
 
       if (handleEl) handleEl.value = "";
       await loadRequests();
       await loadConnections();
+      // Audit alignment 2026-08-19: a successful send lands in the SENT panel, which never
+      // refetched — the user watched "You haven't sent any connection requests" after sending.
+      if (typeof loadOutgoing === "function") await loadOutgoing();
     } catch (e) {
       setStatus((e && e.message) ? e.message : "Could not connect. Please try again.", "error");
     } finally {
@@ -259,7 +274,7 @@
         await loadConnections();
       }
     } catch (err) {
-      window.tstsNotify((err && err.message) ? err.message : "Action failed", "error");
+      window.tstsNotify((err && err.message) ? err.message : "We couldn\u2019t complete that just now. Please try again.", "error");
     }
   }
 
@@ -274,14 +289,21 @@
       if (action === "accept") await post("/api/social/requests/" + encodeURIComponent(id) + "/accept");
       if (action === "reject") await post("/api/social/requests/" + encodeURIComponent(id) + "/reject");
       if (action === "block") {
-        var confirmed = await window.tstsConfirm("Block this user?", { destructive: true, confirmText: "Block" });
+        // 2026-08-25: this said only "Block this user?" while the SAME action on the public profile
+        // explained the consequence and the way back. The profile's message even points HERE as the
+        // undo surface — so the page that owns the reversal was the one saying least about it.
+        // sir's existing sentence, carried across verbatim rather than a new variant written for it.
+        var confirmed = await window.tstsConfirm(
+          "They won\u2019t be able to see your profile or reach out to you. You can unblock anytime from your connections page.",
+          { destructive: true, confirmText: "Block", cancelText: "Cancel" }
+        );
         if (!confirmed) return;
         await post("/api/social/requests/" + encodeURIComponent(id) + "/block");
       }
       await loadRequests();
       await loadConnections();
     } catch (err) {
-      window.tstsNotify((err && err.message) ? err.message : "Action failed", "error");
+      window.tstsNotify((err && err.message) ? err.message : "We couldn\u2019t complete that just now. Please try again.", "error");
     }
   }
 
@@ -324,7 +346,7 @@
       });
       showOut(outList);
     } catch (_) {
-      if (outEmpty) { outEmpty.textContent = "Unable to load sent requests."; showOut(outEmpty); }
+      if (outEmpty) { outEmpty.textContent = "We couldn't load your sent requests just now. Give it a moment and try again."; showOut(outEmpty); }
     }
   }
 
@@ -380,7 +402,7 @@
       });
       showBlk(blkList);
     } catch (_) {
-      if (blkEmpty) { blkEmpty.textContent = "Unable to load blocked users."; showBlk(blkEmpty); }
+      if (blkEmpty) { blkEmpty.textContent = "We couldn't load your blocked list just now. Give it a moment and try again."; showBlk(blkEmpty); }
     }
   }
 

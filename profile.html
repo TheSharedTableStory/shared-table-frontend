@@ -2,22 +2,36 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' http://localhost:4000 https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="/assets/logo-mark.png">
     <meta name="theme-color" content="#ea580c">
     <title>My Account - The Shared Table Story</title>
-    <link rel="stylesheet" href="css/tailwind.css?v=20260317b">
-    <link rel="stylesheet" href="css/fonts.css?v=20260310d">
+    <link rel="stylesheet" href="css/tailwind.css?v=20260914a">
+    <link rel="stylesheet" href="css/fonts.css?v=20260810a">
     <link rel="manifest" href="manifest.json">
+    <style>
+      /* Owner 2026-08-05 ("fix all 12"): `tsts-toggle-touch` was applied to every settings
+         toggle but never defined — the 40×24px switches sat under the 44px minimum touch
+         target. Invisible hit-slop on the CLICKABLE track label extends the tappable area
+         without moving a pixel; clicks on the slop activate the label → toggle the input.
+         (On the container it would create a dead zone on the one div-wrapped site.) */
+      /* overflow: visible — the track carries the utility `overflow-hidden`, which CLIPS the
+         hit-slop pseudo-element (caught by the click-through proof, not just geometry). The
+         track has no child content, so unclipping changes nothing visually; the two-class
+         selector outweighs the single-class utility without needing !important. */
+      .tsts-toggle-touch .toggle-label { position: relative; overflow: visible; }
+      .tsts-toggle-touch .toggle-label::after { content: ""; position: absolute; top: -10px; bottom: -10px; left: -8px; right: -8px; }
+    </style>
 </head>
 <body class="bg-tsts-cream text-slate-900 flex flex-col min-h-screen">
 
     <nav id="navbar-placeholder" role="navigation"></nav>
 
     <main class="flex-grow" role="main">
-    <div class="container mx-auto px-4 py-8 max-w-2xl">
+    <!-- sir 2026-08-16 "Widen it": nav-container width standard -->
+    <div class="container mx-auto px-4 py-8">
         <h1 class="text-3xl font-bold mb-2 heading-serif text-tsts-ink">My Account</h1>
         <p class="text-gray-600 mb-8">Manage your personal details, privacy, notifications, and account data.</p>
 
@@ -44,7 +58,7 @@
                     <p id="upload-status" class="text-xs text-gray-500 mt-1"></p>
                     <p id="photo-nudge" class="hidden text-xs text-amber-700 mt-2 text-center">
                         <i class="fas fa-lightbulb mr-1"></i>
-                        A profile photo helps fellow travellers recognise you — add one to personalise your profile.
+                        A profile photo helps fellow travellers recognise you. Add one to personalise your profile.
                     </p>
                 </div>
             </div>
@@ -52,12 +66,12 @@
             <div class="p-8 space-y-6">
                 <form id="profile-form" class="space-y-4">
                     <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                        <label for="name" class="block text-xs font-medium text-gray-700 mb-1">Full Name</label>
                         <input type="text" id="name" maxlength="100" autocomplete="name" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" required>
                     </div>
 
                     <div>
-                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <label for="email" class="block text-xs font-medium text-gray-700 mb-1">Email</label>
                         <input type="email" id="email" class="w-full px-4 py-2 bg-gray-100 border border-slate-200 rounded-xl text-gray-500 cursor-not-allowed" readonly>
                         <button id="change-email-btn" type="button" class="mt-1 text-xs text-orange-600 font-medium hover:underline">Change email address</button>
                     </div>
@@ -71,17 +85,17 @@
                         </div>
                         <div>
                             <label for="change-email-password" class="block text-xs font-medium text-gray-700 mb-1">Current Password</label>
-                            <input type="password" id="change-email-password" maxlength="24" autocomplete="current-password" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="Confirm your password">
+                            <input type="password" id="change-email-password" maxlength="72" autocomplete="current-password" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="Confirm your password">
                         </div>
                         <div class="flex gap-2">
                             <button id="change-email-submit" type="button" class="tsts-btn-primary px-4 py-2 rounded-xl text-sm font-medium transition">Send Verification</button>
-                            <button id="change-email-cancel" type="button" class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition">Cancel</button>
+                            <button id="change-email-cancel" type="button" class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition">Cancel</button>
                         </div>
                         <p id="change-email-status" class="text-xs hidden"></p>
                     </div>
 
                     <div>
-                        <label for="mobile" class="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                        <label for="mobile" class="block text-xs font-medium text-gray-700 mb-1">Mobile Number</label>
                         <div class="flex gap-2">
                             <select id="mobileCountryCode" aria-label="Country code" class="px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 outline-none text-sm w-28 shrink-0">
                                 <option value="+61" selected>+61</option>
@@ -92,47 +106,18 @@
                                 <option value="+60">+60</option>
                                 <option value="+91">+91</option>
                             </select>
-                            <input type="tel" id="mobile" maxlength="15" autocomplete="tel-national" class="flex-1 px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="412 345 678">
+                            <input type="tel" id="mobile" maxlength="15" autocomplete="tel-national" class="flex-1 min-w-0 px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="412 345 678">
                         </div>
                     </div>
 
                     <div>
-                        <label for="bio" class="block text-sm font-medium text-gray-700 mb-1">About Me</label>
+                        <label for="bio" class="block text-xs font-medium text-gray-700 mb-1">About Me</label>
                         <textarea id="bio" rows="4" maxlength="500" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="Share a bit about yourself..."></textarea>
                     </div>
 
                     <div>
-                        <label for="location" class="block text-sm font-medium text-gray-700 mb-1">Where do you call home?</label>
+                        <label for="location" class="block text-xs font-medium text-gray-700 mb-1">Where do you call home?</label>
                         <input type="text" id="location" maxlength="100" autocomplete="address-level2" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" placeholder="Melbourne, Victoria">
-                    </div>
-
-                    <div id="host-payment-section" class="pt-6 border-t border-gray-100 hidden">
-                        <h2 class="text-lg font-bold mb-4 flex items-center gap-2 heading-serif text-tsts-ink">
-                            <i class="fas fa-concierge-bell text-orange-600"></i> Host Settings
-                        </h2>
-                        <div class="mb-6 bg-orange-50 border border-orange-100 rounded-lg p-4 flex items-center justify-between">
-                            <div>
-                                <p class="font-bold text-tsts-ink text-sm">Vacation Mode</p>
-                                <p class="text-xs text-gray-600">Pause all my listings. No new bookings allowed.</p>
-                            </div>
-                            <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
-                                <input type="checkbox" name="vacation-mode" id="vacation-mode" role="switch" aria-label="Toggle vacation mode" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
-                                <label for="vacation-mode" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
-                            </div>
-                        </div>
-                        <p class="text-xs text-gray-500 mb-3">
-                            <i class="fas fa-lock mr-1"></i> Payout Details (Securely Stored)
-                        </p>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-700 mb-1" for="bsb">BSB</label>
-                                <input type="text" id="bsb" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-700 mb-1" for="account-number">Account Number</label>
-                                <input type="text" id="account-number" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none">
-                            </div>
-                        </div>
                     </div>
 
                     <div class="pt-4">
@@ -161,7 +146,7 @@
                 </div>
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <p class="font-semibold text-tsts-ink text-sm">Share My Profile with World</p>
+                        <p class="font-semibold text-tsts-ink text-sm">Share My Profile with the World</p>
                         <p class="text-xs text-gray-600">If enabled, your photo and bio can appear in attendee lists and comments.</p>
                     </div>
                     <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
@@ -170,8 +155,8 @@
                     </label>
                 </div>
                 <div class="pt-3 border-t border-gray-200">
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1" for="handle">Handle</label>
-                    <input id="handle" type="text" maxlength="32" placeholder="Choose a handle (e.g. aarav)" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" />
+                    <label class="block text-xs font-medium text-gray-700 mb-1" for="handle">Handle</label>
+                    <input id="handle" type="text" maxlength="32" placeholder="Choose a handle (e.g. mia)" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none" />
                     <p class="text-[11px] text-gray-500 mt-1">Handles allow direct invites. Search is opt-in below.</p>
                     <div id="host-ownership-warning" class="hidden mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                         Please set a unique handle to ensure your listings are correctly linked to your account.
@@ -189,7 +174,7 @@
                 </div>
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <p class="font-semibold text-tsts-ink text-sm">Share My Bookings To Friends</p>
+                        <p class="font-semibold text-tsts-ink text-sm">Share My Bookings With Friends</p>
                         <p class="text-xs text-gray-600">If enabled, your connections may see bookings you explicitly mark as shareable.</p>
                     </div>
                     <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
@@ -226,12 +211,9 @@
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <p class="font-semibold text-tsts-ink text-sm">Booking Confirmations</p>
-                        <p class="text-xs text-gray-600">Receive email when your booking is confirmed or cancelled.</p>
+                        <p class="text-xs text-gray-600">Sent automatically when your booking is confirmed or cancelled. Can't be turned off.</p>
                     </div>
-                    <label class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in tsts-toggle-touch">
-                        <input type="checkbox" id="notif-bookingConfirmations" role="switch" aria-label="Toggle booking confirmation emails" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
-                        <span class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></span>
-                    </label>
+                    <span class="text-xs font-semibold text-slate-400 shrink-0 pt-1">Always on</span>
                 </div>
                 <div class="flex items-start justify-between gap-4">
                     <div>
@@ -295,25 +277,25 @@
             <p class="text-sm text-gray-600 mb-4">Update your password to keep your account secure.</p>
             <div class="space-y-4">
                 <div>
-                    <label for="current-password" class="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                    <label for="current-password" class="block text-xs font-medium text-gray-700 mb-1">Current Password</label>
                     <div class="relative">
-                        <input type="password" id="current-password" maxlength="24" autocomplete="current-password" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none pr-10">
-                        <button type="button" class="cp-eye-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" data-target="current-password" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
+                        <input type="password" id="current-password" maxlength="72" autocomplete="current-password" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none pr-10">
+                        <button type="button" class="cp-eye-toggle absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 transition" data-target="current-password" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
                     </div>
                 </div>
                 <div>
-                    <label for="new-password" class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                    <label for="new-password" class="block text-xs font-medium text-gray-700 mb-1">New Password</label>
                     <div class="relative">
-                        <input type="password" id="new-password" maxlength="24" autocomplete="new-password" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none pr-10">
-                        <button type="button" class="cp-eye-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" data-target="new-password" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
+                        <input type="password" id="new-password" maxlength="72" autocomplete="new-password" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none pr-10">
+                        <button type="button" class="cp-eye-toggle absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 transition" data-target="new-password" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
                     </div>
                     <p class="text-xs text-gray-500 mt-1">At least 8 characters, with a lowercase letter, an uppercase letter, and a number.</p>
                 </div>
                 <div>
-                    <label for="repeat-password" class="block text-sm font-medium text-gray-700 mb-1">Repeat New Password</label>
+                    <label for="repeat-password" class="block text-xs font-medium text-gray-700 mb-1">Repeat New Password</label>
                     <div class="relative">
-                        <input type="password" id="repeat-password" maxlength="24" autocomplete="new-password" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none pr-10">
-                        <button type="button" class="cp-eye-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" data-target="repeat-password" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
+                        <input type="password" id="repeat-password" maxlength="72" autocomplete="new-password" class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent outline-none pr-10">
+                        <button type="button" class="cp-eye-toggle absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 transition" data-target="repeat-password" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
                     </div>
                 </div>
                 <button id="change-password-btn" type="button" class="w-full tsts-btn-primary py-3 rounded-xl font-bold transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
@@ -347,9 +329,41 @@
                     <i class="fas fa-download"></i> Download My Data
                 </button>
             </div>
+            <!-- Host verification (KYC), owner-spec 2026-05-02. -->
+            <div class="mt-6 pt-6 border-t border-gray-200" id="host-verification-section">
+                <h3 class="text-lg font-bold text-tsts-ink mb-1 heading-serif">Host verification</h3>
+                <p class="text-sm text-gray-600 mb-4" id="host-verification-status-line">Submit a quick ID check to earn the Verified host badge on your listings.</p>
+                <div id="host-verification-card" class="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+                    <label class="block">
+                        <span class="block text-sm font-bold text-slate-800 mb-1">ID type</span>
+                        <select id="kyc-id-type" class="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            <option value="">Choose one</option>
+                            <option value="passport">Passport</option>
+                            <option value="drivers_licence">Driver's licence</option>
+                            <option value="national_id">National ID card</option>
+                        </select>
+                    </label>
+                    <label class="block">
+                        <span class="block text-sm font-bold text-slate-800 mb-1">ID document <span class="text-red-600">*</span></span>
+                        <span class="block text-xs text-slate-500 mb-2">JPG, PNG or PDF. Max 5 MB total. Stored privately and visible only to our verification team.</span>
+                        <input id="kyc-id-file" type="file" accept="image/jpeg,image/png,application/pdf" class="block w-full text-sm text-slate-700 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-tsts-ink file:text-white file:font-bold file:text-xs hover:file:opacity-90">
+                    </label>
+                    <label class="block">
+                        <span class="block text-sm font-bold text-slate-800 mb-1">Proof of address (optional)</span>
+                        <span class="block text-xs text-slate-500 mb-2">Recent utility bill, bank statement or government letter showing your name + address.</span>
+                        <input id="kyc-addr-file" type="file" accept="image/jpeg,image/png,application/pdf" class="block w-full text-sm text-slate-700 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-slate-200 file:text-slate-800 file:font-bold file:text-xs hover:file:opacity-90">
+                    </label>
+                    <p id="kyc-error" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></p>
+                    <p id="kyc-progress" class="hidden text-sm text-slate-600"></p>
+                    <div class="flex justify-end">
+                        <button id="kyc-submit-btn" type="button" class="tsts-btn-primary px-5 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed">Submit for verification</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="mt-6 pt-6 border-t border-gray-200">
                 <h3 class="text-lg font-bold text-red-700 mb-2">Delete Account</h3>
-                <p class="text-sm text-gray-700 mb-4">Deleting your account is permanent. All your data, bookings, reviews, and connections will be removed. This cannot be undone.</p>
+                <p class="text-sm text-gray-700 mb-4">Deleting your account is permanent. Any seat you are still holding for a table that has not happened yet will be cancelled, and whatever the cancellation policy gives back is returned to the card you paid with. Your data, bookings, reviews and connections will be removed. This cannot be undone.</p>
                 <button id="delete-btn" type="button" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-red-50 text-red-700 border border-red-200 font-bold hover:bg-red-100 transition">
                     <i class="fas fa-trash-alt"></i> Delete My Account
                 </button>
@@ -362,7 +376,7 @@
 
     <footer id="footer-placeholder" role="contentinfo"></footer>
     <script src="js/runtime-config.js?v=20260224a"></script>
-  <script src="js/common.js?v=20260316c"></script>
-    <script src="js/profile.js?v=20260305a"></script>
+  <script src="js/common.js?v=20260907a"></script>
+    <script src="js/profile.js?v=20260916a"></script>
 </body>
 </html>

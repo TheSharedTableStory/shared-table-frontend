@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data: blob:; font-src 'self'; connect-src 'self' http://localhost:4000 https://*.stripe.com https://api.cloudinary.com https://api.thesharedtablestory.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/assets/logo-mark.png">
   <meta name="theme-color" content="#ea580c">
   <title>Policy – The Shared Table Story</title>
-  <link rel="stylesheet" href="css/tailwind.css?v=20260317b">
-  <link rel="stylesheet" href="css/fonts.css?v=20260310d">
+  <link rel="stylesheet" href="css/tailwind.css?v=20260914a">
+  <link rel="stylesheet" href="css/fonts.css?v=20260810a">
 
   <link rel="manifest" href="manifest.json">
 </head>
@@ -33,7 +33,7 @@
       <div class="flex items-start justify-between gap-4">
         <div>
           <p class="text-xs uppercase tracking-widest text-gray-500">Active policy</p>
-          <h2 id="policy-version" class="text-xl font-bold">—</h2>
+          <p id="policy-version" class="text-xl font-bold">—</p>
           <p id="policy-effective" class="text-sm text-gray-600 mt-1">—</p>
         </div>
       </div>
@@ -91,7 +91,7 @@
     </section>
 
     <!-- ═══════════════════════════════════════════════════════════════
-         Guest Booking, Payments, and Refund Policy — Full Text
+         Guest Booking, Payments, and Refund Policy, Full Text
          ═══════════════════════════════════════════════════════════════ -->
     <section class="mt-10 space-y-6">
 
@@ -102,7 +102,7 @@
 
       <!-- Summary card -->
       <div class="bg-white rounded-3xl border border-gray-100 shadow-soft-card p-6 space-y-3">
-        <h3 class="text-sm font-bold uppercase tracking-widest text-gray-500">Key Points</h3>
+        <h3 class="text-base font-bold uppercase tracking-widest text-gray-700">Key Points</h3>
         <ol class="list-decimal list-inside text-sm text-gray-700 leading-relaxed space-y-2">
           <li>Bookings form a contract between Guest and Host. The platform facilitates payments.</li>
           <li>Guest cancellation refunds depend on timing tiers detailed in the full policy below.</li>
@@ -128,7 +128,7 @@
       <!-- Collapsible sections -->
       <div id="policy-sections" class="space-y-3">
 
-        <!-- Section 0 — Policy Principle -->
+        <!-- Section 0, Policy Principle -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             0. Policy Principle
@@ -143,7 +143,7 @@
           </div>
         </details>
 
-        <!-- Section 1 — Roles and Contract Structure -->
+        <!-- Section 1, Roles and Contract Structure -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             1. Roles and Contract Structure
@@ -156,7 +156,7 @@
           </div>
         </details>
 
-        <!-- Section 2 — Prices and Checkout Transparency -->
+        <!-- Section 2, Prices and Checkout Transparency -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             2. Prices and Checkout Transparency
@@ -173,7 +173,7 @@
           </div>
         </details>
 
-        <!-- Section 3 — Booking Confirmation -->
+        <!-- Section 3, Booking Confirmation -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             3. Booking Confirmation
@@ -185,7 +185,7 @@
           </div>
         </details>
 
-        <!-- Section 4 — Guest-Initiated Cancellation -->
+        <!-- Section 4, Guest-Initiated Cancellation -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             4. Guest-Initiated Cancellation (Standard Rule)
@@ -205,7 +205,7 @@
           </div>
         </details>
 
-        <!-- Section 5 — Host-Initiated Cancellation -->
+        <!-- Section 5, Host-Initiated Cancellation -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             5. Host-Initiated Cancellation
@@ -217,7 +217,7 @@
           </div>
         </details>
 
-        <!-- Section 6 — Reschedules -->
+        <!-- Section 6, Reschedules -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             6. Reschedules
@@ -229,7 +229,7 @@
           </div>
         </details>
 
-        <!-- Section 7 — No-Shows and Late Arrivals -->
+        <!-- Section 7, No-Shows and Late Arrivals -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             7. No-Shows and Late Arrivals
@@ -241,7 +241,7 @@
           </div>
         </details>
 
-        <!-- Section 8 — Safety Issues, Material Misrepresentation, and Non-Delivery -->
+        <!-- Section 8, Safety Issues, Material Misrepresentation, and Non-Delivery -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             8. Safety Issues, Material Misrepresentation, and Non-Delivery
@@ -257,7 +257,7 @@
           </div>
         </details>
 
-        <!-- Section 9 — Australian Consumer Law (ACL) Carve-Out -->
+        <!-- Section 9, Australian Consumer Law (ACL) Carve-Out -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             9. Australian Consumer Law (ACL) Carve-Out
@@ -270,7 +270,7 @@
           </div>
         </details>
 
-        <!-- Section 10 — Payment Methods, Holds, and Authorisations -->
+        <!-- Section 10, Payment Methods, Holds, and Authorisations -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             10. Payment Methods, Holds, and Authorisations
@@ -285,7 +285,7 @@
           </div>
         </details>
 
-        <!-- Section 11 — Chargebacks and Disputes -->
+        <!-- Section 11, Chargebacks and Disputes -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             11. Chargebacks and Disputes
@@ -298,7 +298,7 @@
           </div>
         </details>
 
-        <!-- Section 12 — Refund Method and Timing -->
+        <!-- Section 12, Refund Method and Timing -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             12. Refund Method and Timing
@@ -311,7 +311,7 @@
           </div>
         </details>
 
-        <!-- Section 13 — Credits -->
+        <!-- Section 13, Credits -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             13. Credits
@@ -325,7 +325,7 @@
           </div>
         </details>
 
-        <!-- Section 14 — Policy Snapshot Binding and Versioning -->
+        <!-- Section 14, Policy Snapshot Binding and Versioning -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             14. Policy Snapshot Binding and Versioning
@@ -337,7 +337,7 @@
           </div>
         </details>
 
-        <!-- Section 15 — Contact -->
+        <!-- Section 15, Contact -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             15. Contact
@@ -348,7 +348,7 @@
           </div>
         </details>
 
-        <!-- Section 16 — Refund Calculation Notes -->
+        <!-- Section 16, Refund Calculation Notes -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             16. Refund Calculation Notes
@@ -363,7 +363,7 @@
           </div>
         </details>
 
-        <!-- Section 17 — Fraud and Abuse -->
+        <!-- Section 17, Fraud and Abuse -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             17. Fraud and Abuse
@@ -376,7 +376,7 @@
           </div>
         </details>
 
-        <!-- Section 18 — Partial Attendance -->
+        <!-- Section 18, Partial Attendance -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             18. Partial Attendance
@@ -387,7 +387,7 @@
           </div>
         </details>
 
-        <!-- Section 19 — Bundles and Promotions -->
+        <!-- Section 19, Bundles and Promotions -->
         <details class="border border-gray-100 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between px-4 py-3 bg-gray-50/80 cursor-pointer hover:bg-gray-100 transition text-sm font-semibold text-gray-900">
             19. Bundles and Promotions
@@ -415,6 +415,19 @@
         This policy should be read together with our <a href="terms.html" class="text-orange-600 hover:underline">Terms of Service</a>.
       </p>
 
+      <!-- The platform's other policies. The acceptable use policy and the community guidelines are
+           published but nothing linked to them, so a guest could only reach them by typing the address. -->
+      <div class="mt-6 pt-6 border-t border-slate-200">
+        <h2 class="heading-serif text-2xl font-bold text-tsts-ink mb-3">The rest of our policies</h2>
+        <ul class="text-sm text-gray-600 space-y-1">
+          <li><a href="acceptable-use.html" class="text-orange-600 hover:underline">Acceptable Use Policy</a> &mdash; what is welcome on the platform and what is not.</li>
+          <li><a href="community-guidelines.html" class="text-orange-600 hover:underline">Community Guidelines</a> &mdash; how we treat each other at the table.</li>
+          <li><a href="privacy.html" class="text-orange-600 hover:underline">Privacy Policy</a> &mdash; what we hold about you and why.</li>
+          <li><a href="cookie-policy.html" class="text-orange-600 hover:underline">Cookie Policy</a> &mdash; what we store in your browser.</li>
+          <li><a href="host-terms.html" class="text-orange-600 hover:underline">Host Terms</a> &mdash; the terms for hosting a table.</li>
+        </ul>
+      </div>
+
     </section>
 
   </main>
@@ -422,8 +435,8 @@
   <footer id="footer-placeholder" role="contentinfo"></footer>
 
   <script src="js/runtime-config.js?v=20260224a"></script>
-  <script src="js/common.js?v=20260316c"></script>
-  <script src="js/policy.js?v=20260316a"></script>
+  <script src="js/common.js?v=20260907a"></script>
+  <script src="js/policy.js?v=20260825a"></script>
     <script src="js/details-utils.js?v=20260310a"></script>
 </body>
 </html>

@@ -2,15 +2,36 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.thesharedtablestory.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://res.cloudinary.com data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://localhost:4000 https://api.thesharedtablestory.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
-  <title>Check-In — The Shared Table Story</title>
-  <link rel="icon" type="image/png" href="assets/icon.png">
-  <link rel="stylesheet" href="css/tailwind.css?v=20260428a">
+  <title>Check-In, The Shared Table Story</title>
+  <link rel="icon" type="image/png" href="/assets/logo-mark.png">
+  <link rel="stylesheet" href="css/tailwind.css?v=20260914a">
   <link rel="stylesheet" href="css/design-system.css?v=20260428a">
-  <link rel="stylesheet" href="css/fonts.css?v=20260428a">
+  <link rel="stylesheet" href="css/fonts.css?v=20260810a">
+
+  <!-- Owner 2026-05-30 (date-picker rollout): self-hosted Flatpickr 4.6.13 + brand
+       overrides byte-identical to the R3-approved block on experience.html. Same look
+       every page. TODO future cleanup: consolidate to a shared CSS file. -->
+  <link rel="stylesheet" href="vendor/flatpickr/flatpickr.min.css?v=4.6.13" />
+  <style>
+    .flatpickr-calendar { box-shadow: 0 12px 36px rgba(15, 23, 42, 0.10); border-radius: 16px; border: 1px solid rgba(15, 23, 42, 0.06); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    .flatpickr-months { padding-top: 4px; }
+    .flatpickr-months .flatpickr-month, .flatpickr-current-month, .flatpickr-current-month .cur-month, .flatpickr-current-month input.cur-year { color: rgb(31, 41, 55); font-weight: 600; }
+    .flatpickr-prev-month, .flatpickr-next-month { padding: 8px 12px; cursor: pointer; }
+    .flatpickr-prev-month svg, .flatpickr-next-month svg { fill: rgb(31, 41, 55); width: 14px; height: 14px; }
+    .flatpickr-prev-month:hover svg, .flatpickr-next-month:hover svg { fill: rgb(234, 88, 12); }
+    .flatpickr-weekday { color: rgb(100, 116, 139); font-weight: 600; }
+    .flatpickr-day { color: rgb(31, 41, 55); border-radius: 9999px; }
+    .flatpickr-day.today { border-color: rgb(194, 141, 107); }
+    .flatpickr-day.today:hover { background: rgb(254, 215, 170); border-color: rgb(194, 141, 107); color: rgb(154, 52, 18); }
+    .flatpickr-day:hover { background: rgb(254, 237, 213); color: rgb(154, 52, 18); }
+    .flatpickr-day.selected, .flatpickr-day.selected:hover, .flatpickr-day.selected:focus { background: rgb(234, 88, 12); border-color: rgb(234, 88, 12); color: #fff; }
+    .flatpickr-day.flatpickr-disabled, .flatpickr-day.flatpickr-disabled:hover { color: rgba(15, 23, 42, 0.22); background: transparent; cursor: not-allowed; }
+    .flatpickr-day.prevMonthDay, .flatpickr-day.nextMonthDay { color: rgba(15, 23, 42, 0.30); }
+  </style>
 </head>
 <body class="bg-tsts-cream text-tsts-ink min-h-screen">
   <nav id="navbar-placeholder" role="navigation"></nav>
@@ -18,25 +39,33 @@
   <main class="max-w-xl mx-auto px-4 py-12">
     <div class="bg-white rounded-3xl shadow-soft-card border border-gray-100 p-8 space-y-6">
       <header>
-        <h1 class="text-3xl font-bold heading-serif text-tsts-ink">Check in your guest</h1>
+        <h1 class="heading-serif text-3xl md:text-4xl font-bold text-tsts-ink">Check in your guest</h1>
         <p class="text-sm text-gray-500 mt-2">
           Ask your guest for the 6-digit entry code from their booking confirmation. Enter it below to mark them as checked in.
         </p>
       </header>
 
       <section id="cin-experience-picker" class="space-y-3 hidden">
-        <label for="cin-experience" class="block text-sm font-semibold text-tsts-ink">Experience</label>
+        <label for="cin-experience" class="block text-xs font-medium text-tsts-ink">Experience</label>
         <select id="cin-experience" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition">
           <option value="">Select an experience…</option>
         </select>
 
-        <label for="cin-date" class="block text-sm font-semibold text-tsts-ink">Date</label>
+        <label for="cin-date" class="block text-xs font-medium text-tsts-ink">Date</label>
         <input id="cin-date" type="date" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" />
+
+        <div id="cin-slot-wrap" class="hidden">
+          <label for="cin-slot" class="block text-xs font-medium text-tsts-ink">Time slot</label>
+          <select id="cin-slot" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition mt-3">
+            <option value="">Select a time…</option>
+          </select>
+        </div>
       </section>
 
       <section id="cin-otp-section" class="space-y-3">
-        <label for="cin-otp" class="block text-sm font-semibold text-tsts-ink">Entry code</label>
+        <label for="cin-otp" class="block text-xs font-medium text-tsts-ink">Entry code</label>
         <input id="cin-otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition text-2xl font-mono tracking-widest text-center" placeholder="••••••" autocomplete="one-time-code" />
+        <p id="cin-otp-hint" class="text-sm text-gray-500 hidden"></p>
         <p id="cin-error" class="text-sm text-red-600 hidden" role="alert"></p>
       </section>
 
@@ -44,17 +73,46 @@
         Check in
       </button>
 
-      <div id="cin-success" class="hidden bg-green-50 border border-green-200 rounded-xl p-4">
-        <p class="text-sm font-semibold text-green-800">Checked in</p>
-        <p id="cin-success-detail" class="text-sm text-green-700 mt-1"></p>
+      <div id="cin-success" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+        <p class="text-sm font-semibold text-emerald-800">Checked in</p>
+        <p id="cin-success-detail" class="text-sm text-emerald-700 mt-1"></p>
       </div>
 
-      <a href="/host.html" class="block text-center text-sm text-orange-600 hover:underline font-bold">Back to hosting</a>
+      <a href="/my-bookings.html?tab=hosting&section=bookings" class="block text-center text-sm text-orange-600 hover:underline font-bold">Back to hosting</a>
+    </div>
+
+    <!-- The door panel (sir 2026-08-06, world-best check-in): live counts + a searchable guest
+         roster for the selected event. The entry code stays the ONLY way to check someone in —
+         the code is the proof of booking — but the door needs to SEE the room: who's in, who's
+         missing, and find the person standing in front of you by name. -->
+    <div id="cin-roster" class="hidden bg-white rounded-3xl shadow-soft-card border border-gray-100 p-8 mt-6 space-y-5">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-xs text-gray-500">Checked in</p>
+          <p id="cin-count-in" class="text-base font-bold text-tsts-ink mt-0.5">0</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500">Still to come</p>
+          <p id="cin-count-pending" class="text-base font-bold text-amber-700 mt-0.5">0</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500">Seats booked</p>
+          <p id="cin-count-total" class="text-base font-bold text-tsts-ink mt-0.5">0</p>
+        </div>
+      </div>
+
+      <input id="cin-search" type="text" autocomplete="off" placeholder="Find a guest by name…"
+        class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-tsts-clay/60 focus:border-transparent transition" />
+
+      <div id="cin-roster-list" class="space-y-2"></div>
+      <button id="cin-roster-more" type="button" class="hidden w-full px-4 py-2 rounded-xl border border-gray-200 text-gray-700 text-sm font-bold hover:bg-gray-50 transition"></button>
     </div>
   </main>
 
   <script src="js/runtime-config.js?v=20260428a"></script>
-  <script src="js/common.js?v=20260428a"></script>
-  <script src="js/check-in.js?v=20260428a"></script>
+  <!-- Owner 2026-05-30 (date-picker rollout): Flatpickr loaded before common.js. -->
+  <script src="vendor/flatpickr/flatpickr.min.js?v=4.6.13"></script>
+  <script src="js/common.js?v=20260907a"></script>
+  <script src="js/check-in.js?v=20260916a"></script>
 </body>
 </html>
