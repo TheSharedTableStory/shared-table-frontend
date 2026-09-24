@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="Food & Gatherings category">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ea580c"/>
+      <stop offset="100%" stop-color="#fb7185"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#g)"/>
+  <g fill="#ffffff" opacity="0.18">
+    <circle cx="140" cy="160" r="74"/>
+    <circle cx="700" cy="420" r="92"/>
+    <circle cx="640" cy="140" r="46"/>
+    <circle cx="210" cy="460" r="54"/>
+  </g>
+  <g opacity="0.22" fill="#ffffff">
+    <!-- simple plate + steam -->
+    <ellipse cx="400" cy="380" rx="210" ry="60"/>
+    <ellipse cx="400" cy="360" rx="180" ry="44"/>
+    <path d="M335 255c-18 18-18 42 0 60" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+    <path d="M400 240c-18 18-18 42 0 60" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+    <path d="M465 255c-18 18-18 42 0 60" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+  </g>
+  <g fill="#fde68a" opacity="0.28">
+    <circle cx="280" cy="310" r="12"/>
+    <circle cx="520" cy="325" r="10"/>
+    <circle cx="460" cy="440" r="14"/>
+    <circle cx="350" cy="450" r="9"/>
+  </g>
+</svg>

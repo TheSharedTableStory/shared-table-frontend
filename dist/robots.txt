@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /my-bookings.html
+Disallow: /profile.html
+
+Sitemap: https://www.thesharedtablestory.com/sitemap.xml

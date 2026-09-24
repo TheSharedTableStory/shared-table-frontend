@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="Move & Wellness category">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14b8a6"/>
+      <stop offset="100%" stop-color="#fb7185"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#g)"/>
+  <g fill="#ffffff" opacity="0.16">
+    <circle cx="150" cy="170" r="72"/>
+    <circle cx="700" cy="420" r="88"/>
+    <circle cx="640" cy="150" r="46"/>
+  </g>
+  <g opacity="0.26" fill="#ffffff">
+    <!-- person in stretch pose (abstract) -->
+    <circle cx="360" cy="250" r="28"/>
+    <path d="M360 282 C330 320, 300 360, 270 400" fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round"/>
+    <path d="M360 290 C400 330, 450 360, 510 370" fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round"/>
+    <path d="M300 430 C380 410, 450 430, 560 450" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round" opacity="0.35"/>
+  </g>
+  <g fill="#d1fae5" opacity="0.24">
+    <!-- gentle waves -->
+    <path d="M120 520 C200 490, 280 550, 360 520 C440 490, 520 550, 600 520 C680 490, 740 520, 780 510" fill="none" stroke="#d1fae5" stroke-width="10" stroke-linecap="round"/>
+  </g>
+</svg>

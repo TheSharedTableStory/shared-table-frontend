@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="50%" style="stop-color:#16213e"/>
+      <stop offset="100%" style="stop-color:#0f3460"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#heroGrad)"/>
+  <g opacity="0.3">
+    <circle cx="200" cy="300" r="150" fill="#ea580c"/>
+    <circle cx="1700" cy="800" r="200" fill="#f97316"/>
+    <circle cx="960" cy="540" r="100" fill="#fb923c"/>
+  </g>
+  <g fill="#ffffff" opacity="0.1">
+    <rect x="100" y="700" width="300" height="200" rx="20"/>
+    <rect x="500" y="650" width="250" height="250" rx="20"/>
+    <rect x="850" y="720" width="280" height="180" rx="20"/>
+    <rect x="1200" y="680" width="320" height="220" rx="20"/>
+    <rect x="1550" y="750" width="270" height="150" rx="20"/>
+  </g>
+  <g fill="#ffffff" opacity="0.15">
+    <circle cx="300" cy="500" r="8"/>
+    <circle cx="600" cy="400" r="6"/>
+    <circle cx="900" cy="350" r="10"/>
+    <circle cx="1200" cy="450" r="7"/>
+    <circle cx="1500" cy="380" r="9"/>
+    <circle cx="1700" cy="500" r="5"/>
+  </g>
+</svg>

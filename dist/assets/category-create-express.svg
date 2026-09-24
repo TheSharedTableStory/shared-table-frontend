@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="Create & Express category">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#ef4444"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#g)"/>
+  <g fill="#ffffff" opacity="0.16">
+    <circle cx="140" cy="160" r="66"/>
+    <circle cx="700" cy="420" r="92"/>
+  </g>
+  <g opacity="0.26" fill="#ffffff">
+    <!-- brush + palette (abstract) -->
+    <path d="M500 210 L590 300 L560 330 L470 240 Z"/>
+    <rect x="420" y="250" width="170" height="28" rx="14" transform="rotate(-45 420 250)"/>
+    <path d="M260 360 C260 290, 330 240, 410 240 C490 240, 560 290, 560 360 C560 430, 490 470, 410 470 C330 470, 260 430, 260 360 Z"/>
+    <circle cx="360" cy="330" r="12" opacity="0.35"/>
+    <circle cx="430" cy="310" r="10" opacity="0.35"/>
+    <circle cx="470" cy="360" r="11" opacity="0.35"/>
+    <circle cx="380" cy="400" r="9" opacity="0.35"/>
+  </g>
+  <g fill="#fff7ed" opacity="0.22">
+    <path d="M140 500 C240 440, 320 560, 420 500 C520 440, 620 560, 740 480" fill="none" stroke="#fff7ed" stroke-width="10" stroke-linecap="round"/>
+  </g>
+</svg>

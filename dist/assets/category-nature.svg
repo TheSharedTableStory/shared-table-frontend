@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <linearGradient id="natureGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#059669"/>
+      <stop offset="100%" style="stop-color:#0d9488"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#natureGrad)"/>
+  <g fill="#ffffff" opacity="0.15">
+    <path d="M0 600 L200 300 L400 450 L600 250 L800 400 L800 600 Z"/>
+  </g>
+  <g fill="#ffffff" opacity="0.2">
+    <path d="M300 600 L400 350 L500 600 Z"/>
+    <path d="M500 600 L650 300 L800 600 Z"/>
+    <path d="M0 600 L150 400 L300 600 Z"/>
+  </g>
+  <g fill="#fbbf24" opacity="0.4">
+    <circle cx="650" cy="120" r="60"/>
+  </g>
+  <g fill="#ffffff" opacity="0.1">
+    <ellipse cx="200" cy="100" rx="100" ry="40"/>
+    <ellipse cx="500" cy="80" rx="120" ry="35"/>
+    <ellipse cx="700" cy="180" rx="80" ry="30"/>
+  </g>
+  <g fill="#22c55e" opacity="0.3">
+    <path d="M100 550 L120 480 L140 550 Z"/>
+    <path d="M150 550 L180 450 L210 550 Z"/>
+    <path d="M600 550 L630 470 L660 550 Z"/>
+    <path d="M680 550 L700 500 L720 550 Z"/>
+  </g>
+</svg>

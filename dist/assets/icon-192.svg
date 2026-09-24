@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" rx="24" fill="#ea580c"/>
+  <g fill="#ffffff">
+    <circle cx="96" cy="72" r="28"/>
+    <ellipse cx="96" cy="140" rx="48" ry="32"/>
+    <path d="M60 90 L70 110 L55 125 L45 105 Z" opacity="0.9"/>
+    <path d="M132 90 L122 110 L137 125 L147 105 Z" opacity="0.9"/>
+    <circle cx="60" cy="72" r="12" opacity="0.7"/>
+    <circle cx="132" cy="72" r="12" opacity="0.7"/>
+  </g>
+  <text x="96" y="175" text-anchor="middle" font-family="Georgia, serif" font-size="14" fill="#ffffff" opacity="0.9">TSTS</text>
+</svg>

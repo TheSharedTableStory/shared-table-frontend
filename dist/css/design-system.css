@@ -1,0 +1,107 @@
+/* TSTS Design System (DEPRECATED - not currently linked in any HTML pages)
+ * The project currently uses Tailwind CDN for styling.
+ * This file is preserved for reference and potential future consolidation.
+ * DO NOT rely on these styles without explicitly linking this file.
+ */
+
+:root{
+  /* Typography - Standardize on Plus Jakarta Sans + Playfair Display */
+  --font-sans: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  --font-serif: "Playfair Display", Georgia, "Times New Roman", Times, serif;
+
+  /* Brand - Use actual brand colors from pages */
+  --brand-orange: #ea580c;
+  --brand-green: #16a34a;
+  --brand-clay: #C28D6B;
+  --brand-cream: #F5EDE6;
+  --brand-soft: #FDF9F5;
+  --brand-ink: #1F2933;
+
+  /* Surfaces */
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --surface-cream: var(--brand-cream);
+
+  /* Layout */
+  --container-max: 72rem; /* ~max-w-6xl */
+  --page-x: 1rem;
+  --page-y: 2rem;
+  --nav-h: 72px;
+
+  /* Radius */
+  --radius: 12px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.06);
+  --shadow-md: 0 8px 24px rgba(0,0,0,.10);
+  --shadow-soft-card: 0 18px 35px rgba(15, 23, 42, 0.10);
+
+  /* Focus */
+  --focus: 0 0 0 3px rgba(22,163,74,.25);
+}
+
+/* Base */
+html, body { height: 100%; }
+body{
+  font-family: var(--font-sans);
+  background: var(--surface-muted);
+  color: #0f172a;
+}
+
+/* Containers */
+.tsts-container{
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding-left: var(--page-x);
+  padding-right: var(--page-x);
+}
+.tsts-page{
+  padding-top: calc(var(--nav-h) + 24px);
+  padding-bottom: var(--page-y);
+}
+
+/* Tokens */
+.tsts-card{
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(15,23,42,.08);
+}
+.tsts-btn{
+  border-radius: var(--radius);
+  padding: .75rem 1rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  transition: transform .05s ease, opacity .15s ease, background-color .15s ease;
+}
+.tsts-btn:active{ transform: translateY(1px); }
+.tsts-btn-primary{
+  background: var(--brand-green);
+  color: #fff;
+}
+.tsts-btn-primary:hover{ opacity: .92; }
+.tsts-btn-secondary{
+  background: #fff;
+  color: #0f172a;
+  border: 1px solid rgba(15,23,42,.14);
+}
+.tsts-btn-secondary:hover{ background: var(--surface-muted); }
+
+.tsts-input{
+  width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid rgba(15,23,42,.14);
+  background: #fff;
+  padding: .75rem 1rem;
+}
+.tsts-input:focus{
+  outline: none;
+  box-shadow: var(--focus);
+  border-color: rgba(22,163,74,.45);
+}
+
+/* Heading style */
+.tsts-h1{ font-family: var(--font-serif); letter-spacing: -0.02em; }

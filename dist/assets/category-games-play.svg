@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="Games & Play category">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#84cc16"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#g)"/>
+  <g fill="#ffffff" opacity="0.16">
+    <circle cx="140" cy="160" r="66"/>
+    <circle cx="700" cy="420" r="92"/>
+  </g>
+  <g opacity="0.26" fill="#ffffff">
+    <!-- dice pair -->
+    <rect x="270" y="240" width="150" height="150" rx="22"/>
+    <rect x="410" y="310" width="150" height="150" rx="22" opacity="0.92"/>
+    <circle cx="320" cy="290" r="10" opacity="0.35"/>
+    <circle cx="370" cy="340" r="10" opacity="0.35"/>
+    <circle cx="445" cy="345" r="10" opacity="0.35"/>
+    <circle cx="490" cy="390" r="10" opacity="0.35"/>
+    <circle cx="535" cy="435" r="10" opacity="0.35"/>
+  </g>
+  <g fill="#ecfccb" opacity="0.22">
+    <!-- playful arc -->
+    <path d="M170 500 C300 430, 420 560, 560 500 C660 460, 720 500, 770 485" fill="none" stroke="#ecfccb" stroke-width="10" stroke-linecap="round"/>
+  </g>
+</svg>

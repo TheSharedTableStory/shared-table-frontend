@@ -1,0 +1,76 @@
+/* Local fallback icon set (replaces runtime CDN icon dependency). */
+
+.fas,
+.far,
+.fab,
+.fa-solid,
+.fa-regular {
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  line-height: 1;
+}
+
+.fa-spin {
+  animation: tsts-fa-spin 1s linear infinite;
+}
+
+@keyframes tsts-fa-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.fa-arrow-left::before { content: "\2190"; }
+.fa-arrow-right::before { content: "\2192"; }
+.fa-arrow-rotate-left::before { content: "\21ba"; }
+.fa-arrow-rotate-right::before { content: "\21bb"; }
+.fa-rotate-right::before { content: "\21bb"; }
+.fa-bars::before { content: "\2630"; }
+.fa-book-open::before { content: "\1f4d6"; }
+.fa-bookmark::before { content: "\1f516"; }
+.fa-calendar::before { content: "\1f4c5"; }
+.fa-calendar-check::before { content: "\1f4c5"; }
+.fa-camera::before { content: "\1f4f7"; }
+.fa-check::before { content: "\2713"; }
+.fa-check-circle::before { content: "\2714"; }
+.fa-chevron-down::before { content: "\25be"; }
+.fa-circle-exclamation::before { content: "\26a0"; }
+.fa-cloud-upload-alt::before { content: "\2b06"; }
+.fa-comment-alt::before { content: "\1f4ac"; }
+.fa-concierge-bell::before { content: "\1f6ce"; }
+.fa-exclamation-circle::before { content: "\2757"; }
+.fa-exclamation-triangle::before { content: "\26a0"; }
+.fa-fire::before { content: "\1f525"; }
+.fa-flag::before { content: "\2691"; }
+.fa-globe::before { content: "\1f310"; }
+.fa-globe-asia::before { content: "\1f30f"; }
+.fa-heart::before { content: "\2665"; }
+.fa-info-circle::before { content: "\2139"; }
+.fa-lightbulb::before { content: "\1f4a1"; }
+.fa-lock::before { content: "\1f512"; }
+.fa-map-marker-alt::before { content: "\1f4cd"; }
+.fa-moon::before { content: "\1f319"; }
+.fa-mountain::before { content: "\1f3d4"; }
+.fa-paint-brush::before { content: "\1f58c"; }
+.fa-pencil-alt::before { content: "\270e"; }
+.fa-plug::before { content: "\1f50c"; }
+.fa-question::before { content: "\003f"; }
+.fa-compass::before { content: "\1f9ed"; }
+.fa-search::before { content: "\1f50d"; }
+.fa-shield-alt::before { content: "\1f6e1"; }
+.fa-shield-check::before { content: "\1f6e1"; }
+.fa-sliders-h::before { content: "\2699"; }
+.fa-spinner::before { content: "\21bb"; }
+.fa-star::before { content: "\2605"; }
+.fa-tag::before { content: "\1f3f7"; }
+.fa-times::before { content: "\00d7"; }
+.fa-tree::before { content: "\1f333"; }
+.fa-spa::before { content: "\1f9d8"; }
+.fa-dice::before { content: "\1f3b2"; }
+.fa-user-friends::before { content: "\1f465"; }
+.fa-user-shield::before { content: "\1f6e1"; }
+.fa-users::before { content: "\1f465"; }
+.fa-utensils::before { content: "\1f37d"; }

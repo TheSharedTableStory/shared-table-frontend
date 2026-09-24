@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="Learn & Passion category">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#g)"/>
+  <g fill="#ffffff" opacity="0.16">
+    <circle cx="160" cy="180" r="74"/>
+    <circle cx="700" cy="420" r="88"/>
+  </g>
+  <g opacity="0.26" fill="#ffffff">
+    <!-- lightbulb (abstract) -->
+    <path d="M400 190 C330 190, 275 245, 275 315 C275 365, 305 410, 350 435 L350 455 C350 470, 363 482, 378 482 L422 482 C437 482, 450 470, 450 455 L450 435 C495 410, 525 365, 525 315 C525 245, 470 190, 400 190 Z"/>
+    <rect x="360" y="482" width="80" height="26" rx="13" opacity="0.35"/>
+    <rect x="368" y="508" width="64" height="18" rx="9" opacity="0.28"/>
+  </g>
+  <g fill="#dbeafe" opacity="0.22">
+    <!-- rays -->
+    <path d="M400 150 L400 120" stroke="#dbeafe" stroke-width="10" stroke-linecap="round"/>
+    <path d="M330 170 L305 145" stroke="#dbeafe" stroke-width="10" stroke-linecap="round"/>
+    <path d="M470 170 L495 145" stroke="#dbeafe" stroke-width="10" stroke-linecap="round"/>
+    <path d="M290 240 L255 230" stroke="#dbeafe" stroke-width="10" stroke-linecap="round"/>
+    <path d="M510 240 L545 230" stroke="#dbeafe" stroke-width="10" stroke-linecap="round"/>
+  </g>
+</svg>

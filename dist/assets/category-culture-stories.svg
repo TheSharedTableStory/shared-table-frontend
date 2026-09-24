@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="Culture & Stories category">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#4f46e5"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#g)"/>
+  <g fill="#ffffff" opacity="0.16">
+    <circle cx="160" cy="160" r="70"/>
+    <circle cx="700" cy="430" r="90"/>
+    <rect x="610" y="120" width="90" height="140" rx="14"/>
+  </g>
+  <g opacity="0.24" fill="#ffffff">
+    <!-- open book -->
+    <path d="M230 250 C290 220, 350 220, 410 250 L410 420 C350 392, 290 392, 230 420 Z"/>
+    <path d="M410 250 C470 220, 530 220, 590 250 L590 420 C530 392, 470 392, 410 420 Z"/>
+    <rect x="400" y="245" width="20" height="190" opacity="0.35"/>
+  </g>
+  <g fill="#fbbf24" opacity="0.28">
+    <circle cx="260" cy="490" r="12"/>
+    <circle cx="520" cy="150" r="18"/>
+    <circle cx="600" cy="320" r="10"/>
+    <circle cx="320" cy="140" r="10"/>
+  </g>
+</svg>

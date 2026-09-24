@@ -1,0 +1,575 @@
+/* plus-jakarta-sans-latin-300-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-latin-300-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* plus-jakarta-sans-latin-400-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-latin-400-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* plus-jakarta-sans-latin-500-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-latin-500-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* plus-jakarta-sans-latin-600-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-latin-600-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* plus-jakarta-sans-latin-700-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-latin-700-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* plus-jakarta-sans-latin-ext-300-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-latin-ext-300-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* plus-jakarta-sans-latin-ext-400-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-latin-ext-400-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* plus-jakarta-sans-latin-ext-500-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-latin-ext-500-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* plus-jakarta-sans-latin-ext-600-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-latin-ext-600-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* plus-jakarta-sans-latin-ext-700-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-latin-ext-700-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* plus-jakarta-sans-vietnamese-300-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-vietnamese-300-normal.woff2) format('woff2');
+  unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;
+}
+
+/* plus-jakarta-sans-vietnamese-400-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-vietnamese-400-normal.woff2) format('woff2');
+  unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;
+}
+
+/* plus-jakarta-sans-vietnamese-500-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-vietnamese-500-normal.woff2) format('woff2');
+  unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;
+}
+
+/* plus-jakarta-sans-vietnamese-600-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-vietnamese-600-normal.woff2) format('woff2');
+  unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;
+}
+
+/* plus-jakarta-sans-vietnamese-700-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-vietnamese-700-normal.woff2) format('woff2');
+  unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;
+}
+
+/* plus-jakarta-sans-cyrillic-ext-300-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-cyrillic-ext-300-normal.woff2) format('woff2');
+  unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F;
+}
+
+/* plus-jakarta-sans-cyrillic-ext-400-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-cyrillic-ext-400-normal.woff2) format('woff2');
+  unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F;
+}
+
+/* plus-jakarta-sans-cyrillic-ext-500-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-cyrillic-ext-500-normal.woff2) format('woff2');
+  unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F;
+}
+
+/* plus-jakarta-sans-cyrillic-ext-600-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-cyrillic-ext-600-normal.woff2) format('woff2');
+  unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F;
+}
+
+/* plus-jakarta-sans-cyrillic-ext-700-normal.woff2 */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/assets/fonts/plus-jakarta-sans-cyrillic-ext-700-normal.woff2) format('woff2');
+  unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F;
+}
+
+/* playfair-display-latin-500-normal.woff2 */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/playfair-display-latin-500-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* playfair-display-latin-600-normal.woff2 */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/playfair-display-latin-600-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* playfair-display-latin-700-normal.woff2 */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/assets/fonts/playfair-display-latin-700-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* playfair-display-latin-ext-500-normal.woff2 */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/playfair-display-latin-ext-500-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* playfair-display-latin-ext-600-normal.woff2 */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/playfair-display-latin-ext-600-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* playfair-display-latin-ext-700-normal.woff2 */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/assets/fonts/playfair-display-latin-ext-700-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* playfair-display-vietnamese-500-normal.woff2 */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/playfair-display-vietnamese-500-normal.woff2) format('woff2');
+  unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;
+}
+
+/* playfair-display-vietnamese-600-normal.woff2 */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/playfair-display-vietnamese-600-normal.woff2) format('woff2');
+  unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;
+}
+
+/* playfair-display-vietnamese-700-normal.woff2 */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/assets/fonts/playfair-display-vietnamese-700-normal.woff2) format('woff2');
+  unicode-range: U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;
+}
+
+/* playfair-display-cyrillic-500-normal.woff2 */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/playfair-display-cyrillic-500-normal.woff2) format('woff2');
+  unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116;
+}
+
+/* playfair-display-cyrillic-600-normal.woff2 */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/playfair-display-cyrillic-600-normal.woff2) format('woff2');
+  unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116;
+}
+
+/* playfair-display-cyrillic-700-normal.woff2 */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/assets/fonts/playfair-display-cyrillic-700-normal.woff2) format('woff2');
+  unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116;
+}
+
+/* Accessibility utilities */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0; }
+.focus\:not-sr-only:focus { position: static; width: auto; height: auto; padding: 0; margin: 0; overflow: visible; clip: auto; white-space: normal; }
+
+/* =========================================================================
+   GLOBAL: Body font
+   Previously duplicated as inline <style> in every HTML file.
+   ========================================================================= */
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* =========================================================================
+   GLOBAL: Serif headings (unified from .heading-serif, .font-serif, .serif,
+   and bare h1/h2/h3 rules that appeared across many files).
+   The class .heading-serif is the canonical utility; h1-h3 also get serif
+   as a base rule. .font-serif and .serif kept as aliases for compatibility.
+   ========================================================================= */
+h1, h2, h3,
+.heading-serif,
+.font-serif,
+.serif {
+  font-family: 'Playfair Display', Georgia, "Times New Roman", serif;
+}
+
+/* =========================================================================
+   SHARED: Scrollbar-hide utility (used on explore.html, index.html)
+   ========================================================================= */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* =========================================================================
+   SHARED: Details/summary SVG rotate (policy, privacy, terms, host-terms,
+   cookie-policy)
+   ========================================================================= */
+details[open] > summary svg { transform: rotate(180deg); }
+details > summary svg { transition: transform 0.2s ease; }
+
+/* =========================================================================
+   PAGE: host.html — auth-pending visibility gate
+   ========================================================================= */
+html[data-auth-pending="1"] body { visibility: hidden; }
+
+/* =========================================================================
+   PAGE: profile.html — Toggle Switch
+   ========================================================================= */
+.toggle-checkbox:checked {
+  right: 0;
+  border-color: #ea580c;
+}
+.toggle-checkbox:checked + .toggle-label {
+  background-color: #ea580c;
+}
+
+/* =========================================================================
+   PAGE: explore.html — noUiSlider overrides & filter panel
+   ========================================================================= */
+.noUi-target { border-radius: 9999px; border: 1px solid #e5e7eb; background: #f9fafb; box-shadow: none; }
+.noUi-connect { background: #ea580c; }
+.noUi-handle { border-radius: 9999px; border: 1px solid #ea580c; width: 18px; height: 18px; top: -7px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: grab; }
+.noUi-handle::before, .noUi-handle::after { display: none; }
+
+.filter-shell {
+  background: linear-gradient(180deg, #ffffff 0%, #fff9f3 100%);
+  border-color: #f3e7d8;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+}
+.filter-panel-elevated {
+  background: #ffffff;
+  border: 1px solid #f2e8dc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+.filter-btn-active {
+  background: #ea580c !important;
+  color: #ffffff !important;
+  border-color: #ea580c !important;
+}
+.filter-count-badge {
+  min-width: 1.45rem;
+  height: 1.45rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* =========================================================================
+   PAGE: index.html — Carousel, hero, category cards, responsive overrides
+   ========================================================================= */
+.tsts-carousel { scroll-snap-type: x mandatory; scroll-padding-left: 1rem; }
+.tsts-carousel > * { scroll-snap-align: start; }
+.tsts-home-hero { height: min(78vh, 46rem); overflow: hidden; }
+.tsts-home-hero > img { transition: transform 700ms ease; }
+.tsts-home-hero:hover > img { transform: scale(1.05); }
+.tsts-ways-section { padding-top: 5rem; padding-bottom: 5rem; }
+.tsts-ways-heading { margin-bottom: 3rem; }
+
+.tsts-cat-card {
+  width: clamp(17rem, 86vw, 24rem);
+  min-width: clamp(17rem, 86vw, 24rem);
+}
+@media (min-width: 768px) {
+  .tsts-cat-card {
+    width: clamp(18rem, 46vw, 25rem);
+    min-width: clamp(18rem, 46vw, 25rem);
+  }
+}
+@media (min-width: 1280px) {
+  .tsts-cat-card {
+    width: clamp(19rem, 31vw, 25rem);
+    min-width: clamp(19rem, 31vw, 25rem);
+  }
+}
+.tsts-cat-card summary { list-style: none; }
+.tsts-cat-card summary::-webkit-details-marker { display: none; }
+.tsts-cat-header { transition: opacity 220ms ease, transform 220ms ease; }
+.tsts-cat-card[open] .tsts-cat-header { opacity: 0; transform: translateY(8px); pointer-events: none; }
+.tsts-cat-more { opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity 220ms ease, transform 220ms ease; }
+.tsts-cat-card[open] .tsts-cat-more { opacity: 1; transform: translateY(0); pointer-events: auto; }
+/* Category card overlay — Tailwind bg-black/35 etc. do NOT exist in compiled CSS.
+   Define all overlay states here using real rgba values. */
+.tsts-cat-overlay { background: rgba(0, 0, 0, 0.50); transition: background 300ms ease; }
+.tsts-cat-card:hover .tsts-cat-overlay { background: rgba(0, 0, 0, 0.60); }
+.tsts-cat-card[open] .tsts-cat-overlay { background: rgba(0, 0, 0, 0.65); }
+
+@media (max-height: 900px) {
+  .tsts-home-hero { height: min(62vh, 34rem); }
+  .tsts-ways-section { padding-top: 3.25rem; padding-bottom: 3.25rem; }
+  .tsts-ways-heading { margin-bottom: 1.75rem; }
+}
+@media (max-height: 800px) {
+  .tsts-home-hero { height: min(56vh, 30rem); }
+  .tsts-ways-section { padding-top: 2.5rem; padding-bottom: 2.75rem; }
+  .tsts-ways-heading { margin-bottom: 1.25rem; }
+}
+@media (max-height: 700px) {
+  .tsts-home-hero { height: min(50vh, 25rem); }
+  .tsts-ways-section { padding-top: 2rem; padding-bottom: 2.25rem; }
+  .tsts-ways-heading { margin-bottom: 1rem; }
+  .tsts-home-hero h1 {
+    font-size: clamp(1.85rem, 5vw, 2.6rem);
+    line-height: 1.12;
+    margin-bottom: 0.9rem;
+  }
+  .tsts-home-hero p {
+    font-size: clamp(0.98rem, 2.2vw, 1.2rem);
+    margin-bottom: 1rem;
+  }
+}
+
+/* =========================================================================
+   SHARED: Skeleton loading animation
+   ========================================================================= */
+@keyframes tsts-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #e8e2db 25%, #f2ece5 50%, #e8e2db 75%);
+  background-size: 200% 100%;
+  animation: tsts-shimmer 1.5s ease-in-out infinite;
+  border-radius: 0.75rem;
+}
+
+/* =========================================================================
+   DESIGN TOKENS: CTA hierarchy + indicator/surface tokens
+   See DESIGN_GUARDRAILS.md for rules. bg-tsts-ink is FORBIDDEN in html/js.
+   ========================================================================= */
+
+/* PRIMARY CTA — brand orange (conversion/submit/accept actions) */
+.tsts-btn-primary {
+  background-color: rgb(194 65 12);
+  color: #fff;
+}
+.tsts-btn-primary:hover { background-color: rgb(154 52 18); }
+.tsts-btn-primary:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgb(194 65 12);
+}
+
+/* SECONDARY CTA — outline (navigation/alternative actions) */
+.tsts-btn-secondary {
+  background-color: #fff;
+  color: rgb(30 41 59);
+  border: 1px solid rgb(203 213 225);
+}
+.tsts-btn-secondary:hover { background-color: rgb(248 250 252); }
+.tsts-btn-secondary:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgb(30 41 59);
+}
+
+/* INDICATOR — dark ink for interactive selection states ONLY (chips/tabs/selected) */
+.tsts-indicator-ink {
+  background-color: rgb(31 41 51);
+  color: #fff;
+}
+.tsts-indicator-ink:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgb(31 41 51);
+}
+
+/* SURFACE — dark ink for structural backgrounds (cards, nav) — NOT interactive */
+.tsts-surface-ink {
+  background-color: rgb(31 41 51);
+  color: rgb(248 250 252);
+}
+
+/* GLASS BUTTON — frosted glass CTA for dark photo/hero contexts */
+.tsts-btn-glass {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.tsts-btn-glass:hover { background-color: rgba(255, 255, 255, 0.35); }
+.tsts-btn-glass:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6), 0 0 0 4px rgba(255, 255, 255, 0.3);
+}
+
+/* GLASS PILL — frosted glass for small UI elements on dark backgrounds */
+.tsts-glass-pill {
+  background-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* GLASS CIRCLE — frosted glass for icons on dark backgrounds */
+.tsts-glass-circle {
+  background-color: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* GLASS BACKDROP — frosted dark panel for expanded overlays on photos */
+.tsts-glass-backdrop {
+  background-color: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+

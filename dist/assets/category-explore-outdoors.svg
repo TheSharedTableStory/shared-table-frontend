@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="Explore & Outdoors category">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#16a34a"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#g)"/>
+  <g fill="#ffffff" opacity="0.16">
+    <circle cx="120" cy="140" r="64"/>
+    <circle cx="690" cy="170" r="44"/>
+    <circle cx="650" cy="460" r="86"/>
+  </g>
+  <g opacity="0.24" fill="#ffffff">
+    <!-- mountain range -->
+    <path d="M120 440 L260 260 L360 360 L460 220 L640 440 Z"/>
+    <path d="M260 260 L305 320 L260 300 L215 320 Z" opacity="0.35"/>
+    <path d="M460 220 L510 300 L460 280 L410 300 Z" opacity="0.35"/>
+  </g>
+  <g fill="#dbeafe" opacity="0.22">
+    <!-- path line -->
+    <path d="M140 500 C260 460, 330 520, 430 490 C520 462, 600 520, 690 490" fill="none" stroke="#dbeafe" stroke-width="10" stroke-linecap="round"/>
+  </g>
+</svg>
